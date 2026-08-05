@@ -11,6 +11,8 @@ import {
   movieDetails,
   trendingTv,
   trendingMovies,
+  genreList,
+  discoverByGenre,
   slugify,
 } from "./tmdb";
 import { parseTvTimeZip, type ParsedImport } from "./importer";
@@ -27,6 +29,8 @@ import {
   CalendarPage,
   ImportPage,
   StatsPage,
+  BrowseIndex,
+  BrowseGenre,
   type UserStats,
   type NextUpItem,
   type LibraryRow,
@@ -287,18 +291,16 @@ app.get("/library", async (c) => {
   );
 });
 
-app.get("/calendar", async (c) => {
-  const user = c.get("user");
-  if (!user) return c.redirect("/login");
-  const tracked = await c.env.DB.prepare(
+async function upcomingItems(env: AppContext["Bindings"], userId: number): Promise<CalendarItem[]> {
+  const tracked = await env.DB.prepare(
     "SELECT tmdb_id FROM tracked WHERE user_id = ? AND media_type = 'tv' AND status IN ('watching','watchlist') LIMIT 30"
   )
-    .bind(user.id)
+    .bind(userId)
     .all<{ tmdb_id: number }>();
   const items: CalendarItem[] = [];
   for (const t of tracked.results) {
     try {
-      const d = await tvDetails(c.env, t.tmdb_id);
+      const d = await tvDetails(env, t.tmdb_id);
       if (d.next_episode_to_air?.air_date) {
         items.push({
           tmdbId: d.id,
@@ -313,9 +315,91 @@ app.get("/calendar", async (c) => {
     } catch {}
   }
   items.sort((a, b) => a.airDate.localeCompare(b.airDate));
+  return items;
+}
+
+app.get("/calendar", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  let feed = await c.env.DB.prepare("SELECT token FROM feed_tokens WHERE user_id = ?").bind(user.id).first<{ token: string }>();
+  if (!feed) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    await c.env.DB.prepare("INSERT OR IGNORE INTO feed_tokens (token, user_id) VALUES (?, ?)").bind(token, user.id).run();
+    feed = { token };
+  }
+  const items = await upcomingItems(c.env, user.id);
   return c.html(
     <Layout user={user} title="Calendar">
-      <CalendarPage items={items} />
+      <CalendarPage items={items} feedUrl={`/feed/${feed.token}.ics`} />
+    </Layout>
+  );
+});
+
+app.get("/feed/:token", async (c) => {
+  const token = c.req.param("token").replace(/\.ics$/, "");
+  if (!/^[0-9a-f]{32}$/.test(token)) return c.notFound();
+  const row = await c.env.DB.prepare("SELECT user_id FROM feed_tokens WHERE token = ?").bind(token).first<{ user_id: number }>();
+  if (!row) return c.notFound();
+  const items = await upcomingItems(c.env, row.user_id);
+  const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/([,;])/g, "\\$1").replace(/\n/g, "\\n");
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//WatchDeck//Upcoming Episodes//EN",
+    "X-WR-CALNAME:WatchDeck \u2014 Upcoming episodes",
+  ];
+  for (const it of items) {
+    const day = it.airDate.replace(/-/g, "");
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:wd-${it.tmdbId}-s${it.season}e${it.episode}@watchdeck.zalize.com`,
+      `DTSTART;VALUE=DATE:${day}`,
+      `SUMMARY:${esc(`${it.title} S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}`)}`,
+      `URL:${c.env.SITE_URL}/shows/${it.tmdbId}-${slugify(it.title)}`,
+      "END:VEVENT"
+    );
+  }
+  lines.push("END:VCALENDAR");
+  return c.body(lines.join("\r\n") + "\r\n", 200, {
+    "content-type": "text/calendar; charset=utf-8",
+    "cache-control": "private, max-age=3600",
+  });
+});
+
+app.get("/browse", async (c) => {
+  const [tv, movie] = await Promise.all([genreList(c.env, "tv"), genreList(c.env, "movie")]);
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title="Browse TV shows & movies by genre"
+      description="Explore popular TV shows and movies by genre and start tracking them for free on WatchDeck."
+      canonical={`${c.env.SITE_URL}/browse`}
+    >
+      <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} />
+    </Layout>
+  );
+});
+
+app.get("/browse/:type/:genreslug", async (c) => {
+  const type = c.req.param("type") === "movie" ? "movie" : c.req.param("type") === "tv" ? "tv" : null;
+  const genreId = parseInt(c.req.param("genreslug"), 10);
+  if (!type || !Number.isFinite(genreId)) return c.notFound();
+  const genres = await genreList(c.env, type);
+  const genre = genres.genres.find((g) => g.id === genreId);
+  if (!genre) return c.notFound();
+  const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
+  const res = await discoverByGenre(c.env, type, genreId, page);
+  const base = `${c.env.SITE_URL}/browse/${type}/${genre.id}-${slugify(genre.name)}`;
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={`${genre.name} ${type === "tv" ? "TV shows" : "movies"} to watch`}
+      description={`Popular ${genre.name.toLowerCase()} ${type === "tv" ? "TV shows" : "movies"} to discover and track for free on WatchDeck.`}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+    >
+      <BrowseGenre type={type} genre={genre} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
   );
 });
@@ -501,14 +585,14 @@ app.post("/api/import/batch", async (c) => {
   let showsImported = 0;
   let episodesImported = 0;
   let moviesImported = 0;
-  let unmatched = 0;
+  const unmatchedNames: string[] = [];
 
   for (const show of (batch.shows ?? []).slice(0, 20)) {
     try {
       const res = await searchTv(c.env, show.name);
       const match = res.results[0];
       if (!match) {
-        unmatched++;
+        unmatchedNames.push(show.name);
         continue;
       }
       const title = match.name ?? show.name;
@@ -531,7 +615,7 @@ app.post("/api/import/batch", async (c) => {
       }
       episodesImported += stmts.length;
     } catch {
-      unmatched++;
+      unmatchedNames.push(show.name);
     }
   }
 
@@ -540,7 +624,7 @@ app.post("/api/import/batch", async (c) => {
       const res = await searchMovie(c.env, movie.name);
       const match = res.results[0];
       if (!match) {
-        unmatched++;
+        unmatchedNames.push(movie.name);
         continue;
       }
       await c.env.DB.batch([
@@ -555,17 +639,17 @@ app.post("/api/import/batch", async (c) => {
       ]);
       moviesImported++;
     } catch {
-      unmatched++;
+      unmatchedNames.push(movie.name);
     }
   }
 
   await c.env.DB.prepare(
     "INSERT INTO imports (user_id, source, shows_imported, episodes_imported, movies_imported, unmatched) VALUES (?, 'tvtime', ?, ?, ?, ?)"
   )
-    .bind(user.id, showsImported, episodesImported, moviesImported, unmatched)
+    .bind(user.id, showsImported, episodesImported, moviesImported, unmatchedNames.length)
     .run();
 
-  return c.json({ showsImported, episodesImported, moviesImported, unmatched });
+  return c.json({ showsImported, episodesImported, moviesImported, unmatched: unmatchedNames.length, unmatchedNames });
 });
 
 // ---------- seo ----------
@@ -574,11 +658,18 @@ app.get("/robots.txt", (c) =>
 );
 
 app.get("/sitemap.xml", async (c) => {
-  const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`];
+  const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`];
   try {
-    const [shows, movies] = await Promise.all([trendingTv(c.env), trendingMovies(c.env)]);
+    const [shows, movies, tvGenres, movieGenres] = await Promise.all([
+      trendingTv(c.env),
+      trendingMovies(c.env),
+      genreList(c.env, "tv"),
+      genreList(c.env, "movie"),
+    ]);
     for (const s of shows.results) urls.push(`${c.env.SITE_URL}/shows/${s.id}-${slugify(s.name ?? "")}`);
     for (const m of movies.results) urls.push(`${c.env.SITE_URL}/movies/${m.id}-${slugify(m.title ?? "")}`);
+    for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
+    for (const g of movieGenres.genres) urls.push(`${c.env.SITE_URL}/browse/movie/${g.id}-${slugify(g.name)}`);
   } catch {}
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map((u) => `  <url><loc>${u}</loc></url>`)

@@ -39,6 +39,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
           </form>
           <div class="ml-auto flex items-center gap-2 text-sm sm:gap-3">
             <a href="/search" class="sm:hidden" aria-label="Search">🔍</a>
+            <a href="/browse" class="px-1 py-2 hover:text-violet-400">Browse</a>
             {user ? (
               <>
                 <a href="/home" class="px-1 py-2 hover:text-violet-400">Next Up</a>
@@ -107,7 +108,7 @@ export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
         <a href="/signup" class="rounded-xl bg-violet-600 px-6 py-3 font-semibold text-white hover:bg-violet-500">
           Import my TV Time data
         </a>
-        <a href="/search" class="rounded-xl border border-slate-700 px-6 py-3 font-semibold hover:border-slate-500">
+        <a href="/browse" class="rounded-xl border border-slate-700 px-6 py-3 font-semibold hover:border-slate-500">
           Browse shows
         </a>
       </div>
@@ -551,9 +552,14 @@ export interface CalendarItem {
   airDate: string;
 }
 
-export const CalendarPage: FC<{ items: CalendarItem[] }> = ({ items }) => (
+export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string }> = ({ items, feedUrl }) => (
   <div>
-    <h1 class="mb-6 text-2xl font-bold">Upcoming episodes</h1>
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <h1 class="text-2xl font-bold">Upcoming episodes</h1>
+      <a href={feedUrl} class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-violet-300 hover:border-violet-500">
+        📅 Subscribe (iCal)
+      </a>
+    </div>
     {items.length === 0 ? (
       <p class="text-slate-400">No upcoming episodes for the shows you track — try adding more from <a href="/search" class="text-violet-400 hover:underline">search</a>.</p>
     ) : (
@@ -576,6 +582,67 @@ export const CalendarPage: FC<{ items: CalendarItem[] }> = ({ items }) => (
     )}
   </div>
 );
+
+export const BrowseIndex: FC<{ tvGenres: { id: number; name: string }[]; movieGenres: { id: number; name: string }[] }> = ({
+  tvGenres,
+  movieGenres,
+}) => (
+  <div>
+    <h1 class="mb-2 text-2xl font-bold">Browse by genre</h1>
+    <p class="mb-8 text-slate-400">Find your next watch across every genre — powered by TMDB.</p>
+    {(
+      [
+        ["TV shows", "tv", tvGenres],
+        ["Movies", "movie", movieGenres],
+      ] as const
+    ).map(([label, type, genres]) => (
+      <section class="mb-10">
+        <h2 class="mb-4 text-xl font-semibold">{label}</h2>
+        <div class="flex flex-wrap gap-2">
+          {genres.map((g) => (
+            <a
+              href={`/browse/${type}/${g.id}-${slugify(g.name)}`}
+              class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300"
+            >
+              {g.name}
+            </a>
+          ))}
+        </div>
+      </section>
+    ))}
+  </div>
+);
+
+export const BrowseGenre: FC<{
+  type: "tv" | "movie";
+  genre: { id: number; name: string };
+  results: SearchResult[];
+  page: number;
+  totalPages: number;
+}> = ({ type, genre, results, page, totalPages }) => {
+  const base = `/browse/${type}/${genre.id}-${slugify(genre.name)}`;
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">
+        {genre.name} {type === "tv" ? "TV shows" : "movies"}
+      </h1>
+      <p class="mb-6 text-slate-400">
+        Popular {genre.name.toLowerCase()} {type === "tv" ? "series" : "films"} to track on WatchDeck.{" "}
+        <a href="/browse" class="text-violet-400 hover:underline">All genres</a>
+      </p>
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        {results.map((r) => (
+          <MediaCard item={r} type={type} />
+        ))}
+      </div>
+      <div class="mt-8 flex items-center gap-3 text-sm">
+        {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+        <span class="text-slate-500">Page {page} of {Math.min(totalPages, 20)}</span>
+        {page < Math.min(totalPages, 20) && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+      </div>
+    </div>
+  );
+};
 
 export interface UserStats {
   epsWatched: number;
@@ -670,6 +737,10 @@ export const ImportPage: FC = () => (
     <div id="done" class="mt-6 hidden rounded-2xl border border-emerald-800 bg-emerald-950/40 p-6">
       <p class="font-semibold text-emerald-300">Import complete 🎉</p>
       <p id="done-detail" class="mt-1 text-sm text-slate-300"></p>
+      <div id="unmatched" class="mt-3 hidden">
+        <p class="text-sm font-medium text-amber-300">We couldn't match these titles — find them manually:</p>
+        <ul id="unmatched-list" class="mt-2 space-y-1 text-sm"></ul>
+      </div>
       <a href="/home" class="mt-4 inline-block rounded-lg bg-violet-600 px-4 py-2 font-medium text-white hover:bg-violet-500">
         Show me my next episode →
       </a>
