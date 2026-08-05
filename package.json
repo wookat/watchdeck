@@ -1,0 +1,38 @@
+{
+  "name": "watchdeck",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "css": "tailwindcss -i src/styles.css -o public/styles.css --minify",
+    "dev": "npm run css && wrangler dev",
+    "deploy": "npm run css && wrangler deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/wookat/watchdeck.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/wookat/watchdeck/issues"
+  },
+  "homepage": "https://github.com/wookat/watchdeck#readme",
+  "dependencies": {
+    "fflate": "^0.8.3",
+    "hono": "^4.13.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260804.1",
+    "@tailwindcss/cli": "^4.3.3",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.119.0"
+  },
+  "private": true
+}
