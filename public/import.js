@@ -7,6 +7,8 @@
   var progressDetail = document.getElementById("progress-detail");
   var done = document.getElementById("done");
   var doneDetail = document.getElementById("done-detail");
+  var unmatchedBox = document.getElementById("unmatched");
+  var unmatchedList = document.getElementById("unmatched-list");
   if (!dropzone) return;
 
   dropzone.addEventListener("click", function () { input.click(); });
@@ -38,6 +40,7 @@
       var totalBatches = Math.ceil(shows.length / 20) + Math.ceil(movies.length / 20);
       var doneBatches = 0;
       var totals = { showsImported: 0, episodesImported: 0, moviesImported: 0, unmatched: 0 };
+      var unmatchedNames = [];
 
       progressText.textContent = "Matching your shows & movies\u2026";
       progressDetail.textContent = shows.length + " shows, " + movies.length + " movies found";
@@ -54,6 +57,7 @@
         totals.episodesImported += out.episodesImported;
         totals.moviesImported += out.moviesImported;
         totals.unmatched += out.unmatched;
+        if (out.unmatchedNames) unmatchedNames = unmatchedNames.concat(out.unmatchedNames);
         doneBatches++;
         progressBar.style.width = Math.round((doneBatches / Math.max(totalBatches, 1)) * 100) + "%";
       }
@@ -68,6 +72,19 @@
         plural(totals.showsImported, "show") + ", " + plural(totals.episodesImported, "episode") + " and " +
         plural(totals.moviesImported, "movie") + " imported" +
         (totals.unmatched ? " (" + plural(totals.unmatched, "title") + " could not be matched)" : "") + ".";
+      if (unmatchedNames.length && unmatchedBox) {
+        unmatchedBox.classList.remove("hidden");
+        unmatchedNames.slice(0, 50).forEach(function (name) {
+          var li = document.createElement("li");
+          var a = document.createElement("a");
+          a.href = "/search?q=" + encodeURIComponent(name);
+          a.className = "text-violet-400 hover:underline";
+          a.textContent = name;
+          li.appendChild(a);
+          li.appendChild(document.createTextNode(" \u2192 search & add manually"));
+          unmatchedList.appendChild(li);
+        });
+      }
     } catch (e) {
       fail("Something went wrong. Please try again.");
     }
