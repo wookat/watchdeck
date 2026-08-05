@@ -249,14 +249,14 @@ app.get("/library", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
   const status = c.req.query("status") ?? "all";
+  const cols =
+    "tmdb_id, media_type, title, poster_path, status, (SELECT COUNT(*) FROM episode_watches w WHERE w.user_id = tracked.user_id AND w.tmdb_id = tracked.tmdb_id) AS eps_watched";
   const rows =
     status === "all"
-      ? await c.env.DB.prepare("SELECT tmdb_id, media_type, title, poster_path, status FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 200")
+      ? await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 200`)
           .bind(user.id)
           .all<LibraryRow>()
-      : await c.env.DB.prepare(
-          "SELECT tmdb_id, media_type, title, poster_path, status FROM tracked WHERE user_id = ? AND status = ? ORDER BY updated_at DESC LIMIT 200"
-        )
+      : await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE user_id = ? AND status = ? ORDER BY updated_at DESC LIMIT 200`)
           .bind(user.id, status)
           .all<LibraryRow>();
   return c.html(
@@ -364,6 +364,35 @@ app.post("/api/watch", async (c) => {
       .bind(user.id, tmdbId, details.name, details.poster_path)
       .run();
   }
+  return c.redirect(String(form.redirect ?? "/home"));
+});
+
+app.post("/api/watch-season", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const seasonNum = parseInt(String(form.season), 10);
+  const details = await tvDetails(c.env, tmdbId);
+  const season = await seasonDetails(c.env, tmdbId, seasonNum);
+  const today = new Date().toISOString().slice(0, 10);
+  const aired = season.episodes.filter((ep) => ep.air_date && ep.air_date <= today);
+  const stmts = aired.map((ep) =>
+    c.env.DB.prepare("INSERT OR IGNORE INTO episode_watches (user_id, tmdb_id, season, episode) VALUES (?, ?, ?, ?)").bind(
+      user.id,
+      tmdbId,
+      ep.season_number,
+      ep.episode_number
+    )
+  );
+  for (let i = 0; i < stmts.length; i += 50) await c.env.DB.batch(stmts.slice(i, i + 50));
+  await c.env.DB.prepare(
+    `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status)
+     VALUES (?, ?, 'tv', ?, ?, 'watching')
+     ON CONFLICT(user_id, tmdb_id, media_type) DO UPDATE SET updated_at = datetime('now')`
+  )
+    .bind(user.id, tmdbId, details.name, details.poster_path)
+    .run();
   return c.redirect(String(form.redirect ?? "/home"));
 });
 
