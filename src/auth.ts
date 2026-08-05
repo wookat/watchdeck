@@ -55,7 +55,7 @@ export async function loadUser(c: Context<AppContext>): Promise<User | null> {
   const token = getCookie(c, "wd_session");
   if (!token) return null;
   const row = await c.env.DB.prepare(
-    `SELECT u.id, u.email, u.display_name FROM sessions s JOIN users u ON u.id = s.user_id
+    `SELECT u.id, u.email, u.display_name, u.remind_email FROM sessions s JOIN users u ON u.id = s.user_id
      WHERE s.token = ? AND s.expires_at > datetime('now')`
   )
     .bind(token)
