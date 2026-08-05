@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { csrf } from "hono/csrf";
-import type { AppContext } from "./types";
+import type { AppContext, Env } from "./types";
 import { hashPassword, verifyPassword, createSession, destroySession, loadUser } from "./auth";
 import {
   searchMulti,
@@ -13,6 +13,7 @@ import {
   trendingMovies,
   genreList,
   discoverByGenre,
+  recommendations,
   slugify,
 } from "./tmdb";
 import { parseTvTimeZip, type ParsedImport } from "./importer";
@@ -228,6 +229,10 @@ app.get("/shows/:idslug", async (c) => {
       .bind(user.id, id)
       .first<{ status: string }>();
   }
+  let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
+  try {
+    recs = (await recommendations(c.env, "tv", id)).results;
+  } catch {}
   return c.html(
     <Layout
       user={user}
@@ -235,7 +240,7 @@ app.get("/shows/:idslug", async (c) => {
       description={show.overview?.slice(0, 155)}
       canonical={`${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`}
     >
-      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} />
+      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} />
     </Layout>
   );
 });
@@ -258,6 +263,10 @@ app.get("/movies/:idslug", async (c) => {
       .bind(user.id, id)
       .first<{ status: string }>();
   }
+  let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
+  try {
+    recs = (await recommendations(c.env, "movie", id)).results;
+  } catch {}
   return c.html(
     <Layout
       user={user}
@@ -265,7 +274,7 @@ app.get("/movies/:idslug", async (c) => {
       description={movie.overview?.slice(0, 155)}
       canonical={`${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`}
     >
-      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} />
+      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} />
     </Layout>
   );
 });
@@ -284,9 +293,13 @@ app.get("/library", async (c) => {
       : await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE user_id = ? AND status = ? ORDER BY updated_at DESC LIMIT 200`)
           .bind(user.id, status)
           .all<LibraryRow>();
+  const sort = ["recent", "title", "progress"].includes(c.req.query("sort") ?? "") ? c.req.query("sort")! : "recent";
+  const sorted = [...rows.results];
+  if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
+  else if (sort === "progress") sorted.sort((a, b) => b.eps_watched - a.eps_watched);
   return c.html(
     <Layout user={user} title="Library">
-      <LibraryPage rows={rows.results} status={status} />
+      <LibraryPage rows={sorted} status={status} sort={sort} />
     </Layout>
   );
 });
@@ -332,7 +345,7 @@ app.get("/calendar", async (c) => {
   const items = await upcomingItems(c.env, user.id);
   return c.html(
     <Layout user={user} title="Calendar">
-      <CalendarPage items={items} feedUrl={`/feed/${feed.token}.ics`} />
+      <CalendarPage items={items} feedUrl={`/feed/${feed.token}.ics`} remindEmail={user.remind_email === 1} />
     </Layout>
   );
 });
@@ -503,6 +516,15 @@ app.post("/api/watch", async (c) => {
       .run();
   }
   return c.redirect(String(form.redirect ?? "/home"));
+});
+
+app.post("/api/reminders", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const enabled = String(form.enabled) === "1" ? 1 : 0;
+  await c.env.DB.prepare("UPDATE users SET remind_email = ? WHERE id = ?").bind(enabled, user.id).run();
+  return c.redirect("/calendar");
 });
 
 app.post("/api/watch-season", async (c) => {
@@ -706,4 +728,33 @@ app.notFound((c) =>
   )
 );
 
-export default app;
+async function sendAiringDigests(env: Env): Promise<void> {
+  if (!env.RESEND_API_KEY) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const users = await env.DB.prepare("SELECT id, email FROM users WHERE remind_email = 1").all<{ id: number; email: string }>();
+  for (const u of users.results) {
+    const items = (await upcomingItems(env, u.id)).filter((it) => it.airDate === today);
+    if (items.length === 0) continue;
+    const lines = items.map(
+      (it) =>
+        `<li style=\"margin:6px 0\"><a href=\"${env.SITE_URL}/shows/${it.tmdbId}-${slugify(it.title)}\" style=\"color:#7c3aed\">${it.title}</a> S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}</li>`
+    );
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "WatchDeck <watchdeck@zalize.com>",
+        to: [u.email],
+        subject: `Airing today: ${items[0].title}${items.length > 1 ? ` and ${items.length - 1} more` : ""}`,
+        html: `<p>These shows you track air new episodes today:</p><ul>${lines.join("")}</ul><p style=\"color:#64748b;font-size:13px\">You get this because email reminders are on \u2014 turn them off any time on your <a href=\"${env.SITE_URL}/calendar\">calendar page</a>.</p>`,
+      }),
+    }).catch(() => {});
+  }
+}
+
+export default {
+  fetch: app.fetch,
+  scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(sendAiringDigests(env));
+  },
+};

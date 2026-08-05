@@ -308,13 +308,26 @@ export const TrendingSection: FC<{ shows: SearchResult[]; movies: SearchResult[]
   </div>
 );
 
+export const RecsSection: FC<{ recs: SearchResult[]; type: "tv" | "movie" }> = ({ recs, type }) =>
+  recs.length === 0 ? null : (
+    <div class="mt-12">
+      <h2 class="mb-4 text-xl font-semibold">More like this</h2>
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        {recs.slice(0, 12).map((r) => (
+          <MediaCard item={r} type={type} />
+        ))}
+      </div>
+    </div>
+  );
+
 export const ShowPage: FC<{
   show: TvDetails;
   season: SeasonDetails | null;
   watched: Set<string>;
   tracked: { status: string } | null;
   user: User | null;
-}> = ({ show, season, watched, tracked, user }) => {
+  recs: SearchResult[];
+}> = ({ show, season, watched, tracked, user, recs }) => {
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
@@ -426,18 +439,21 @@ export const ShowPage: FC<{
           </ul>
         )}
       </div>
+      <RecsSection recs={recs} type="tv" />
     </div>
   );
 };
 
-export const MoviePage: FC<{ movie: MovieDetails; watched: boolean; tracked: { status: string } | null; user: User | null }> = ({
-  movie,
-  watched,
-  tracked,
-  user,
-}) => {
+export const MoviePage: FC<{
+  movie: MovieDetails;
+  watched: boolean;
+  tracked: { status: string } | null;
+  user: User | null;
+  recs: SearchResult[];
+}> = ({ movie, watched, tracked, user, recs }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
   return (
+    <div>
     <div class="flex flex-col gap-6 sm:flex-row">
       <img src={poster(movie.poster_path)} alt={movie.title} class="w-40 self-start rounded-xl border border-slate-800 sm:w-52" />
       <div class="min-w-0 flex-1">
@@ -486,6 +502,8 @@ export const MoviePage: FC<{ movie: MovieDetails; watched: boolean; tracked: { s
         )}
       </div>
     </div>
+    <RecsSection recs={recs} type="movie" />
+    </div>
   );
 };
 
@@ -498,13 +516,13 @@ export interface LibraryRow {
   eps_watched: number;
 }
 
-export const LibraryPage: FC<{ rows: LibraryRow[]; status: string }> = ({ rows, status }) => (
+export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string }> = ({ rows, status, sort }) => (
   <div>
     <h1 class="mb-4 text-2xl font-bold">Library</h1>
-    <div class="mb-6 flex flex-wrap gap-2">
+    <div class="mb-3 flex flex-wrap gap-2">
       {["all", "watching", "watchlist", "completed", "dropped"].map((s) => (
         <a
-          href={s === "all" ? "/library" : `/library?status=${s}`}
+          href={`/library?${s === "all" ? "" : `status=${s}&`}sort=${sort}`}
           class={
             status === s
               ? "rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white"
@@ -512,6 +530,23 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string }> = ({ rows, 
           }
         >
           {s[0].toUpperCase() + s.slice(1)}
+        </a>
+      ))}
+    </div>
+    <div class="mb-6 flex flex-wrap items-center gap-2 text-sm">
+      <span class="text-slate-500">Sort:</span>
+      {(
+        [
+          ["recent", "Recently updated"],
+          ["title", "Title A\u2013Z"],
+          ["progress", "Most watched"],
+        ] as const
+      ).map(([key, label]) => (
+        <a
+          href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${key}`}
+          class={sort === key ? "rounded-lg bg-slate-700 px-2.5 py-1 text-white" : "rounded-lg px-2.5 py-1 text-slate-400 hover:text-slate-200"}
+        >
+          {label}
         </a>
       ))}
     </div>
@@ -552,13 +587,25 @@ export interface CalendarItem {
   airDate: string;
 }
 
-export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string }> = ({ items, feedUrl }) => (
+export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEmail: boolean }> = ({ items, feedUrl, remindEmail }) => (
   <div>
     <div class="mb-6 flex flex-wrap items-center gap-3">
       <h1 class="text-2xl font-bold">Upcoming episodes</h1>
       <a href={feedUrl} class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-violet-300 hover:border-violet-500">
         📅 Subscribe (iCal)
       </a>
+      <form action="/api/reminders" method="post">
+        <input type="hidden" name="enabled" value={remindEmail ? "" : "1"} />
+        <button
+          class={
+            remindEmail
+              ? "rounded-lg bg-emerald-700 px-3 py-1.5 text-sm text-white hover:bg-emerald-600"
+              : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500"
+          }
+        >
+          {remindEmail ? "✉️ Email reminders on" : "✉️ Email me on air dates"}
+        </button>
+      </form>
     </div>
     {items.length === 0 ? (
       <p class="text-slate-400">No upcoming episodes for the shows you track — try adding more from <a href="/search" class="text-violet-400 hover:underline">search</a>.</p>

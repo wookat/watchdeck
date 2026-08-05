@@ -107,6 +107,10 @@ export function discoverByGenre(env: Env, type: "tv" | "movie", genreId: number,
   );
 }
 
+export function recommendations(env: Env, type: "tv" | "movie", id: number) {
+  return tmdb<{ results: SearchResult[] }>(env, `/${type}/${id}/recommendations`, 24 * 3600);
+}
+
 export function slugify(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "title";
 }
