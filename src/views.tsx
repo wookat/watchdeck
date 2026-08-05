@@ -737,7 +737,7 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
         <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
           <h2 class="mb-4 font-semibold">Episodes per month (last 12)</h2>
           {stats.byMonth.length === 0 ? (
-            <p class="text-sm text-slate-400">Nothing yet — go watch something!</p>
+            <p class="text-sm text-slate-400">No episodes watched in the last 12 months.</p>
           ) : (
             <ul class="space-y-1.5">
               {stats.byMonth.map((m) => (
