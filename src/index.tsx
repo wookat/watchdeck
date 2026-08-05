@@ -59,7 +59,7 @@ app.get("/", async (c) => {
   if (user) return c.redirect("/home");
   return c.html(
     <Layout user={null} canonical={c.env.SITE_URL + "/"}>
-      <Landing />
+      <Landing subscribed={c.req.query("subscribed") === "1"} />
     </Layout>
   );
 });
@@ -374,6 +374,11 @@ app.post("/api/watch-movie", async (c) => {
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   if (String(form.undo) === "1") {
     await c.env.DB.prepare("DELETE FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, tmdbId).run();
+    await c.env.DB.prepare(
+      "UPDATE tracked SET status = 'watchlist', updated_at = datetime('now') WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie' AND status = 'completed'"
+    )
+      .bind(user.id, tmdbId)
+      .run();
   } else {
     await c.env.DB.prepare("INSERT OR IGNORE INTO movie_watches (user_id, tmdb_id) VALUES (?, ?)").bind(user.id, tmdbId).run();
     const details = await movieDetails(c.env, tmdbId);

@@ -63,9 +63,11 @@
 
       progress.classList.add("hidden");
       done.classList.remove("hidden");
+      function plural(n, word) { return n + " " + word + (n === 1 ? "" : "s"); }
       doneDetail.textContent =
-        totals.showsImported + " shows, " + totals.episodesImported + " episodes and " + totals.moviesImported +
-        " movies imported" + (totals.unmatched ? " (" + totals.unmatched + " titles could not be matched)" : "") + ".";
+        plural(totals.showsImported, "show") + ", " + plural(totals.episodesImported, "episode") + " and " +
+        plural(totals.moviesImported, "movie") + " imported" +
+        (totals.unmatched ? " (" + plural(totals.unmatched, "title") + " could not be matched)" : "") + ".";
     } catch (e) {
       fail("Something went wrong. Please try again.");
     }

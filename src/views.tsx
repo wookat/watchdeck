@@ -24,7 +24,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
     </head>
     <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
       <nav class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-        <div class="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
+        <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-3">
           <a href={user ? "/home" : "/"} class="flex items-center gap-2 text-lg font-bold tracking-tight">
             <span class="inline-block h-6 w-6 rounded bg-gradient-to-br from-violet-500 to-fuchsia-500" />
             WatchDeck
@@ -37,16 +37,16 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
               class="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
             />
           </form>
-          <div class="ml-auto flex items-center gap-3 text-sm">
+          <div class="ml-auto flex items-center gap-2 text-sm sm:gap-3">
             <a href="/search" class="sm:hidden" aria-label="Search">🔍</a>
             {user ? (
               <>
-                <a href="/home" class="hover:text-violet-400">Next Up</a>
-                <a href="/library" class="hover:text-violet-400">Library</a>
-                <a href="/calendar" class="hover:text-violet-400">Calendar</a>
-                <a href="/import" class="hover:text-violet-400">Import</a>
+                <a href="/home" class="px-1 py-2 hover:text-violet-400">Next Up</a>
+                <a href="/library" class="px-1 py-2 hover:text-violet-400">Library</a>
+                <a href="/calendar" class="px-1 py-2 hover:text-violet-400">Calendar</a>
+                <a href="/import" class="px-1 py-2 hover:text-violet-400">Import</a>
                 <form action="/logout" method="post" class="inline">
-                  <button class="text-slate-400 hover:text-slate-200">Log out</button>
+                  <button class="px-1 py-2 text-slate-400 hover:text-slate-200">Log out</button>
                 </form>
               </>
             ) : (
@@ -85,7 +85,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
   </html>
 );
 
-export const Landing: FC = () => (
+export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
   <div>
     <section class="py-14 text-center">
       <p class="mb-3 inline-block rounded-full border border-violet-700 bg-violet-950/60 px-3 py-1 text-xs text-violet-300">
@@ -126,6 +126,11 @@ export const Landing: FC = () => (
     <section class="mx-auto max-w-lg rounded-2xl border border-slate-800 bg-slate-900/50 p-6 text-center">
       <h3 class="font-semibold">Get product updates</h3>
       <p class="mt-1 text-sm text-slate-400">Leave your email and we'll let you know as WatchDeck grows.</p>
+      {subscribed && (
+        <p class="mt-3 rounded-lg border border-emerald-800 bg-emerald-950/50 px-3 py-2 text-sm text-emerald-300">
+          You're on the list — thanks! 💌
+        </p>
+      )}
       <form action="/api/waitlist" method="post" class="mt-4 flex gap-2">
         <input
           type="email"
