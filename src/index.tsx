@@ -18,6 +18,7 @@ import {
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, type ParsedImport } from "./importer";
 import { sendEmail, welcomeEmail } from "./email";
+import { shareOgImage } from "./og";
 import {
   Layout,
   Landing,
@@ -222,15 +223,15 @@ app.get("/shows/:idslug", async (c) => {
     season = await seasonDetails(c.env, id, seasonNum);
   } catch {}
   let watched = new Set<string>();
-  let tracked: { status: string } | null = null;
+  let tracked: { status: string; rating: number | null } | null = null;
   if (user) {
     const rows = await c.env.DB.prepare("SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
       .bind(user.id, id)
       .all<{ season: number; episode: number }>();
     watched = new Set(rows.results.map((r) => `${r.season}x${r.episode}`));
-    tracked = await c.env.DB.prepare("SELECT status FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
+    tracked = await c.env.DB.prepare("SELECT status, rating FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
       .bind(user.id, id)
-      .first<{ status: string }>();
+      .first<{ status: string; rating: number | null }>();
   }
   let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
   try {
@@ -259,12 +260,12 @@ app.get("/movies/:idslug", async (c) => {
     return c.notFound();
   }
   let watched = false;
-  let tracked: { status: string } | null = null;
+  let tracked: { status: string; rating: number | null } | null = null;
   if (user) {
     watched = !!(await c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first());
-    tracked = await c.env.DB.prepare("SELECT status FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
+    tracked = await c.env.DB.prepare("SELECT status, rating FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
       .bind(user.id, id)
-      .first<{ status: string }>();
+      .first<{ status: string; rating: number | null }>();
   }
   let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
   try {
@@ -287,7 +288,7 @@ app.get("/library", async (c) => {
   if (!user) return c.redirect("/login");
   const status = c.req.query("status") ?? "all";
   const cols =
-    "tmdb_id, media_type, title, poster_path, status, (SELECT COUNT(*) FROM episode_watches w WHERE w.user_id = tracked.user_id AND w.tmdb_id = tracked.tmdb_id) AS eps_watched";
+    "tmdb_id, media_type, title, poster_path, status, rating, (SELECT COUNT(*) FROM episode_watches w WHERE w.user_id = tracked.user_id AND w.tmdb_id = tracked.tmdb_id) AS eps_watched";
   const rows =
     status === "all"
       ? await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 200`)
@@ -475,20 +476,39 @@ app.post("/api/share", async (c) => {
   return c.redirect("/stats");
 });
 
-app.get("/u/:token", async (c) => {
-  const token = c.req.param("token");
-  if (!/^[0-9a-f]{32}$/.test(token)) return c.notFound();
-  const row = await c.env.DB.prepare(
+async function shareProfile(env: Env, token: string): Promise<{ name: string; stats: UserStats } | null> {
+  if (!/^[0-9a-f]{32}$/.test(token)) return null;
+  const row = await env.DB.prepare(
     "SELECT u.id, u.display_name, u.email FROM share_tokens s JOIN users u ON u.id = s.user_id WHERE s.token = ?"
   ).bind(token).first<{ id: number; display_name: string | null; email: string }>();
-  if (!row) return c.notFound();
-  const stats = await userStats(c.env, row.id);
-  const name = row.display_name || row.email.split("@")[0];
+  if (!row) return null;
+  return { name: row.display_name || row.email.split("@")[0], stats: await userStats(env, row.id) };
+}
+
+app.get("/u/:token", async (c) => {
+  const token = c.req.param("token");
+  const profile = await shareProfile(c.env, token);
+  if (!profile) return c.notFound();
   return c.html(
-    <Layout user={c.get("user")} title={`${name}'s watch stats`} canonical={`${c.env.SITE_URL}/u/${token}`}>
-      <PublicProfilePage stats={stats} name={name} />
+    <Layout
+      user={c.get("user")}
+      title={`${profile.name}'s watch stats`}
+      description={`${profile.stats.epsWatched} episodes and ${profile.stats.moviesWatched} movies watched \u2014 tracked free on WatchDeck.`}
+      canonical={`${c.env.SITE_URL}/u/${token}`}
+      ogImage={`${c.env.SITE_URL}/u/${token}/og.png`}
+    >
+      <PublicProfilePage stats={profile.stats} name={profile.name} />
     </Layout>
   );
+});
+
+app.get("/u/:token/og.png", async (c) => {
+  const token = c.req.param("token");
+  const profile = await shareProfile(c.env, token);
+  if (!profile) return c.notFound();
+  const res = await shareOgImage(c.env, profile.name, profile.stats);
+  res.headers.set("cache-control", "public, max-age=3600");
+  return res;
 });
 
 app.get("/import", (c) => {
@@ -509,6 +529,26 @@ app.post("/api/waitlist", async (c) => {
     await c.env.DB.prepare("INSERT OR IGNORE INTO email_signups (email, source) VALUES (?, 'landing')").bind(email).run();
   }
   return c.redirect("/?subscribed=1");
+});
+
+app.post("/api/rate", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const mediaType = String(form.media_type) === "movie" ? "movie" : "tv";
+  const rating = parseInt(String(form.rating), 10);
+  const title = String(form.title ?? "").slice(0, 300);
+  const posterPath = String(form.poster_path ?? "") || null;
+  if (!Number.isFinite(tmdbId) || !Number.isFinite(rating) || rating < 0 || rating > 5 || !title) return c.json({ error: "bad request" }, 400);
+  await c.env.DB.prepare(
+    `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, rating)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(user_id, tmdb_id, media_type) DO UPDATE SET rating = excluded.rating, updated_at = datetime('now')`
+  )
+    .bind(user.id, tmdbId, mediaType, title, posterPath, mediaType === "movie" ? "completed" : "watching", rating === 0 ? null : rating)
+    .run();
+  return c.redirect(String(form.redirect ?? "/library"));
 });
 
 app.post("/api/track", async (c) => {
