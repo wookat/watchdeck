@@ -39,12 +39,14 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
           </form>
           <div class="ml-auto flex items-center gap-2 text-sm sm:gap-3">
             <a href="/search" class="sm:hidden" aria-label="Search">🔍</a>
+            <a href="/browse" class="px-1 py-2 hover:text-violet-400">Browse</a>
             {user ? (
               <>
                 <a href="/home" class="px-1 py-2 hover:text-violet-400">Next Up</a>
                 <a href="/library" class="px-1 py-2 hover:text-violet-400">Library</a>
                 <a href="/calendar" class="px-1 py-2 hover:text-violet-400">Calendar</a>
                 <a href="/import" class="px-1 py-2 hover:text-violet-400">Import</a>
+                <a href="/stats" class="px-1 py-2 hover:text-violet-400">Stats</a>
                 <form action="/logout" method="post" class="inline">
                   <button class="px-1 py-2 text-slate-400 hover:text-slate-200">Log out</button>
                 </form>
@@ -106,7 +108,7 @@ export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
         <a href="/signup" class="rounded-xl bg-violet-600 px-6 py-3 font-semibold text-white hover:bg-violet-500">
           Import my TV Time data
         </a>
-        <a href="/search" class="rounded-xl border border-slate-700 px-6 py-3 font-semibold hover:border-slate-500">
+        <a href="/browse" class="rounded-xl border border-slate-700 px-6 py-3 font-semibold hover:border-slate-500">
           Browse shows
         </a>
       </div>
@@ -306,13 +308,26 @@ export const TrendingSection: FC<{ shows: SearchResult[]; movies: SearchResult[]
   </div>
 );
 
+export const RecsSection: FC<{ recs: SearchResult[]; type: "tv" | "movie" }> = ({ recs, type }) =>
+  recs.length === 0 ? null : (
+    <div class="mt-12">
+      <h2 class="mb-4 text-xl font-semibold">More like this</h2>
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        {recs.slice(0, 12).map((r) => (
+          <MediaCard item={r} type={type} />
+        ))}
+      </div>
+    </div>
+  );
+
 export const ShowPage: FC<{
   show: TvDetails;
   season: SeasonDetails | null;
   watched: Set<string>;
   tracked: { status: string } | null;
   user: User | null;
-}> = ({ show, season, watched, tracked, user }) => {
+  recs: SearchResult[];
+}> = ({ show, season, watched, tracked, user, recs }) => {
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
@@ -358,19 +373,35 @@ export const ShowPage: FC<{
         <div class="mb-4 flex flex-wrap gap-2">
           {show.seasons
             .filter((s) => s.season_number > 0)
-            .map((s) => (
-              <a
-                href={`${showUrl}?season=${s.season_number}`}
-                class={
-                  season?.season_number === s.season_number
-                    ? "rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white"
-                    : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500"
-                }
-              >
-                Season {s.season_number}
-              </a>
-            ))}
+            .map((s) => {
+              const seen = [...watched].filter((k) => k.startsWith(`${s.season_number}x`)).length;
+              return (
+                <a
+                  href={`${showUrl}?season=${s.season_number}`}
+                  class={
+                    season?.season_number === s.season_number
+                      ? "rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white"
+                      : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500"
+                  }
+                >
+                  Season {s.season_number}
+                  <span class={s.episode_count > 0 && seen >= s.episode_count ? "ml-1.5 text-xs text-emerald-300" : "ml-1.5 text-xs opacity-70"}>
+                    {seen}/{s.episode_count}
+                  </span>
+                </a>
+              );
+            })}
         </div>
+        {season && user && (
+          <form action="/api/watch-season" method="post" class="mb-4">
+            <input type="hidden" name="tmdb_id" value={String(show.id)} />
+            <input type="hidden" name="season" value={String(season.season_number)} />
+            <input type="hidden" name="redirect" value={`${showUrl}?season=${season.season_number}`} />
+            <button class="rounded-lg border border-violet-700 bg-violet-950/50 px-3 py-1.5 text-sm text-violet-300 hover:bg-violet-900/50">
+              ✓ Mark season {season.season_number} watched
+            </button>
+          </form>
+        )}
         {season && (
           <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
             {season.episodes.map((ep) => {
@@ -408,18 +439,21 @@ export const ShowPage: FC<{
           </ul>
         )}
       </div>
+      <RecsSection recs={recs} type="tv" />
     </div>
   );
 };
 
-export const MoviePage: FC<{ movie: MovieDetails; watched: boolean; tracked: { status: string } | null; user: User | null }> = ({
-  movie,
-  watched,
-  tracked,
-  user,
-}) => {
+export const MoviePage: FC<{
+  movie: MovieDetails;
+  watched: boolean;
+  tracked: { status: string } | null;
+  user: User | null;
+  recs: SearchResult[];
+}> = ({ movie, watched, tracked, user, recs }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
   return (
+    <div>
     <div class="flex flex-col gap-6 sm:flex-row">
       <img src={poster(movie.poster_path)} alt={movie.title} class="w-40 self-start rounded-xl border border-slate-800 sm:w-52" />
       <div class="min-w-0 flex-1">
@@ -468,6 +502,8 @@ export const MoviePage: FC<{ movie: MovieDetails; watched: boolean; tracked: { s
         )}
       </div>
     </div>
+    <RecsSection recs={recs} type="movie" />
+    </div>
   );
 };
 
@@ -477,15 +513,16 @@ export interface LibraryRow {
   title: string;
   poster_path: string | null;
   status: string;
+  eps_watched: number;
 }
 
-export const LibraryPage: FC<{ rows: LibraryRow[]; status: string }> = ({ rows, status }) => (
+export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string }> = ({ rows, status, sort }) => (
   <div>
     <h1 class="mb-4 text-2xl font-bold">Library</h1>
-    <div class="mb-6 flex flex-wrap gap-2">
+    <div class="mb-3 flex flex-wrap gap-2">
       {["all", "watching", "watchlist", "completed", "dropped"].map((s) => (
         <a
-          href={s === "all" ? "/library" : `/library?status=${s}`}
+          href={`/library?${s === "all" ? "" : `status=${s}&`}sort=${sort}`}
           class={
             status === s
               ? "rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white"
@@ -493,6 +530,23 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string }> = ({ rows, 
           }
         >
           {s[0].toUpperCase() + s.slice(1)}
+        </a>
+      ))}
+    </div>
+    <div class="mb-6 flex flex-wrap items-center gap-2 text-sm">
+      <span class="text-slate-500">Sort:</span>
+      {(
+        [
+          ["recent", "Recently updated"],
+          ["title", "Title A\u2013Z"],
+          ["progress", "Most watched"],
+        ] as const
+      ).map(([key, label]) => (
+        <a
+          href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${key}`}
+          class={sort === key ? "rounded-lg bg-slate-700 px-2.5 py-1 text-white" : "rounded-lg px-2.5 py-1 text-slate-400 hover:text-slate-200"}
+        >
+          {label}
         </a>
       ))}
     </div>
@@ -512,7 +566,10 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string }> = ({ rows, 
               class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
             />
             <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{r.title}</p>
-            <p class="text-xs text-slate-500">{r.status}</p>
+            <p class="text-xs text-slate-500">
+              {r.status}
+              {r.media_type === "tv" && r.eps_watched > 0 ? ` · ${r.eps_watched} ep${r.eps_watched === 1 ? "" : "s"} watched` : ""}
+            </p>
           </a>
         ))}
       </div>
@@ -530,9 +587,26 @@ export interface CalendarItem {
   airDate: string;
 }
 
-export const CalendarPage: FC<{ items: CalendarItem[] }> = ({ items }) => (
+export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEmail: boolean }> = ({ items, feedUrl, remindEmail }) => (
   <div>
-    <h1 class="mb-6 text-2xl font-bold">Upcoming episodes</h1>
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <h1 class="text-2xl font-bold">Upcoming episodes</h1>
+      <a href={feedUrl} class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-violet-300 hover:border-violet-500">
+        📅 Subscribe (iCal)
+      </a>
+      <form action="/api/reminders" method="post">
+        <input type="hidden" name="enabled" value={remindEmail ? "" : "1"} />
+        <button
+          class={
+            remindEmail
+              ? "rounded-lg bg-emerald-700 px-3 py-1.5 text-sm text-white hover:bg-emerald-600"
+              : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500"
+          }
+        >
+          {remindEmail ? "✉️ Email reminders on" : "✉️ Email me on air dates"}
+        </button>
+      </form>
+    </div>
     {items.length === 0 ? (
       <p class="text-slate-400">No upcoming episodes for the shows you track — try adding more from <a href="/search" class="text-violet-400 hover:underline">search</a>.</p>
     ) : (
@@ -555,6 +629,132 @@ export const CalendarPage: FC<{ items: CalendarItem[] }> = ({ items }) => (
     )}
   </div>
 );
+
+export const BrowseIndex: FC<{ tvGenres: { id: number; name: string }[]; movieGenres: { id: number; name: string }[] }> = ({
+  tvGenres,
+  movieGenres,
+}) => (
+  <div>
+    <h1 class="mb-2 text-2xl font-bold">Browse by genre</h1>
+    <p class="mb-8 text-slate-400">Find your next watch across every genre — powered by TMDB.</p>
+    {(
+      [
+        ["TV shows", "tv", tvGenres],
+        ["Movies", "movie", movieGenres],
+      ] as const
+    ).map(([label, type, genres]) => (
+      <section class="mb-10">
+        <h2 class="mb-4 text-xl font-semibold">{label}</h2>
+        <div class="flex flex-wrap gap-2">
+          {genres.map((g) => (
+            <a
+              href={`/browse/${type}/${g.id}-${slugify(g.name)}`}
+              class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300"
+            >
+              {g.name}
+            </a>
+          ))}
+        </div>
+      </section>
+    ))}
+  </div>
+);
+
+export const BrowseGenre: FC<{
+  type: "tv" | "movie";
+  genre: { id: number; name: string };
+  results: SearchResult[];
+  page: number;
+  totalPages: number;
+}> = ({ type, genre, results, page, totalPages }) => {
+  const base = `/browse/${type}/${genre.id}-${slugify(genre.name)}`;
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">
+        {genre.name} {type === "tv" ? "TV shows" : "movies"}
+      </h1>
+      <p class="mb-6 text-slate-400">
+        Popular {genre.name.toLowerCase()} {type === "tv" ? "series" : "films"} to track on WatchDeck.{" "}
+        <a href="/browse" class="text-violet-400 hover:underline">All genres</a>
+      </p>
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        {results.map((r) => (
+          <MediaCard item={r} type={type} />
+        ))}
+      </div>
+      <div class="mt-8 flex items-center gap-3 text-sm">
+        {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+        <span class="text-slate-500">Page {page} of {Math.min(totalPages, 20)}</span>
+        {page < Math.min(totalPages, 20) && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+      </div>
+    </div>
+  );
+};
+
+export interface UserStats {
+  epsWatched: number;
+  moviesWatched: number;
+  showsTracked: number;
+  completedShows: number;
+  topShows: { title: string; tmdb_id: number; eps: number }[];
+  byMonth: { month: string; eps: number }[];
+}
+
+export const StatsPage: FC<{ stats: UserStats }> = ({ stats }) => {
+  const maxMonth = Math.max(1, ...stats.byMonth.map((m) => m.eps));
+  return (
+    <div>
+      <h1 class="mb-6 text-2xl font-bold">Your watch stats</h1>
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {[
+          [String(stats.epsWatched), "episodes watched"],
+          [String(stats.moviesWatched), "movies watched"],
+          [String(stats.showsTracked), "shows tracked"],
+          [String(stats.completedShows), "shows completed"],
+        ].map(([n, label]) => (
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 text-center">
+            <p class="text-3xl font-extrabold text-violet-300">{n}</p>
+            <p class="mt-1 text-sm text-slate-400">{label}</p>
+          </div>
+        ))}
+      </div>
+      <div class="mt-8 grid gap-6 md:grid-cols-2">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h2 class="mb-4 font-semibold">Most-watched shows</h2>
+          {stats.topShows.length === 0 ? (
+            <p class="text-sm text-slate-400">No episodes tracked yet.</p>
+          ) : (
+            <ol class="space-y-2">
+              {stats.topShows.map((s, i) => (
+                <li class="flex items-center gap-3 text-sm">
+                  <span class="w-5 text-slate-500">{i + 1}.</span>
+                  <a href={`/shows/${s.tmdb_id}-${slugify(s.title)}`} class="flex-1 truncate hover:text-violet-400">{s.title}</a>
+                  <span class="text-slate-400">{s.eps} eps</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h2 class="mb-4 font-semibold">Episodes per month (last 12)</h2>
+          {stats.byMonth.length === 0 ? (
+            <p class="text-sm text-slate-400">Nothing yet — go watch something!</p>
+          ) : (
+            <ul class="space-y-1.5">
+              {stats.byMonth.map((m) => (
+                <li class="flex items-center gap-2 text-xs">
+                  <span class="w-16 shrink-0 text-slate-500">{m.month}</span>
+                  <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((m.eps / maxMonth) * 100))}%`} />
+                  <span class="text-slate-400">{m.eps}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const ImportPage: FC = () => (
   <div class="mx-auto max-w-2xl">
@@ -584,6 +784,10 @@ export const ImportPage: FC = () => (
     <div id="done" class="mt-6 hidden rounded-2xl border border-emerald-800 bg-emerald-950/40 p-6">
       <p class="font-semibold text-emerald-300">Import complete 🎉</p>
       <p id="done-detail" class="mt-1 text-sm text-slate-300"></p>
+      <div id="unmatched" class="mt-3 hidden">
+        <p class="text-sm font-medium text-amber-300">We couldn't match these titles — find them manually:</p>
+        <ul id="unmatched-list" class="mt-2 space-y-1 text-sm"></ul>
+      </div>
       <a href="/home" class="mt-4 inline-block rounded-lg bg-violet-600 px-4 py-2 font-medium text-white hover:bg-violet-500">
         Show me my next episode →
       </a>

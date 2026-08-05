@@ -95,6 +95,22 @@ export function trendingMovies(env: Env) {
   return tmdb<{ results: SearchResult[] }>(env, `/trending/movie/week`, 12 * 3600);
 }
 
+export function genreList(env: Env, type: "tv" | "movie") {
+  return tmdb<{ genres: { id: number; name: string }[] }>(env, `/genre/${type}/list`, 7 * 24 * 3600);
+}
+
+export function discoverByGenre(env: Env, type: "tv" | "movie", genreId: number, page = 1) {
+  return tmdb<{ results: SearchResult[]; total_pages: number }>(
+    env,
+    `/discover/${type}?with_genres=${genreId}&sort_by=popularity.desc&page=${Math.min(Math.max(page, 1), 20)}`,
+    24 * 3600
+  );
+}
+
+export function recommendations(env: Env, type: "tv" | "movie", id: number) {
+  return tmdb<{ results: SearchResult[] }>(env, `/${type}/${id}/recommendations`, 24 * 3600);
+}
+
 export function slugify(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "title";
 }

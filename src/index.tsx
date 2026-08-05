@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import type { AppContext } from "./types";
+import { csrf } from "hono/csrf";
+import type { AppContext, Env } from "./types";
 import { hashPassword, verifyPassword, createSession, destroySession, loadUser } from "./auth";
 import {
   searchMulti,
@@ -10,6 +11,9 @@ import {
   movieDetails,
   trendingTv,
   trendingMovies,
+  genreList,
+  discoverByGenre,
+  recommendations,
   slugify,
 } from "./tmdb";
 import { parseTvTimeZip, type ParsedImport } from "./importer";
@@ -25,12 +29,28 @@ import {
   LibraryPage,
   CalendarPage,
   ImportPage,
+  StatsPage,
+  BrowseIndex,
+  BrowseGenre,
+  type UserStats,
   type NextUpItem,
   type LibraryRow,
   type CalendarItem,
 } from "./views";
 
 const app = new Hono<AppContext>();
+
+app.use("*", (c, next) =>
+  csrf({ origin: (origin) => origin === new URL(c.env.SITE_URL).origin || origin === new URL(c.req.url).origin })(c, next)
+);
+
+async function rateLimit(c: { env: { CACHE: KVNamespace }; req: { header: (n: string) => string | undefined } }, bucket: string, limit: number): Promise<boolean> {
+  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+  const key = `rl:${bucket}:${ip}`;
+  const count = parseInt((await c.env.CACHE.get(key)) ?? "0", 10) + 1;
+  await c.env.CACHE.put(key, String(count), { expirationTtl: 600 });
+  return count <= limit;
+}
 
 app.use("*", async (c, next) => {
   c.set("user", await loadUser(c));
@@ -69,6 +89,9 @@ app.get("/signup", (c) => c.html(<Layout user={c.get("user")} title="Sign up"><A
 app.get("/login", (c) => c.html(<Layout user={c.get("user")} title="Log in"><AuthForm mode="login" /></Layout>));
 
 app.post("/signup", async (c) => {
+  if (!(await rateLimit(c, "signup", 10))) {
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Too many attempts. Please try again in a few minutes." /></Layout>, 429);
+  }
   const form = await c.req.parseBody();
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
@@ -88,6 +111,9 @@ app.post("/signup", async (c) => {
 });
 
 app.post("/login", async (c) => {
+  if (!(await rateLimit(c, "login", 15))) {
+    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Too many attempts. Please try again in a few minutes." /></Layout>, 429);
+  }
   const form = await c.req.parseBody();
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
@@ -203,6 +229,10 @@ app.get("/shows/:idslug", async (c) => {
       .bind(user.id, id)
       .first<{ status: string }>();
   }
+  let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
+  try {
+    recs = (await recommendations(c.env, "tv", id)).results;
+  } catch {}
   return c.html(
     <Layout
       user={user}
@@ -210,7 +240,7 @@ app.get("/shows/:idslug", async (c) => {
       description={show.overview?.slice(0, 155)}
       canonical={`${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`}
     >
-      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} />
+      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} />
     </Layout>
   );
 });
@@ -233,6 +263,10 @@ app.get("/movies/:idslug", async (c) => {
       .bind(user.id, id)
       .first<{ status: string }>();
   }
+  let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
+  try {
+    recs = (await recommendations(c.env, "movie", id)).results;
+  } catch {}
   return c.html(
     <Layout
       user={user}
@@ -240,7 +274,7 @@ app.get("/movies/:idslug", async (c) => {
       description={movie.overview?.slice(0, 155)}
       canonical={`${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`}
     >
-      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} />
+      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} />
     </Layout>
   );
 });
@@ -249,35 +283,37 @@ app.get("/library", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
   const status = c.req.query("status") ?? "all";
+  const cols =
+    "tmdb_id, media_type, title, poster_path, status, (SELECT COUNT(*) FROM episode_watches w WHERE w.user_id = tracked.user_id AND w.tmdb_id = tracked.tmdb_id) AS eps_watched";
   const rows =
     status === "all"
-      ? await c.env.DB.prepare("SELECT tmdb_id, media_type, title, poster_path, status FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 200")
+      ? await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 200`)
           .bind(user.id)
           .all<LibraryRow>()
-      : await c.env.DB.prepare(
-          "SELECT tmdb_id, media_type, title, poster_path, status FROM tracked WHERE user_id = ? AND status = ? ORDER BY updated_at DESC LIMIT 200"
-        )
+      : await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE user_id = ? AND status = ? ORDER BY updated_at DESC LIMIT 200`)
           .bind(user.id, status)
           .all<LibraryRow>();
+  const sort = ["recent", "title", "progress"].includes(c.req.query("sort") ?? "") ? c.req.query("sort")! : "recent";
+  const sorted = [...rows.results];
+  if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
+  else if (sort === "progress") sorted.sort((a, b) => b.eps_watched - a.eps_watched);
   return c.html(
     <Layout user={user} title="Library">
-      <LibraryPage rows={rows.results} status={status} />
+      <LibraryPage rows={sorted} status={status} sort={sort} />
     </Layout>
   );
 });
 
-app.get("/calendar", async (c) => {
-  const user = c.get("user");
-  if (!user) return c.redirect("/login");
-  const tracked = await c.env.DB.prepare(
+async function upcomingItems(env: AppContext["Bindings"], userId: number): Promise<CalendarItem[]> {
+  const tracked = await env.DB.prepare(
     "SELECT tmdb_id FROM tracked WHERE user_id = ? AND media_type = 'tv' AND status IN ('watching','watchlist') LIMIT 30"
   )
-    .bind(user.id)
+    .bind(userId)
     .all<{ tmdb_id: number }>();
   const items: CalendarItem[] = [];
   for (const t of tracked.results) {
     try {
-      const d = await tvDetails(c.env, t.tmdb_id);
+      const d = await tvDetails(env, t.tmdb_id);
       if (d.next_episode_to_air?.air_date) {
         items.push({
           tmdbId: d.id,
@@ -292,9 +328,124 @@ app.get("/calendar", async (c) => {
     } catch {}
   }
   items.sort((a, b) => a.airDate.localeCompare(b.airDate));
+  return items;
+}
+
+app.get("/calendar", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  let feed = await c.env.DB.prepare("SELECT token FROM feed_tokens WHERE user_id = ?").bind(user.id).first<{ token: string }>();
+  if (!feed) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    await c.env.DB.prepare("INSERT OR IGNORE INTO feed_tokens (token, user_id) VALUES (?, ?)").bind(token, user.id).run();
+    feed = { token };
+  }
+  const items = await upcomingItems(c.env, user.id);
   return c.html(
     <Layout user={user} title="Calendar">
-      <CalendarPage items={items} />
+      <CalendarPage items={items} feedUrl={`/feed/${feed.token}.ics`} remindEmail={user.remind_email === 1} />
+    </Layout>
+  );
+});
+
+app.get("/feed/:token", async (c) => {
+  const token = c.req.param("token").replace(/\.ics$/, "");
+  if (!/^[0-9a-f]{32}$/.test(token)) return c.notFound();
+  const row = await c.env.DB.prepare("SELECT user_id FROM feed_tokens WHERE token = ?").bind(token).first<{ user_id: number }>();
+  if (!row) return c.notFound();
+  const items = await upcomingItems(c.env, row.user_id);
+  const esc = (s: string) => s.replace(/\\/g, "\\\\").replace(/([,;])/g, "\\$1").replace(/\n/g, "\\n");
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//WatchDeck//Upcoming Episodes//EN",
+    "X-WR-CALNAME:WatchDeck \u2014 Upcoming episodes",
+  ];
+  for (const it of items) {
+    const day = it.airDate.replace(/-/g, "");
+    lines.push(
+      "BEGIN:VEVENT",
+      `UID:wd-${it.tmdbId}-s${it.season}e${it.episode}@watchdeck.zalize.com`,
+      `DTSTART;VALUE=DATE:${day}`,
+      `SUMMARY:${esc(`${it.title} S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}`)}`,
+      `URL:${c.env.SITE_URL}/shows/${it.tmdbId}-${slugify(it.title)}`,
+      "END:VEVENT"
+    );
+  }
+  lines.push("END:VCALENDAR");
+  return c.body(lines.join("\r\n") + "\r\n", 200, {
+    "content-type": "text/calendar; charset=utf-8",
+    "cache-control": "private, max-age=3600",
+  });
+});
+
+app.get("/browse", async (c) => {
+  const [tv, movie] = await Promise.all([genreList(c.env, "tv"), genreList(c.env, "movie")]);
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title="Browse TV shows & movies by genre"
+      description="Explore popular TV shows and movies by genre and start tracking them for free on WatchDeck."
+      canonical={`${c.env.SITE_URL}/browse`}
+    >
+      <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} />
+    </Layout>
+  );
+});
+
+app.get("/browse/:type/:genreslug", async (c) => {
+  const type = c.req.param("type") === "movie" ? "movie" : c.req.param("type") === "tv" ? "tv" : null;
+  const genreId = parseInt(c.req.param("genreslug"), 10);
+  if (!type || !Number.isFinite(genreId)) return c.notFound();
+  const genres = await genreList(c.env, type);
+  const genre = genres.genres.find((g) => g.id === genreId);
+  if (!genre) return c.notFound();
+  const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
+  const res = await discoverByGenre(c.env, type, genreId, page);
+  const base = `${c.env.SITE_URL}/browse/${type}/${genre.id}-${slugify(genre.name)}`;
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={`${genre.name} ${type === "tv" ? "TV shows" : "movies"} to watch`}
+      description={`Popular ${genre.name.toLowerCase()} ${type === "tv" ? "TV shows" : "movies"} to discover and track for free on WatchDeck.`}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+    >
+      <BrowseGenre type={type} genre={genre} results={res.results} page={page} totalPages={res.total_pages} />
+    </Layout>
+  );
+});
+
+app.get("/stats", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const [eps, movies, tracked, completed, topShows, byMonth] = await Promise.all([
+    c.env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(user.id).first<{ n: number }>(),
+    c.env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(user.id).first<{ n: number }>(),
+    c.env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(user.id).first<{ n: number }>(),
+    c.env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv' AND status = 'completed'").bind(user.id).first<{ n: number }>(),
+    c.env.DB.prepare(
+      `SELECT t.title, t.tmdb_id, COUNT(*) AS eps FROM episode_watches w
+       JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
+       WHERE w.user_id = ? GROUP BY w.tmdb_id ORDER BY eps DESC LIMIT 10`
+    ).bind(user.id).all<{ title: string; tmdb_id: number; eps: number }>(),
+    c.env.DB.prepare(
+      `SELECT strftime('%Y-%m', watched_at) AS month, COUNT(*) AS eps FROM episode_watches
+       WHERE user_id = ? AND watched_at >= date('now', '-12 months') GROUP BY month ORDER BY month`
+    ).bind(user.id).all<{ month: string; eps: number }>(),
+  ]);
+  const stats: UserStats = {
+    epsWatched: eps?.n ?? 0,
+    moviesWatched: movies?.n ?? 0,
+    showsTracked: tracked?.n ?? 0,
+    completedShows: completed?.n ?? 0,
+    topShows: topShows.results,
+    byMonth: byMonth.results,
+  };
+  return c.html(
+    <Layout user={user} title="Stats">
+      <StatsPage stats={stats} />
     </Layout>
   );
 });
@@ -367,6 +518,44 @@ app.post("/api/watch", async (c) => {
   return c.redirect(String(form.redirect ?? "/home"));
 });
 
+app.post("/api/reminders", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const enabled = String(form.enabled) === "1" ? 1 : 0;
+  await c.env.DB.prepare("UPDATE users SET remind_email = ? WHERE id = ?").bind(enabled, user.id).run();
+  return c.redirect("/calendar");
+});
+
+app.post("/api/watch-season", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const seasonNum = parseInt(String(form.season), 10);
+  const details = await tvDetails(c.env, tmdbId);
+  const season = await seasonDetails(c.env, tmdbId, seasonNum);
+  const today = new Date().toISOString().slice(0, 10);
+  const aired = season.episodes.filter((ep) => ep.air_date && ep.air_date <= today);
+  const stmts = aired.map((ep) =>
+    c.env.DB.prepare("INSERT OR IGNORE INTO episode_watches (user_id, tmdb_id, season, episode) VALUES (?, ?, ?, ?)").bind(
+      user.id,
+      tmdbId,
+      ep.season_number,
+      ep.episode_number
+    )
+  );
+  for (let i = 0; i < stmts.length; i += 50) await c.env.DB.batch(stmts.slice(i, i + 50));
+  await c.env.DB.prepare(
+    `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status)
+     VALUES (?, ?, 'tv', ?, ?, 'watching')
+     ON CONFLICT(user_id, tmdb_id, media_type) DO UPDATE SET updated_at = datetime('now')`
+  )
+    .bind(user.id, tmdbId, details.name, details.poster_path)
+    .run();
+  return c.redirect(String(form.redirect ?? "/home"));
+});
+
 app.post("/api/watch-movie", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
@@ -418,14 +607,14 @@ app.post("/api/import/batch", async (c) => {
   let showsImported = 0;
   let episodesImported = 0;
   let moviesImported = 0;
-  let unmatched = 0;
+  const unmatchedNames: string[] = [];
 
   for (const show of (batch.shows ?? []).slice(0, 20)) {
     try {
       const res = await searchTv(c.env, show.name);
       const match = res.results[0];
       if (!match) {
-        unmatched++;
+        unmatchedNames.push(show.name);
         continue;
       }
       const title = match.name ?? show.name;
@@ -448,7 +637,7 @@ app.post("/api/import/batch", async (c) => {
       }
       episodesImported += stmts.length;
     } catch {
-      unmatched++;
+      unmatchedNames.push(show.name);
     }
   }
 
@@ -457,7 +646,7 @@ app.post("/api/import/batch", async (c) => {
       const res = await searchMovie(c.env, movie.name);
       const match = res.results[0];
       if (!match) {
-        unmatched++;
+        unmatchedNames.push(movie.name);
         continue;
       }
       await c.env.DB.batch([
@@ -472,17 +661,17 @@ app.post("/api/import/batch", async (c) => {
       ]);
       moviesImported++;
     } catch {
-      unmatched++;
+      unmatchedNames.push(movie.name);
     }
   }
 
   await c.env.DB.prepare(
     "INSERT INTO imports (user_id, source, shows_imported, episodes_imported, movies_imported, unmatched) VALUES (?, 'tvtime', ?, ?, ?, ?)"
   )
-    .bind(user.id, showsImported, episodesImported, moviesImported, unmatched)
+    .bind(user.id, showsImported, episodesImported, moviesImported, unmatchedNames.length)
     .run();
 
-  return c.json({ showsImported, episodesImported, moviesImported, unmatched });
+  return c.json({ showsImported, episodesImported, moviesImported, unmatched: unmatchedNames.length, unmatchedNames });
 });
 
 // ---------- seo ----------
@@ -491,11 +680,18 @@ app.get("/robots.txt", (c) =>
 );
 
 app.get("/sitemap.xml", async (c) => {
-  const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`];
+  const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`];
   try {
-    const [shows, movies] = await Promise.all([trendingTv(c.env), trendingMovies(c.env)]);
+    const [shows, movies, tvGenres, movieGenres] = await Promise.all([
+      trendingTv(c.env),
+      trendingMovies(c.env),
+      genreList(c.env, "tv"),
+      genreList(c.env, "movie"),
+    ]);
     for (const s of shows.results) urls.push(`${c.env.SITE_URL}/shows/${s.id}-${slugify(s.name ?? "")}`);
     for (const m of movies.results) urls.push(`${c.env.SITE_URL}/movies/${m.id}-${slugify(m.title ?? "")}`);
+    for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
+    for (const g of movieGenres.genres) urls.push(`${c.env.SITE_URL}/browse/movie/${g.id}-${slugify(g.name)}`);
   } catch {}
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map((u) => `  <url><loc>${u}</loc></url>`)
@@ -510,6 +706,8 @@ app.get("/:key{[a-f0-9]{32}\\.txt}", (c) => {
 });
 
 app.get("/api/stats", async (c) => {
+  const user = c.get("user");
+  if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
   const rows = await c.env.DB.prepare(
     "SELECT date(ts) AS day, COUNT(*) AS views FROM analytics_events WHERE ua_class != 'bot' GROUP BY day ORDER BY day DESC LIMIT 30"
   ).all();
@@ -530,4 +728,33 @@ app.notFound((c) =>
   )
 );
 
-export default app;
+async function sendAiringDigests(env: Env): Promise<void> {
+  if (!env.RESEND_API_KEY) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const users = await env.DB.prepare("SELECT id, email FROM users WHERE remind_email = 1").all<{ id: number; email: string }>();
+  for (const u of users.results) {
+    const items = (await upcomingItems(env, u.id)).filter((it) => it.airDate === today);
+    if (items.length === 0) continue;
+    const lines = items.map(
+      (it) =>
+        `<li style=\"margin:6px 0\"><a href=\"${env.SITE_URL}/shows/${it.tmdbId}-${slugify(it.title)}\" style=\"color:#7c3aed\">${it.title}</a> S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}</li>`
+    );
+    await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: "WatchDeck <watchdeck@zalize.com>",
+        to: [u.email],
+        subject: `Airing today: ${items[0].title}${items.length > 1 ? ` and ${items.length - 1} more` : ""}`,
+        html: `<p>These shows you track air new episodes today:</p><ul>${lines.join("")}</ul><p style=\"color:#64748b;font-size:13px\">You get this because email reminders are on \u2014 turn them off any time on your <a href=\"${env.SITE_URL}/calendar\">calendar page</a>.</p>`,
+      }),
+    }).catch(() => {});
+  }
+}
+
+export default {
+  fetch: app.fetch,
+  scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
+    ctx.waitUntil(sendAiringDigests(env));
+  },
+};

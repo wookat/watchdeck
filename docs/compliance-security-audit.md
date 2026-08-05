@@ -13,9 +13,9 @@
 | 秘密管理 | ✅ | TMDB token / IndexNow key 均为 Worker secret；仓库无任何凭据；.dev.vars 已 gitignore |
 | 上传限制 | ✅ | 导入 ZIP 限 30 MB，仅解析 CSV 条目，服务端解析不落盘 |
 | 状态枚举校验 | ✅ | track status 服务端白名单校验 |
-| CSRF | ⚠️ P2 | 表单 POST 依赖 SameSite=Lax 缓解；后续可加 CSRF token |
-| /api/stats | ⚠️ P2 | 聚合页面浏览数公开可读（无个人数据）；后续可限管理员 |
-| 速率限制 | ⚠️ P2 | 注册/登录暂无速率限制；后续用 Cloudflare rate limiting 规则 |
+| CSRF | ✅ | hono/csrf Origin 校验（round-2 修复）+ SameSite=Lax |
+| /api/stats | ✅ | 仅 ADMIN_EMAIL 账号可读（round-2 修复） |
+| 速率限制 | ✅ | KV 计数：登录 15/10min、注册 10/10min（round-2 修复） |
 
 ## 隐私 / 合规
 

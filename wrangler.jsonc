@@ -8,6 +8,9 @@
     "binding": "ASSETS"
   },
   "observability": { "enabled": true },
+  "triggers": {
+    "crons": ["0 8 * * *"]
+  },
   "routes": [
     { "pattern": "watchdeck.zalize.com", "custom_domain": true }
   ],
@@ -26,6 +29,7 @@
   ],
   "vars": {
     "SITE_URL": "https://watchdeck.zalize.com",
-    "PAYWALL_ENABLED": "false"
+    "PAYWALL_ENABLED": "false",
+    "ADMIN_EMAIL": "wookat520@gmail.com"
   }
 }
