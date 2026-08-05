@@ -1,4 +1,5 @@
 import { Hono } from "hono";
+import { csrf } from "hono/csrf";
 import type { AppContext } from "./types";
 import { hashPassword, verifyPassword, createSession, destroySession, loadUser } from "./auth";
 import {
@@ -25,12 +26,26 @@ import {
   LibraryPage,
   CalendarPage,
   ImportPage,
+  StatsPage,
+  type UserStats,
   type NextUpItem,
   type LibraryRow,
   type CalendarItem,
 } from "./views";
 
 const app = new Hono<AppContext>();
+
+app.use("*", (c, next) =>
+  csrf({ origin: (origin) => origin === new URL(c.env.SITE_URL).origin || origin === new URL(c.req.url).origin })(c, next)
+);
+
+async function rateLimit(c: { env: { CACHE: KVNamespace }; req: { header: (n: string) => string | undefined } }, bucket: string, limit: number): Promise<boolean> {
+  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
+  const key = `rl:${bucket}:${ip}`;
+  const count = parseInt((await c.env.CACHE.get(key)) ?? "0", 10) + 1;
+  await c.env.CACHE.put(key, String(count), { expirationTtl: 600 });
+  return count <= limit;
+}
 
 app.use("*", async (c, next) => {
   c.set("user", await loadUser(c));
@@ -69,6 +84,9 @@ app.get("/signup", (c) => c.html(<Layout user={c.get("user")} title="Sign up"><A
 app.get("/login", (c) => c.html(<Layout user={c.get("user")} title="Log in"><AuthForm mode="login" /></Layout>));
 
 app.post("/signup", async (c) => {
+  if (!(await rateLimit(c, "signup", 10))) {
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Too many attempts. Please try again in a few minutes." /></Layout>, 429);
+  }
   const form = await c.req.parseBody();
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
@@ -88,6 +106,9 @@ app.post("/signup", async (c) => {
 });
 
 app.post("/login", async (c) => {
+  if (!(await rateLimit(c, "login", 15))) {
+    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Too many attempts. Please try again in a few minutes." /></Layout>, 429);
+  }
   const form = await c.req.parseBody();
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
@@ -295,6 +316,39 @@ app.get("/calendar", async (c) => {
   return c.html(
     <Layout user={user} title="Calendar">
       <CalendarPage items={items} />
+    </Layout>
+  );
+});
+
+app.get("/stats", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const [eps, movies, tracked, completed, topShows, byMonth] = await Promise.all([
+    c.env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(user.id).first<{ n: number }>(),
+    c.env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(user.id).first<{ n: number }>(),
+    c.env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(user.id).first<{ n: number }>(),
+    c.env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv' AND status = 'completed'").bind(user.id).first<{ n: number }>(),
+    c.env.DB.prepare(
+      `SELECT t.title, t.tmdb_id, COUNT(*) AS eps FROM episode_watches w
+       JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
+       WHERE w.user_id = ? GROUP BY w.tmdb_id ORDER BY eps DESC LIMIT 10`
+    ).bind(user.id).all<{ title: string; tmdb_id: number; eps: number }>(),
+    c.env.DB.prepare(
+      `SELECT strftime('%Y-%m', watched_at) AS month, COUNT(*) AS eps FROM episode_watches
+       WHERE user_id = ? AND watched_at >= date('now', '-12 months') GROUP BY month ORDER BY month`
+    ).bind(user.id).all<{ month: string; eps: number }>(),
+  ]);
+  const stats: UserStats = {
+    epsWatched: eps?.n ?? 0,
+    moviesWatched: movies?.n ?? 0,
+    showsTracked: tracked?.n ?? 0,
+    completedShows: completed?.n ?? 0,
+    topShows: topShows.results,
+    byMonth: byMonth.results,
+  };
+  return c.html(
+    <Layout user={user} title="Stats">
+      <StatsPage stats={stats} />
     </Layout>
   );
 });
@@ -539,6 +593,8 @@ app.get("/:key{[a-f0-9]{32}\\.txt}", (c) => {
 });
 
 app.get("/api/stats", async (c) => {
+  const user = c.get("user");
+  if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
   const rows = await c.env.DB.prepare(
     "SELECT date(ts) AS day, COUNT(*) AS views FROM analytics_events WHERE ua_class != 'bot' GROUP BY day ORDER BY day DESC LIMIT 30"
   ).all();

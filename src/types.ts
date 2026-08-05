@@ -4,6 +4,7 @@ export interface Env {
   ASSETS: Fetcher;
   SITE_URL: string;
   PAYWALL_ENABLED: string;
+  ADMIN_EMAIL?: string;
   TMDB_READ_TOKEN: string;
   INDEXNOW_KEY?: string;
 }

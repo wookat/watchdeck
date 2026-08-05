@@ -45,6 +45,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
                 <a href="/library" class="px-1 py-2 hover:text-violet-400">Library</a>
                 <a href="/calendar" class="px-1 py-2 hover:text-violet-400">Calendar</a>
                 <a href="/import" class="px-1 py-2 hover:text-violet-400">Import</a>
+                <a href="/stats" class="px-1 py-2 hover:text-violet-400">Stats</a>
                 <form action="/logout" method="post" class="inline">
                   <button class="px-1 py-2 text-slate-400 hover:text-slate-200">Log out</button>
                 </form>
@@ -575,6 +576,71 @@ export const CalendarPage: FC<{ items: CalendarItem[] }> = ({ items }) => (
     )}
   </div>
 );
+
+export interface UserStats {
+  epsWatched: number;
+  moviesWatched: number;
+  showsTracked: number;
+  completedShows: number;
+  topShows: { title: string; tmdb_id: number; eps: number }[];
+  byMonth: { month: string; eps: number }[];
+}
+
+export const StatsPage: FC<{ stats: UserStats }> = ({ stats }) => {
+  const maxMonth = Math.max(1, ...stats.byMonth.map((m) => m.eps));
+  return (
+    <div>
+      <h1 class="mb-6 text-2xl font-bold">Your watch stats</h1>
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        {[
+          [String(stats.epsWatched), "episodes watched"],
+          [String(stats.moviesWatched), "movies watched"],
+          [String(stats.showsTracked), "shows tracked"],
+          [String(stats.completedShows), "shows completed"],
+        ].map(([n, label]) => (
+          <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 text-center">
+            <p class="text-3xl font-extrabold text-violet-300">{n}</p>
+            <p class="mt-1 text-sm text-slate-400">{label}</p>
+          </div>
+        ))}
+      </div>
+      <div class="mt-8 grid gap-6 md:grid-cols-2">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h2 class="mb-4 font-semibold">Most-watched shows</h2>
+          {stats.topShows.length === 0 ? (
+            <p class="text-sm text-slate-400">No episodes tracked yet.</p>
+          ) : (
+            <ol class="space-y-2">
+              {stats.topShows.map((s, i) => (
+                <li class="flex items-center gap-3 text-sm">
+                  <span class="w-5 text-slate-500">{i + 1}.</span>
+                  <a href={`/shows/${s.tmdb_id}-${slugify(s.title)}`} class="flex-1 truncate hover:text-violet-400">{s.title}</a>
+                  <span class="text-slate-400">{s.eps} eps</span>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h2 class="mb-4 font-semibold">Episodes per month (last 12)</h2>
+          {stats.byMonth.length === 0 ? (
+            <p class="text-sm text-slate-400">Nothing yet — go watch something!</p>
+          ) : (
+            <ul class="space-y-1.5">
+              {stats.byMonth.map((m) => (
+                <li class="flex items-center gap-2 text-xs">
+                  <span class="w-16 shrink-0 text-slate-500">{m.month}</span>
+                  <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((m.eps / maxMonth) * 100))}%`} />
+                  <span class="text-slate-400">{m.eps}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export const ImportPage: FC = () => (
   <div class="mx-auto max-w-2xl">
