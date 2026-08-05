@@ -2,12 +2,13 @@ import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
 import { poster, slugify, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails } from "./tmdb";
 
-export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string }>> = ({
+export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string }>> = ({
   children,
   user,
   title,
   description,
   canonical,
+  ogImage,
 }) => (
   <html lang="en" class="dark">
     <head>
@@ -19,6 +20,11 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
         content={description ?? "WatchDeck is a free web-first TV show and movie tracker. Import your TV Time export in one click and pick up right where you left off."}
       />
       {canonical && <link rel="canonical" href={canonical} />}
+      <meta property="og:title" content={title ? `${title} — WatchDeck` : "WatchDeck — Track your TV shows & movies on the web"} />
+      {description && <meta property="og:description" content={description} />}
+      {canonical && <meta property="og:url" content={canonical} />}
+      {ogImage && <meta property="og:image" content={ogImage} />}
+      {ogImage && <meta name="twitter:card" content="summary_large_image" />}
       <link rel="stylesheet" href="/styles.css" />
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     </head>
@@ -320,11 +326,40 @@ export const RecsSection: FC<{ recs: SearchResult[]; type: "tv" | "movie" }> = (
     </div>
   );
 
+export const RatingStars: FC<{ tmdbId: number; mediaType: "tv" | "movie"; title: string; posterPath: string | null; rating: number | null; redirect: string }> = ({
+  tmdbId,
+  mediaType,
+  title,
+  posterPath,
+  rating,
+  redirect,
+}) => (
+  <div class="mt-3 flex items-center gap-1" aria-label="Your rating">
+    <span class="mr-1 text-sm text-slate-400">Your rating:</span>
+    {[1, 2, 3, 4, 5].map((n) => (
+      <form action="/api/rate" method="post">
+        <input type="hidden" name="tmdb_id" value={String(tmdbId)} />
+        <input type="hidden" name="media_type" value={mediaType} />
+        <input type="hidden" name="title" value={title} />
+        <input type="hidden" name="poster_path" value={posterPath ?? ""} />
+        <input type="hidden" name="rating" value={String(rating === n ? 0 : n)} />
+        <input type="hidden" name="redirect" value={redirect} />
+        <button
+          class={(rating ?? 0) >= n ? "text-xl text-amber-400 hover:scale-110" : "text-xl text-slate-600 hover:text-amber-300"}
+          title={rating === n ? "Clear rating" : `Rate ${n} star${n === 1 ? "" : "s"}`}
+        >
+          ★
+        </button>
+      </form>
+    ))}
+  </div>
+);
+
 export const ShowPage: FC<{
   show: TvDetails;
   season: SeasonDetails | null;
   watched: Set<string>;
-  tracked: { status: string } | null;
+  tracked: { status: string; rating: number | null } | null;
   user: User | null;
   recs: SearchResult[];
 }> = ({ show, season, watched, tracked, user, recs }) => {
@@ -365,6 +400,9 @@ export const ShowPage: FC<{
             <p class="mt-5 text-sm text-slate-400">
               <a href="/signup" class="text-violet-400 hover:underline">Join free</a> to track this show.
             </p>
+          )}
+          {user && (
+            <RatingStars tmdbId={show.id} mediaType="tv" title={show.name} posterPath={show.poster_path} rating={tracked?.rating ?? null} redirect={showUrl} />
           )}
         </div>
       </div>
@@ -447,7 +485,7 @@ export const ShowPage: FC<{
 export const MoviePage: FC<{
   movie: MovieDetails;
   watched: boolean;
-  tracked: { status: string } | null;
+  tracked: { status: string; rating: number | null } | null;
   user: User | null;
   recs: SearchResult[];
 }> = ({ movie, watched, tracked, user, recs }) => {
@@ -500,6 +538,9 @@ export const MoviePage: FC<{
             <a href="/signup" class="text-violet-400 hover:underline">Join free</a> to track this movie.
           </p>
         )}
+        {user && (
+          <RatingStars tmdbId={movie.id} mediaType="movie" title={movie.title} posterPath={movie.poster_path} rating={tracked?.rating ?? null} redirect={movieUrl} />
+        )}
       </div>
     </div>
     <RecsSection recs={recs} type="movie" />
@@ -514,6 +555,7 @@ export interface LibraryRow {
   poster_path: string | null;
   status: string;
   eps_watched: number;
+  rating: number | null;
 }
 
 export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string }> = ({ rows, status, sort }) => (
@@ -569,6 +611,7 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string 
             <p class="text-xs text-slate-500">
               {r.status}
               {r.media_type === "tv" && r.eps_watched > 0 ? ` · ${r.eps_watched} ep${r.eps_watched === 1 ? "" : "s"} watched` : ""}
+              {r.rating ? <span class="text-amber-400"> · ★ {r.rating}</span> : ""}
             </p>
           </a>
         ))}
