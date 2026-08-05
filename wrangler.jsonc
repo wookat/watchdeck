@@ -8,6 +8,9 @@
     "binding": "ASSETS"
   },
   "observability": { "enabled": true },
+  "routes": [
+    { "pattern": "watchdeck.zalize.com", "custom_domain": true }
+  ],
   "d1_databases": [
     {
       "binding": "DB",
