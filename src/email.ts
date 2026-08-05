@@ -1,0 +1,26 @@
+import type { Env } from "./types";
+
+export async function sendEmail(env: Env, to: string, subject: string, html: string): Promise<void> {
+  if (!env.RESEND_API_KEY) return;
+  await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ from: "WatchDeck <watchdeck@zalize.com>", to: [to], subject, html }),
+  }).catch(() => {});
+}
+
+export function welcomeEmail(siteUrl: string): [string, string] {
+  const html = `
+<div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;color:#1f2937">
+  <h2 style="color:#7c3aed">Welcome to WatchDeck 🎬</h2>
+  <p>Your new home for tracking TV shows and movies on the web.</p>
+  <p>Get started in 30 seconds:</p>
+  <ul style="line-height:1.9">
+    <li><a href="${siteUrl}/import" style="color:#7c3aed">Import your TV Time export ZIP</a> (or a Trakt/Serializd CSV) to pick up right where you left off</li>
+    <li><a href="${siteUrl}/search" style="color:#7c3aed">Search</a> for any show or movie and start tracking</li>
+    <li><a href="${siteUrl}/calendar" style="color:#7c3aed">Turn on air-date reminders</a> — email digest or iCal subscription</li>
+  </ul>
+  <p style="color:#6b7280;font-size:13px">You're receiving this one-time email because you just signed up at ${siteUrl}. WatchDeck sends no marketing email.</p>
+</div>`;
+  return ["Welcome to WatchDeck — pick up where you left off", html];
+}

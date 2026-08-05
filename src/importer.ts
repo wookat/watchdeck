@@ -58,6 +58,46 @@ function pick(rec: Record<string, string>, ...candidates: string[]): string {
   return "";
 }
 
+// Generic CSV import (Trakt / Serializd and similar exports):
+// needs a title column; season/episode and watched-date columns are optional.
+export function parseGenericCsv(text: string): ParsedImport {
+  const records = parseCsv(text);
+  const showMap = new Map<string, ParsedShow>();
+  const movies = new Map<string, { name: string; watchedAt: string | null }>();
+  for (const rec of records) {
+    const type = pick(rec, "type", "media_type", "entity_type").toLowerCase();
+    const title = pick(rec, "title", "show title", "show_title", "show name", "show_name", "show", "series_name", "name");
+    if (!title) continue;
+    const season = parseInt(pick(rec, "season number", "season_number", "season"), 10);
+    const episode = parseInt(pick(rec, "episode number", "episode_number", "episode"), 10);
+    const watchedAt = pick(rec, "watched_at", "watched at", "watched date", "last_watched_at", "date", "created_at") || null;
+    if (type.includes("movie")) {
+      if (!movies.has(title.toLowerCase())) movies.set(title.toLowerCase(), { name: title, watchedAt });
+      continue;
+    }
+    const key = title.toLowerCase();
+    let show = showMap.get(key);
+    if (!show) {
+      show = { name: title, episodes: [], followedOnly: true };
+      showMap.set(key, show);
+    }
+    if (Number.isFinite(season) && Number.isFinite(episode)) {
+      show.followedOnly = false;
+      show.episodes.push({ season, episode, watchedAt });
+    }
+  }
+  for (const show of showMap.values()) {
+    const seen = new Set<string>();
+    show.episodes = show.episodes.filter((e) => {
+      const k = `${e.season}x${e.episode}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+  return { shows: [...showMap.values()], movies: [...movies.values()] };
+}
+
 export function parseTvTimeZip(zipBytes: Uint8Array): ParsedImport {
   const files = unzipSync(zipBytes);
   const csvs: Record<string, string> = {};

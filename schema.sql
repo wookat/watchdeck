@@ -79,6 +79,13 @@ CREATE TABLE IF NOT EXISTS feed_tokens (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- public read-only profile share tokens
+CREATE TABLE IF NOT EXISTS share_tokens (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL UNIQUE REFERENCES users(id),
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- import job summaries
 CREATE TABLE IF NOT EXISTS imports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

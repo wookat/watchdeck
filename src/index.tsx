@@ -16,7 +16,8 @@ import {
   recommendations,
   slugify,
 } from "./tmdb";
-import { parseTvTimeZip, type ParsedImport } from "./importer";
+import { parseTvTimeZip, parseGenericCsv, type ParsedImport } from "./importer";
+import { sendEmail, welcomeEmail } from "./email";
 import {
   Layout,
   Landing,
@@ -30,6 +31,7 @@ import {
   CalendarPage,
   ImportPage,
   StatsPage,
+  PublicProfilePage,
   BrowseIndex,
   BrowseGenre,
   type UserStats,
@@ -104,6 +106,7 @@ app.post("/signup", async (c) => {
       .bind(email, hash, salt)
       .first<{ id: number }>();
     await createSession(c, res!.id);
+    c.executionCtx.waitUntil(sendEmail(c.env, email, ...welcomeEmail(c.env.SITE_URL)));
     return c.redirect("/import");
   } catch {
     return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." /></Layout>, 400);
@@ -417,25 +420,23 @@ app.get("/browse/:type/:genreslug", async (c) => {
   );
 });
 
-app.get("/stats", async (c) => {
-  const user = c.get("user");
-  if (!user) return c.redirect("/login");
+async function userStats(env: Env, userId: number): Promise<UserStats> {
   const [eps, movies, tracked, completed, topShows, byMonth] = await Promise.all([
-    c.env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(user.id).first<{ n: number }>(),
-    c.env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(user.id).first<{ n: number }>(),
-    c.env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(user.id).first<{ n: number }>(),
-    c.env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv' AND status = 'completed'").bind(user.id).first<{ n: number }>(),
-    c.env.DB.prepare(
+    env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(userId).first<{ n: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv' AND status = 'completed'").bind(userId).first<{ n: number }>(),
+    env.DB.prepare(
       `SELECT t.title, t.tmdb_id, COUNT(*) AS eps FROM episode_watches w
        JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
        WHERE w.user_id = ? GROUP BY w.tmdb_id ORDER BY eps DESC LIMIT 10`
-    ).bind(user.id).all<{ title: string; tmdb_id: number; eps: number }>(),
-    c.env.DB.prepare(
+    ).bind(userId).all<{ title: string; tmdb_id: number; eps: number }>(),
+    env.DB.prepare(
       `SELECT strftime('%Y-%m', watched_at) AS month, COUNT(*) AS eps FROM episode_watches
        WHERE user_id = ? AND watched_at >= date('now', '-12 months') GROUP BY month ORDER BY month`
-    ).bind(user.id).all<{ month: string; eps: number }>(),
+    ).bind(userId).all<{ month: string; eps: number }>(),
   ]);
-  const stats: UserStats = {
+  return {
     epsWatched: eps?.n ?? 0,
     moviesWatched: movies?.n ?? 0,
     showsTracked: tracked?.n ?? 0,
@@ -443,9 +444,49 @@ app.get("/stats", async (c) => {
     topShows: topShows.results,
     byMonth: byMonth.results,
   };
+}
+
+app.get("/stats", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const [stats, share] = await Promise.all([
+    userStats(c.env, user.id),
+    c.env.DB.prepare("SELECT token FROM share_tokens WHERE user_id = ?").bind(user.id).first<{ token: string }>(),
+  ]);
   return c.html(
     <Layout user={user} title="Stats">
-      <StatsPage stats={stats} />
+      <StatsPage stats={stats} shareUrl={share ? `${c.env.SITE_URL}/u/${share.token}` : null} />
+    </Layout>
+  );
+});
+
+app.post("/api/share", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  if (form.enabled === "1") {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    await c.env.DB.prepare("INSERT OR IGNORE INTO share_tokens (token, user_id) VALUES (?, ?)").bind(token, user.id).run();
+  } else {
+    await c.env.DB.prepare("DELETE FROM share_tokens WHERE user_id = ?").bind(user.id).run();
+  }
+  return c.redirect("/stats");
+});
+
+app.get("/u/:token", async (c) => {
+  const token = c.req.param("token");
+  if (!/^[0-9a-f]{32}$/.test(token)) return c.notFound();
+  const row = await c.env.DB.prepare(
+    "SELECT u.id, u.display_name, u.email FROM share_tokens s JOIN users u ON u.id = s.user_id WHERE s.token = ?"
+  ).bind(token).first<{ id: number; display_name: string | null; email: string }>();
+  if (!row) return c.notFound();
+  const stats = await userStats(c.env, row.id);
+  const name = row.display_name || row.email.split("@")[0];
+  return c.html(
+    <Layout user={c.get("user")} title={`${name}'s watch stats`} canonical={`${c.env.SITE_URL}/u/${token}`}>
+      <PublicProfilePage stats={stats} name={name} />
     </Layout>
   );
 });
@@ -582,20 +623,24 @@ app.post("/api/watch-movie", async (c) => {
   return c.redirect(String(form.redirect ?? "/home"));
 });
 
-// step 1: parse the TV Time ZIP into JSON (no TMDB calls here)
+// step 1: parse the uploaded export (TV Time ZIP, or a Trakt/Serializd-style CSV) into JSON (no TMDB calls here)
 app.post("/api/import/parse", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: "auth" }, 401);
   const bytes = new Uint8Array(await c.req.arrayBuffer());
   if (bytes.length > 30 * 1024 * 1024) return c.json({ error: "File too large (max 30 MB)" }, 413);
+  const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
   try {
-    const parsed = parseTvTimeZip(bytes);
+    const parsed = isZip ? parseTvTimeZip(bytes) : parseGenericCsv(new TextDecoder().decode(bytes));
     if (parsed.shows.length === 0 && parsed.movies.length === 0) {
-      return c.json({ error: "No TV Time data found in this ZIP. Make sure it's the GDPR export." }, 422);
+      return c.json(
+        { error: isZip ? "No TV Time data found in this ZIP. Make sure it's the GDPR export." : "No shows or movies found in this CSV \u2014 it needs a title column." },
+        422
+      );
     }
     return c.json(parsed);
   } catch {
-    return c.json({ error: "Could not read that ZIP file." }, 422);
+    return c.json({ error: isZip ? "Could not read that ZIP file." : "Could not read that file. Upload a TV Time ZIP or a CSV export." }, 422);
   }
 });
 
@@ -739,16 +784,12 @@ async function sendAiringDigests(env: Env): Promise<void> {
       (it) =>
         `<li style=\"margin:6px 0\"><a href=\"${env.SITE_URL}/shows/${it.tmdbId}-${slugify(it.title)}\" style=\"color:#7c3aed\">${it.title}</a> S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}</li>`
     );
-    await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        from: "WatchDeck <watchdeck@zalize.com>",
-        to: [u.email],
-        subject: `Airing today: ${items[0].title}${items.length > 1 ? ` and ${items.length - 1} more` : ""}`,
-        html: `<p>These shows you track air new episodes today:</p><ul>${lines.join("")}</ul><p style=\"color:#64748b;font-size:13px\">You get this because email reminders are on \u2014 turn them off any time on your <a href=\"${env.SITE_URL}/calendar\">calendar page</a>.</p>`,
-      }),
-    }).catch(() => {});
+    await sendEmail(
+      env,
+      u.email,
+      `Airing today: ${items[0].title}${items.length > 1 ? ` and ${items.length - 1} more` : ""}`,
+      `<p>These shows you track air new episodes today:</p><ul>${lines.join("")}</ul><p style=\"color:#64748b;font-size:13px\">You get this because email reminders are on \u2014 turn them off any time on your <a href=\"${env.SITE_URL}/calendar\">calendar page</a>.</p>`
+    );
   }
 }
 
