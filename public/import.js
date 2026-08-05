@@ -22,13 +22,17 @@
 
   function fail(msg) {
     progressText.textContent = "Import failed";
-    progressDetail.textContent = msg;
+    progressDetail.textContent = msg + " \u2014 drop another file above to retry.";
     progressBar.classList.add("bg-red-500");
+    dropzone.classList.remove("hidden");
+    input.value = "";
   }
 
   async function handleFile(file) {
     dropzone.classList.add("hidden");
     progress.classList.remove("hidden");
+    progressBar.classList.remove("bg-red-500");
+    progressDetail.textContent = "";
     progressText.textContent = "Parsing your export\u2026";
     try {
       var parseRes = await fetch("/api/import/parse", { method: "POST", body: file });

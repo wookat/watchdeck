@@ -700,11 +700,10 @@ export interface UserStats {
   byMonth: { month: string; eps: number }[];
 }
 
-export const StatsPage: FC<{ stats: UserStats }> = ({ stats }) => {
+const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
   const maxMonth = Math.max(1, ...stats.byMonth.map((m) => m.eps));
   return (
     <div>
-      <h1 class="mb-6 text-2xl font-bold">Your watch stats</h1>
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
           [String(stats.epsWatched), "episodes watched"],
@@ -738,7 +737,7 @@ export const StatsPage: FC<{ stats: UserStats }> = ({ stats }) => {
         <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
           <h2 class="mb-4 font-semibold">Episodes per month (last 12)</h2>
           {stats.byMonth.length === 0 ? (
-            <p class="text-sm text-slate-400">Nothing yet — go watch something!</p>
+            <p class="text-sm text-slate-400">No episodes watched in the last 12 months.</p>
           ) : (
             <ul class="space-y-1.5">
               {stats.byMonth.map((m) => (
@@ -756,6 +755,48 @@ export const StatsPage: FC<{ stats: UserStats }> = ({ stats }) => {
   );
 };
 
+export const StatsPage: FC<{ stats: UserStats; shareUrl: string | null }> = ({ stats, shareUrl }) => (
+  <div>
+    <h1 class="mb-6 text-2xl font-bold">Your watch stats</h1>
+    <StatsBody stats={stats} />
+    <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+      <h2 class="font-semibold">Share your profile</h2>
+      {shareUrl ? (
+        <div class="mt-3">
+          <p class="text-sm text-slate-400">Anyone with this link can see a read-only copy of this page (no email shown):</p>
+          <p class="mt-2 break-all rounded-lg bg-slate-800/70 px-3 py-2 font-mono text-sm text-violet-300">{shareUrl}</p>
+          <form action="/api/share" method="post" class="mt-3">
+            <input type="hidden" name="enabled" value="" />
+            <button class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-red-500 hover:text-red-400">Disable share link</button>
+          </form>
+        </div>
+      ) : (
+        <div class="mt-3">
+          <p class="text-sm text-slate-400">Create a public read-only link to your stats — great for a year-in-review post.</p>
+          <form action="/api/share" method="post" class="mt-3">
+            <input type="hidden" name="enabled" value="1" />
+            <button class="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white hover:opacity-90">Create share link</button>
+          </form>
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+export const PublicProfilePage: FC<{ stats: UserStats; name: string }> = ({ stats, name }) => (
+  <div>
+    <h1 class="mb-1 text-2xl font-bold">{name}'s watch stats</h1>
+    <p class="mb-6 text-sm text-slate-400">
+      Shared from <a href="/" class="text-violet-400 hover:underline">WatchDeck</a> — track your shows &amp; movies on the web.
+    </p>
+    <StatsBody stats={stats} />
+    <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6 text-center">
+      <p class="text-slate-300">Want stats like these?</p>
+      <a href="/signup" class="mt-3 inline-block rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90">Start tracking free</a>
+    </div>
+  </div>
+);
+
 export const ImportPage: FC = () => (
   <div class="mx-auto max-w-2xl">
     <h1 class="text-2xl font-bold">Import from TV Time</h1>
@@ -764,15 +805,16 @@ export const ImportPage: FC = () => (
       <a href="https://gdpr.tvtime.com/gdpr/self-service" rel="noopener" class="text-violet-400 hover:underline">
         gdpr.tvtime.com
       </a>
-      . We import your tracked episodes, followed shows <strong>and movies</strong> — then take you straight to your next episode.
+      . We import your tracked episodes, followed shows <strong>and movies</strong> — then take you straight to your next episode. Coming
+      from Trakt or Serializd? A CSV export with a title column works too.
     </p>
     <div
       id="dropzone"
       class="mt-6 cursor-pointer rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/40 p-10 text-center transition hover:border-violet-500"
     >
-      <p class="text-lg">📦 Drag & drop your TV Time ZIP here</p>
+      <p class="text-lg">📦 Drag & drop your TV Time ZIP (or CSV) here</p>
       <p class="mt-1 text-sm text-slate-500">or click to choose the file</p>
-      <input id="zipfile" type="file" accept=".zip" class="hidden" />
+      <input id="zipfile" type="file" accept=".zip,.csv" class="hidden" />
     </div>
     <div id="progress" class="mt-6 hidden rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
       <p id="progress-text" class="font-medium">Parsing your export…</p>
