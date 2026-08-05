@@ -358,19 +358,35 @@ export const ShowPage: FC<{
         <div class="mb-4 flex flex-wrap gap-2">
           {show.seasons
             .filter((s) => s.season_number > 0)
-            .map((s) => (
-              <a
-                href={`${showUrl}?season=${s.season_number}`}
-                class={
-                  season?.season_number === s.season_number
-                    ? "rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white"
-                    : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500"
-                }
-              >
-                Season {s.season_number}
-              </a>
-            ))}
+            .map((s) => {
+              const seen = [...watched].filter((k) => k.startsWith(`${s.season_number}x`)).length;
+              return (
+                <a
+                  href={`${showUrl}?season=${s.season_number}`}
+                  class={
+                    season?.season_number === s.season_number
+                      ? "rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white"
+                      : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500"
+                  }
+                >
+                  Season {s.season_number}
+                  <span class={s.episode_count > 0 && seen >= s.episode_count ? "ml-1.5 text-xs text-emerald-300" : "ml-1.5 text-xs opacity-70"}>
+                    {seen}/{s.episode_count}
+                  </span>
+                </a>
+              );
+            })}
         </div>
+        {season && user && (
+          <form action="/api/watch-season" method="post" class="mb-4">
+            <input type="hidden" name="tmdb_id" value={String(show.id)} />
+            <input type="hidden" name="season" value={String(season.season_number)} />
+            <input type="hidden" name="redirect" value={`${showUrl}?season=${season.season_number}`} />
+            <button class="rounded-lg border border-violet-700 bg-violet-950/50 px-3 py-1.5 text-sm text-violet-300 hover:bg-violet-900/50">
+              ✓ Mark season {season.season_number} watched
+            </button>
+          </form>
+        )}
         {season && (
           <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
             {season.episodes.map((ep) => {
@@ -477,6 +493,7 @@ export interface LibraryRow {
   title: string;
   poster_path: string | null;
   status: string;
+  eps_watched: number;
 }
 
 export const LibraryPage: FC<{ rows: LibraryRow[]; status: string }> = ({ rows, status }) => (
@@ -512,7 +529,10 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string }> = ({ rows, 
               class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
             />
             <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{r.title}</p>
-            <p class="text-xs text-slate-500">{r.status}</p>
+            <p class="text-xs text-slate-500">
+              {r.status}
+              {r.media_type === "tv" && r.eps_watched > 0 ? ` · ${r.eps_watched} ep${r.eps_watched === 1 ? "" : "s"} watched` : ""}
+            </p>
           </a>
         ))}
       </div>
