@@ -1543,11 +1543,16 @@ export const SettingsPage: FC<{ user: User; saved?: string; error?: string }> = 
     <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
       <h2 class="font-semibold">Export your data</h2>
       <p class="mt-1 text-sm text-slate-400">
-        Download everything you've tracked — library, statuses, ratings and full watch history — as a JSON file. Your data is always yours to take.
+        Download everything you've tracked — library, statuses, ratings and full watch history. JSON for backups, CSV for spreadsheets and other trackers. Your data is always yours to take.
       </p>
-      <a href="/api/export" class="mt-4 inline-block rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium hover:border-violet-500 hover:text-violet-300" download>
-        Download export (JSON)
-      </a>
+      <div class="mt-4 flex flex-wrap gap-2">
+        <a href="/api/export" class="inline-block rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium hover:border-violet-500 hover:text-violet-300" download>
+          Download export (JSON)
+        </a>
+        <a href="/api/export.csv" class="inline-block rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium hover:border-violet-500 hover:text-violet-300" download>
+          Download export (CSV)
+        </a>
+      </div>
     </section>
     <section class="mt-6 rounded-2xl border border-red-900/60 bg-red-950/20 p-6">
       <h2 class="font-semibold text-red-300">Delete account</h2>

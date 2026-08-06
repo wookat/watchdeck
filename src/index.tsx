@@ -1015,6 +1015,43 @@ app.get("/api/export", async (c) => {
   });
 });
 
+app.get("/api/export.csv", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const [tracked, episodes, movies] = await c.env.DB.batch([
+    c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
+    c.env.DB.prepare(
+      `SELECT w.season, w.episode, w.watched_at, t.title FROM episode_watches w
+       LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
+       WHERE w.user_id = ? ORDER BY t.title, w.season, w.episode`
+    ).bind(user.id),
+    c.env.DB.prepare(
+      `SELECT w.watched_at, t.title FROM movie_watches w
+       LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'movie'
+       WHERE w.user_id = ? ORDER BY t.title`
+    ).bind(user.id),
+  ]);
+  const esc = (v: unknown) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = ["type,title,season,episode,watched_at,rating,status"];
+  for (const t of tracked.results as { media_type: string; title: string; status: string; rating: number | null }[]) {
+    lines.push([t.media_type === "tv" ? "show" : "movie", esc(t.title), "", "", "", t.rating ?? "", t.status].join(","));
+  }
+  for (const e of episodes.results as { season: number; episode: number; watched_at: string; title: string | null }[]) {
+    lines.push(["episode", esc(e.title), e.season, e.episode, e.watched_at, "", ""].join(","));
+  }
+  for (const m of movies.results as { watched_at: string; title: string | null }[]) {
+    lines.push(["movie_watch", esc(m.title), "", "", m.watched_at, "", ""].join(","));
+  }
+  return c.body(lines.join("\n") + "\n", 200, {
+    "content-type": "text/csv; charset=utf-8",
+    "content-disposition": `attachment; filename="watchdeck-export-${new Date().toISOString().slice(0, 10)}.csv"`,
+    "cache-control": "no-store",
+  });
+});
+
 app.post("/api/settings/profile", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");

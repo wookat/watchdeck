@@ -1273,3 +1273,15 @@
 - 冒烟全过；基线（8/Sev 4/Friends 0/Mandalorian ★4）D1 只读核验不变；r10 净零；throwaway r90-qa-* 已删除并 D1 复核。
 
 **结论**：R86-R89 无 P0/P1/P2/P3 遗留。证据评论见 PR #37。
+
+---
+
+## Round 91 — 2026-08-06
+
+**驱动：④竞品（Trakt 数据导出为 VIP 功能；TV Time 锁数据是难民痛点根源）+ ②UX（R29 JSON 导出对表格/其他工具不友好）**
+
+**修复（P2）**
+- /settings 新增 CSV 导出（/api/export.csv）：type,title,season,episode,watched_at,rating,status 扁平结构，含库条目/逐集流水/电影流水，标题带引号转义；与我们自己的 CSV 导入格式兼容（数据可携带权闭环）。
+
+**证据**
+- Version 881ad0bd；线上验证（r10 登录后登出）：CSV 首行表头正确，show/movie/episode 行齐全（Breaking Bad S01E01/E02 等）。
