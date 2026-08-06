@@ -1337,3 +1337,16 @@
 - 冒烟全过；基线（8/Sev 4/Friends 0/Mandalorian ★4）不变；r10 净零；throwaway r95-qa-* 已删除并 D1 复核。
 
 **结论**：R91-R94 无 P0/P1/P2/P3 遗留。证据评论见 PR #38。
+
+---
+
+## Round 96 — 2026-08-06
+
+**驱动：④竞品/SEO 技术审计（robots.txt 缺私密路由；私密页与分享页无 noindex 信号，token 分享页可能被搜索引擎收录泄露个人统计）**
+
+**修复（P1/P2）**
+- robots.txt 补齐 Disallow: /stats /history /settings /forgot /reset /u/。
+- 中间件对 /home /library /calendar /import /stats /history /settings /forgot /reset /u/* 统一输出 X-Robots-Tag: noindex（robots Disallow 只阻爬不阻收录，header 才是权威 noindex 信号；分享页为 secret-link 语义，照 Google Docs 惯例不收录）。公开页（/、/browse、详情页）无该 header，已验证。
+
+**证据**
+- Version 9ce69b66；线上验证：robots.txt 新 6 行生效；/stats(302)、/forgot(200)、/history、/settings、/u/abc 均返回 x-robots-tag: noindex；/、/browse、剧集详情页无此 header。

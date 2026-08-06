@@ -77,6 +77,10 @@ app.use("*", async (c, next) => {
   h.set("x-frame-options", "DENY");
   h.set("referrer-policy", "strict-origin-when-cross-origin");
   h.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  const path = new URL(c.req.url).pathname;
+  if (/^\/(home|library|calendar|import|stats|history|settings|forgot|reset|u)(\/|$)/.test(path)) {
+    h.set("x-robots-tag", "noindex");
+  }
   if (c.res.headers.get("content-type")?.includes("text/html")) {
     h.set(
       "content-security-policy",
@@ -1520,7 +1524,9 @@ app.post("/api/import/batch", async (c) => {
 
 // ---------- seo ----------
 app.get("/robots.txt", (c) =>
-  c.text(`User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /calendar\nDisallow: /import\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`)
+  c.text(
+    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /calendar\nDisallow: /import\nDisallow: /stats\nDisallow: /history\nDisallow: /settings\nDisallow: /forgot\nDisallow: /reset\nDisallow: /u/\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`
+  )
 );
 
 app.get("/sitemap.xml", async (c) => {
