@@ -544,6 +544,18 @@ function logFunnel(c: { env: Env; executionCtx: { waitUntil(promise: Promise<unk
   );
 }
 
+async function maybeAutoComplete(env: Env, userId: number, tmdbId: number, details: { status: string; number_of_episodes: number }): Promise<void> {
+  if (!(details.status === "Ended" || details.status === "Canceled")) return;
+  const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
+    .bind(userId, tmdbId)
+    .first<{ n: number }>();
+  if ((n?.n ?? 0) >= details.number_of_episodes && details.number_of_episodes > 0) {
+    await env.DB.prepare("UPDATE tracked SET status = 'completed' WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv' AND status = 'watching'")
+      .bind(userId, tmdbId)
+      .run();
+  }
+}
+
 function invalidateHours(c: { env: Env; executionCtx: { waitUntil(promise: Promise<unknown>): void } }, userId: number): void {
   c.executionCtx.waitUntil(c.env.CACHE.delete(`hours:${userId}`).catch(() => {}));
 }
@@ -749,6 +761,9 @@ app.post("/api/watch", async (c) => {
     await c.env.DB.prepare("DELETE FROM episode_watches WHERE user_id = ? AND tmdb_id = ? AND season = ? AND episode = ?")
       .bind(user.id, tmdbId, season, episode)
       .run();
+    await c.env.DB.prepare("UPDATE tracked SET status = 'watching' WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv' AND status = 'completed'")
+      .bind(user.id, tmdbId)
+      .run();
   } else {
     await c.env.DB.prepare("INSERT OR IGNORE INTO episode_watches (user_id, tmdb_id, season, episode) VALUES (?, ?, ?, ?)")
       .bind(user.id, tmdbId, season, episode)
@@ -761,6 +776,7 @@ app.post("/api/watch", async (c) => {
     )
       .bind(user.id, tmdbId, details.name, details.poster_path)
       .run();
+    await maybeAutoComplete(c.env, user.id, tmdbId, details);
   }
   invalidateHours(c, user.id);
   return c.redirect(String(form.redirect ?? "/home"));
@@ -785,6 +801,10 @@ app.post("/api/watch-season", async (c) => {
     await c.env.DB.prepare("DELETE FROM episode_watches WHERE user_id = ? AND tmdb_id = ? AND season = ?")
       .bind(user.id, tmdbId, seasonNum)
       .run();
+    await c.env.DB.prepare("UPDATE tracked SET status = 'watching' WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv' AND status = 'completed'")
+      .bind(user.id, tmdbId)
+      .run();
+    invalidateHours(c, user.id);
     return c.redirect(String(form.redirect ?? "/home"));
   }
   const details = await tvDetails(c.env, tmdbId);
@@ -807,6 +827,7 @@ app.post("/api/watch-season", async (c) => {
   )
     .bind(user.id, tmdbId, details.name, details.poster_path)
     .run();
+  await maybeAutoComplete(c.env, user.id, tmdbId, details);
   invalidateHours(c, user.id);
   return c.redirect(String(form.redirect ?? "/home"));
 });

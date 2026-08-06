@@ -162,3 +162,17 @@
 
 **证据**
 - 部署后 `/home` 线上 200；该分支逻辑（nextUp 空 && watchlist>0）待下次 5 轮回归中用全新账号覆盖验证。
+
+---
+
+## Round 10 — 2026-08-05
+
+**发现**
+- [竞品/产品逻辑 / P2] TV Time 会在看完最后一集时自动把剧标为 completed；我们看完已完结剧的全部集数后状态仍停留在 watching，Library「Completed」页签与 Stats「shows completed」长期偏低，需要用户手动改状态（我们 UI 甚至没有改状态入口）。
+
+**修复（已部署，Version e1d5fed6）**
+- `maybeAutoComplete`：单集标记或整季标记后，若剧集 TMDB status 为 Ended/Canceled 且已看集数 ≥ number_of_episodes，自动将 tracked.status 从 watching 置为 completed（不覆盖 watchlist/dropped 等手动状态）。
+- 单集 undo 与整季 unmark 时，若状态为 completed 自动回退为 watching；整季 unmark 顺带补上此前遗漏的 invalidateHours。
+
+**证据（线上验证）**
+- QA 账号整季标记 Chernobyl（Ended，5 集）→ tracked.status='completed'（eps=5）；整季 unmark → status='watching'、集数归零。测试数据已清理。
