@@ -509,3 +509,17 @@
 
 **证据（线上验证）**
 - r10 账号 /library tab 呈现 All 3 / Watching 2 / Watchlist 0 / Completed 1 / Dropped 0，与 D1 数据一致。
+
+---
+
+## Round 35 — 2026-08-06（QA 回归轮）
+
+**发现（测试驱动，测试代理完整回归 31-34 轮 + 冒烟）**
+- 无 P0/P1/P2。1 个 P3 为测试夹具问题（原示例剧 219246 的下一集播出日已过，改用 The Simpsons /shows/456 验证徽章，功能正常）。
+
+**结果（生产 Version 99ed3cc6）**
+- R31 搜索类型过滤（All/TV/Movies、aria-current、空结果提示）通过；R32 下一集徽章（在播显示/完结不显示）通过；R33 私人笔记（保存/持久/导出含 notes/清除还原 NULL、未追踪与未登录不显示）通过；R34 Library tab 计数与 D1 一致通过。
+- 冒烟：落地页 Trending、R30 分页钳制（?page=99 → Page 20 of 20）、标记+撤销均通过；QA 基线 8/4/0 前后一致；r10 净零还原（0 笔记）。
+
+**证据**
+- 测试代理报告 test-report-rounds31-34-regression.md + 录屏；PR #34 评论附截图。
