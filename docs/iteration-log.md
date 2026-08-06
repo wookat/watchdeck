@@ -822,3 +822,16 @@
 
 **证据（线上验证）**
 - /app.js 含 keydown handler；/search 无 q 时渲染 autofocus、有 q 时不渲染（curl 验证）。
+
+---
+
+## Round 58 — 2026-08-06
+
+**发现（pSEO/增长驱动）**
+- [P2] sitemap 详情页只覆盖 trending+popular（时效性强、随热度轮换），完全没收录 top-rated 常青经典（肖申克、教父、Breaking Bad 类长尾搜索主力）。
+
+**修复（已部署，Version fc68b759）**
+- tmdb.ts 新增 topRated(type, page)（/tv|movie/top_rated，24h KV 缓存）；sitemap 并入 top_rated TV/电影各 2 页，经既有去重后 URL 从 182 → 254（+72 个常青详情页）。
+
+**证据（线上验证）**
+- sitemap.xml `<loc>` 计数 182 → 254（curl 验证）。

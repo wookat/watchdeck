@@ -16,6 +16,7 @@ import {
   discoverByNetwork,
   discoverByYear,
   discoverPopular,
+  topRated,
   NETWORKS,
   recommendations,
   watchProviders,
@@ -1418,6 +1419,10 @@ app.get("/sitemap.xml", async (c) => {
       discoverPopular(c.env, "tv", 2),
       discoverPopular(c.env, "movie", 1),
       discoverPopular(c.env, "movie", 2),
+      topRated(c.env, "tv", 1),
+      topRated(c.env, "tv", 2),
+      topRated(c.env, "movie", 1),
+      topRated(c.env, "movie", 2),
     ]);
     const seen = new Set<string>();
     const pushTitle = (type: "tv" | "movie", id: number, title: string) => {
@@ -1429,7 +1434,7 @@ app.get("/sitemap.xml", async (c) => {
     for (const s of shows.results) pushTitle("tv", s.id, s.name ?? "");
     for (const m of movies.results) pushTitle("movie", m.id, m.title ?? "");
     for (const [i, p] of popular.entries()) {
-      const type = i < 2 ? "tv" : "movie";
+      const type = i < 2 || (i >= 4 && i < 6) ? "tv" : "movie";
       for (const r of p.results) pushTitle(type, r.id, (type === "tv" ? r.name : r.title) ?? "");
     }
     for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
