@@ -57,3 +57,20 @@
 
 **已知限制（P3，下轮候选）**
 - hours 缓存 1 小时，导入大量数据后统计页最长 1 小时才刷新该卡片。
+
+---
+
+## Round 5 — 2026-08-05
+
+**发现**
+- [测试 / P1] 部署链问题：Round 3/4 分支基于 main（不含未合并的 PR #10），线上部署一度回退了 Round 2 的 Next Up 并行与富管理统计。本轮已将 iteration-2 分支合并进来重新部署，线上恢复全量代码。
+- [QA / P2] Round 4 已知限制：hours watched 缓存 1 小时，标记/导入后统计不即时。
+- [数据分析] 第一方数据周览：人类 PV 326（11 国）、注册 5、waitlist 2、搜索词 3 条——仍以内部 QA 为主，无自然流量，获客是最大瓶颈（社区投放待老板口径）。
+
+**修复（已部署，Version 7a484274）**
+- 合并 iteration-2 分支：恢复 /home 并行 Next Up、富 /api/stats、reset 页导航修复。
+- `invalidateHours()`：/api/watch、/api/watch-season、/api/watch-movie、/api/import/batch 四处变更后台删除 `hours:<userId>` KV 键，统计即时刷新。
+
+**证据（线上验证）**
+- 标记 Severance S01E04 后 stats 立即 4→5 hours（无需等缓存过期）。
+- /home 200 / 0.41s（并行恢复）。
