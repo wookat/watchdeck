@@ -990,6 +990,7 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
           ["recent", "Recently updated"],
           ["title", "Title A\u2013Z"],
           ["progress", "Most watched"],
+          ["rating", "Top rated"],
         ] as const
       ).map(([key, label]) => (
         <a

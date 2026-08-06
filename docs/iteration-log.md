@@ -1246,3 +1246,15 @@
 
 **证据**
 - Version 0787eda1；线上验证：Inception 页出现 youtube.com/watch?v=JE9z-gy4De4，Severance 页出现 xEQP4VVuyrY；Breaking Bad（TMDB 无 Trailer 条目）正确不显示。
+
+---
+
+## Round 89 — 2026-08-06
+
+**驱动：②UX（R82/R83 引入的评分数据在 Library 无排序出口）+ ④竞品（Trakt/Serializd 支持按个人评分排序）**
+
+**修复（P2）**
+- Library 新增「Top rated」排序（rating IS NULL 排最后 → rating DESC → updated_at DESC），SQL 下推与既有分页兼容。
+
+**证据**
+- Version 0448d376；线上验证（r10 只读浏览后登出）：/library?sort=rating 渲染 Top rated 选中态，零评分账号回落按更新时间排序。

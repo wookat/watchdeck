@@ -578,9 +578,15 @@ app.get("/library", async (c) => {
     conds.push("title LIKE ? COLLATE NOCASE");
     binds.push(`%${q}%`);
   }
-  const sort = ["recent", "title", "progress"].includes(c.req.query("sort") ?? "") ? c.req.query("sort")! : "recent";
+  const sort = ["recent", "title", "progress", "rating"].includes(c.req.query("sort") ?? "") ? c.req.query("sort")! : "recent";
   const orderBy =
-    sort === "title" ? "title COLLATE NOCASE ASC" : sort === "progress" ? "eps_watched DESC, updated_at DESC" : "updated_at DESC";
+    sort === "title"
+      ? "title COLLATE NOCASE ASC"
+      : sort === "progress"
+        ? "eps_watched DESC, updated_at DESC"
+        : sort === "rating"
+          ? "rating IS NULL, rating DESC, updated_at DESC"
+          : "updated_at DESC";
   const perPage = 120;
   const [filteredTotal, countRows] = await Promise.all([
     c.env.DB.prepare(`SELECT COUNT(*) AS n FROM tracked WHERE ${conds.join(" AND ")}`).bind(...binds).first<{ n: number }>(),
