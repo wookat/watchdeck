@@ -79,12 +79,29 @@ app.use("*", async (c, next) => {
   }
 });
 
+const RATE_WINDOW_MS = 600_000;
+
+function rateLimitKey(c: { req: { header: (n: string) => string | undefined } }, bucket: string): string {
+  return `rl:${bucket}:${c.req.header("cf-connecting-ip") ?? "unknown"}`;
+}
+
 async function rateLimit(c: { env: { CACHE: KVNamespace }; req: { header: (n: string) => string | undefined } }, bucket: string, limit: number): Promise<boolean> {
-  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-  const key = `rl:${bucket}:${ip}`;
-  const count = parseInt((await c.env.CACHE.get(key)) ?? "0", 10) + 1;
-  await c.env.CACHE.put(key, String(count), { expirationTtl: 600 });
-  return count <= limit;
+  const key = rateLimitKey(c, bucket);
+  const now = Date.now();
+  const raw = await c.env.CACHE.get(key);
+  let n = 0;
+  let exp = now + RATE_WINDOW_MS;
+  if (raw) {
+    const parts = raw.split(":");
+    const storedExp = parseInt(parts[1] ?? "0", 10);
+    if (storedExp > now) {
+      n = parseInt(parts[0] ?? "0", 10);
+      exp = storedExp;
+    }
+  }
+  n += 1;
+  await c.env.CACHE.put(key, `${n}:${exp}`, { expirationTtl: Math.max(60, Math.ceil((exp - now) / 1000)) });
+  return n <= limit;
 }
 
 app.use("*", async (c, next) => {
@@ -182,6 +199,7 @@ app.post("/login", async (c) => {
     return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Wrong email or password." /></Layout>, 401);
   }
   await createSession(c, row.id);
+  c.executionCtx.waitUntil(c.env.CACHE.delete(rateLimitKey(c, "login")).catch(() => {}));
   return c.redirect("/home");
 });
 
