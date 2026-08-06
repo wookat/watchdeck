@@ -194,3 +194,18 @@
 
 **证据（线上验证）**
 - throwaway 账号 track Chernobyl → 详情页出现 untrack 表单；POST /api/untrack → 按钮消失、tracked 行删除（302 + 页面复查）。
+
+---
+
+## Round 12 — 2026-08-05
+
+**发现**
+- [前端视觉/移动端 / P2] 375px 登录态导航拆成两行且「Next Up」文字内部折行，视觉破碎。
+- [前端视觉 / P3] 上轮回归指出场记板占位图小尺寸下像日历图标。
+
+**修复（已部署，Version 3b043726）**
+- 移动端导航改为单行横向滚动（whitespace-nowrap + overflow-x-auto + 隐藏滚动条 scrollbar-width:none / ::-webkit-scrollbar hidden），桌面端不变。
+- 占位海报重绘：加斜置带条纹的场记板顶板，与主板形成明显夹角，不再像日历。
+
+**证据（线上验证）**
+- 375px 截图：导航单行、无横向滚动条、Next Up 不折行；新 SVG 渲染核对为场记板。

@@ -52,7 +52,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
               class="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
             />
           </form>
-          <div class="ml-auto flex items-center gap-2 text-sm sm:gap-3">
+          <div class="ml-auto flex items-center gap-2 text-sm sm:gap-3 whitespace-nowrap max-sm:w-full max-sm:overflow-x-auto max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden [&>*]:shrink-0">
             <a href="/search" class="sm:hidden" aria-label="Search">🔍</a>
             <a href="/browse" class="px-1 py-2 hover:text-violet-400">Browse</a>
             {user ? (
