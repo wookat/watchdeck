@@ -835,3 +835,17 @@
 
 **证据（线上验证）**
 - sitemap.xml `<loc>` 计数 182 → 254（curl 验证）。
+
+---
+
+## Round 59 — 2026-08-06
+
+**发现（竞品/导入漏斗驱动）**
+- [P1] Netflix ViewingActivity.csv（Title,Date 两列）走通用 CSV 路径时把「Show: Season 4: Episode Name」整串当剧名，TMDB 必然匹配失败——Netflix 是最大的观看历史来源，Trakt 也只能靠第三方工具导。
+
+**修复（已部署，Version d5f2e13d）**
+- importer.ts 新增 isNetflixCsv（header 恰为 title,date）+ parseNetflixCsv：按「: Season/Part/Series/Volume/Chapter N/Limited Series」或 ≥3 段冒号切出剧名去重导入为 followed，独立标题按电影带观看日期导入（Netflix 不导出集号，已在 /import 文案说明）；/api/import/parse 优先走 Netflix 分支。
+- 本地单测 + 线上 r10 实测：6 行样例 → shows [Stranger Things, Wednesday, Beef]、movies [The Gray Man, Glass Onion]，剧名全部干净。
+
+**证据（线上验证）**
+- /api/import/parse 返回上述解析结果（仅 parse 未 apply，r10 数据不变）。

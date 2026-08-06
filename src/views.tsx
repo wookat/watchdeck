@@ -1538,7 +1538,8 @@ export const ImportPage: FC = () => (
         gdpr.tvtime.com
       </a>
       . We import your tracked episodes, followed shows <strong>and movies</strong> — then take you straight to your next episode. Coming
-      from Trakt or Serializd? A CSV export with a title column works too.
+      from Trakt or Serializd? A CSV export with a title column works too. Netflix's ViewingActivity.csv also works — shows are added to
+      your library and movies marked watched (Netflix doesn't export episode numbers).
     </p>
     <div
       id="dropzone"

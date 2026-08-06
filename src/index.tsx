@@ -25,7 +25,7 @@ import {
   topCast,
   type CastMember,
 } from "./tmdb";
-import { parseTvTimeZip, parseGenericCsv, type ParsedImport } from "./importer";
+import { parseTvTimeZip, parseGenericCsv, isNetflixCsv, parseNetflixCsv, type ParsedImport } from "./importer";
 import { sendEmail, welcomeEmail, resetEmail } from "./email";
 import { shareOgImage } from "./og";
 import {
@@ -1309,7 +1309,8 @@ app.post("/api/import/parse", async (c) => {
   if (bytes.length > 30 * 1024 * 1024) return c.json({ error: "File too large (max 30 MB)" }, 413);
   const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
   try {
-    const parsed = isZip ? parseTvTimeZip(bytes) : parseGenericCsv(new TextDecoder().decode(bytes));
+    const text = isZip ? "" : new TextDecoder().decode(bytes);
+    const parsed = isZip ? parseTvTimeZip(bytes) : isNetflixCsv(text) ? parseNetflixCsv(text) : parseGenericCsv(text);
     if (parsed.shows.length === 0 && parsed.movies.length === 0) {
       logFunnel(c, "import-parse-empty");
       return c.json(
