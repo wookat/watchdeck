@@ -415,7 +415,7 @@ export const HomePage: FC<{
         {nextUp.map((n) => (
           <div class="flex gap-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
             <a href={`/shows/${n.tmdbId}-${slugify(n.title)}`}>
-              <img src={poster(n.posterPath, "w154")} alt={n.title} class="h-28 w-auto rounded-lg border border-slate-800 object-cover" />
+              <img src={poster(n.posterPath, "w154")} alt={n.title} class="aspect-[2/3] h-28 w-auto rounded-lg border border-slate-800 object-cover" />
             </a>
             <div class="min-w-0">
               <a href={`/shows/${n.tmdbId}-${slugify(n.title)}`} class="line-clamp-1 font-semibold hover:text-violet-400">{n.title}</a>
@@ -664,7 +664,7 @@ export const ShowPage: FC<{
   return (
     <div>
       <div class="flex flex-col gap-6 sm:flex-row">
-        <img src={poster(show.poster_path)} alt={show.name} class="w-40 self-start rounded-xl border border-slate-800 sm:w-52" />
+        <img src={poster(show.poster_path)} alt={show.name} class="aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover sm:w-52" />
         <div class="min-w-0 flex-1">
           <h1 class="text-3xl font-bold">{show.name}</h1>
           <p class="mt-1 text-sm text-slate-400">
@@ -843,7 +843,7 @@ export const MoviePage: FC<{
   return (
     <div>
     <div class="flex flex-col gap-6 sm:flex-row">
-      <img src={poster(movie.poster_path)} alt={movie.title} class="w-40 self-start rounded-xl border border-slate-800 sm:w-52" />
+      <img src={poster(movie.poster_path)} alt={movie.title} class="aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover sm:w-52" />
       <div class="min-w-0 flex-1">
         <h1 class="text-3xl font-bold">{movie.title}</h1>
         <p class="mt-1 text-sm text-slate-400">
@@ -1085,7 +1085,7 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
           return (
           <li class={d.today ? "flex items-center gap-4 bg-violet-950/40 px-4 py-3" : "flex items-center gap-4 bg-slate-900/40 px-4 py-3"}>
             <span class={d.today ? "w-24 shrink-0 text-sm font-semibold text-violet-300" : "w-24 shrink-0 text-sm text-violet-300"} title={it.airDate}>{d.label}</span>
-            <img src={poster(it.posterPath, "w92")} alt="" class="h-14 w-auto rounded border border-slate-800" />
+            <img src={poster(it.posterPath, "w92")} alt="" class="aspect-[2/3] h-14 w-auto rounded border border-slate-800 object-cover" />
             <div class="min-w-0">
               <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
                 {it.title}

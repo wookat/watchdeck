@@ -977,3 +977,16 @@
 
 **证据**
 - Version 3a2847ce；线上验证：落地页渲染 6 个 FAQ 折叠项，JSON-LD 含 FAQPage + 6 Question。
+
+---
+
+## Round 69 — 2026-08-06
+
+**驱动：③前端视觉（Core Web Vitals / CLS）**
+- 详情页主海报、Next Up 卡片海报、Airing this week 缩略图未声明宽高比，图片加载时下方内容会跳动（CLS）。
+
+**修复（P2）**
+- 4 处 `<img>` 补 `aspect-[2/3]`（+object-cover）：show/movie 详情主海报、Next Up 卡海报、本周播出缩略图——布局在图片加载前即固定。
+
+**证据**
+- Version 9220d69b；线上验证详情页海报类名含 aspect-[2/3]。
