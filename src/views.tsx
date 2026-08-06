@@ -1422,6 +1422,23 @@ export const HistoryPage: FC<{ items: HistoryItem[] }> = ({ items }) => (
                             : "Movie"}
                         </p>
                       </div>
+                      <form action={it.mediaType === "tv" ? "/api/watch" : "/api/watch-movie"} method="post" class="shrink-0">
+                        <input type="hidden" name="tmdb_id" value={String(it.tmdbId)} />
+                        {it.mediaType === "tv" && it.season != null && it.episode != null && (
+                          <>
+                            <input type="hidden" name="season" value={String(it.season)} />
+                            <input type="hidden" name="episode" value={String(it.episode)} />
+                          </>
+                        )}
+                        <input type="hidden" name="undo" value="1" />
+                        <input type="hidden" name="redirect" value="/history" />
+                        <button
+                          class="rounded-lg border border-slate-700 px-2.5 py-1 text-xs text-slate-400 hover:border-red-500 hover:text-red-400"
+                          aria-label={`Remove ${it.title}${it.mediaType === "tv" && it.season != null && it.episode != null ? ` S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}` : ""} from history`}
+                        >
+                          Remove
+                        </button>
+                      </form>
                     </li>
                   ))}
                 </ul>

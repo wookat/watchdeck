@@ -751,3 +751,16 @@
 
 **证据（线上验证）**
 - Breaking Bad：ratingValue 8.9 / ratingCount 18297；Inception：8.4 / 39752（curl 验证）。
+
+---
+
+## Round 53 — 2026-08-06
+
+**发现（UX+竞品驱动）**
+- [P2] /history 只能看不能改：误标的观看记录无法从历史页撤销，必须回到剧集页找到对应季集再点 undo（电影则要进电影页）——Trakt 历史页每行都有删除。
+
+**修复（已部署，Version c5012a1d）**
+- 历史每行新增「Remove」按钮：TV 行提交 /api/watch（undo=1，带 season/episode），电影行提交 /api/watch-movie（undo=1），redirect=/history；带 aria-label 标明删的是哪一条。
+
+**证据（线上验证）**
+- r10：标记 BB S03E04 → /history 出现该行 → Remove → 该行消失；episode_watches 复核 41 条净零；历史页 42 行均带 Remove 按钮。
