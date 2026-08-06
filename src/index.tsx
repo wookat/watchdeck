@@ -167,7 +167,7 @@ app.get("/reset/:token", async (c) => {
   if (!(await validResetToken(c.env, token))) {
     return c.html(<Layout user={null} title="Reset password"><ForgotForm error="That reset link is invalid or expired. Request a new one below." /></Layout>, 404);
   }
-  return c.html(<Layout user={null} title="Choose a new password"><ResetForm token={token} /></Layout>);
+  return c.html(<Layout user={c.get("user")} title="Choose a new password"><ResetForm token={token} /></Layout>);
 });
 
 app.post("/reset/:token", async (c) => {
@@ -204,37 +204,40 @@ app.get("/home", async (c) => {
     .bind(user.id)
     .all<{ tmdb_id: number; title: string; poster_path: string | null }>();
 
-  const nextUp: NextUpItem[] = [];
-  for (const t of tracked.results) {
-    try {
-      const details = await tvDetails(c.env, t.tmdb_id);
-      const watched = await c.env.DB.prepare(
-        "SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?"
-      )
-        .bind(user.id, t.tmdb_id)
-        .all<{ season: number; episode: number }>();
-      const seen = new Set(watched.results.map((w) => `${w.season}x${w.episode}`));
-      outer: for (const s of details.seasons.filter((s) => s.season_number > 0)) {
-        const season = await seasonDetails(c.env, t.tmdb_id, s.season_number);
-        for (const ep of season.episodes) {
-          if (ep.air_date && ep.air_date <= new Date().toISOString().slice(0, 10) && !seen.has(`${ep.season_number}x${ep.episode_number}`)) {
-            nextUp.push({
-              tmdbId: t.tmdb_id,
-              title: details.name,
-              posterPath: details.poster_path,
-              season: ep.season_number,
-              episode: ep.episode_number,
-              episodeName: ep.name,
-              airDate: ep.air_date,
-            });
-            break outer;
+  const today = new Date().toISOString().slice(0, 10);
+  const perShow = await Promise.all(
+    tracked.results.map(async (t): Promise<NextUpItem | null> => {
+      try {
+        const details = await tvDetails(c.env, t.tmdb_id);
+        const watched = await c.env.DB.prepare(
+          "SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?"
+        )
+          .bind(user.id, t.tmdb_id)
+          .all<{ season: number; episode: number }>();
+        const seen = new Set(watched.results.map((w) => `${w.season}x${w.episode}`));
+        for (const s of details.seasons.filter((s) => s.season_number > 0)) {
+          const season = await seasonDetails(c.env, t.tmdb_id, s.season_number);
+          for (const ep of season.episodes) {
+            if (ep.air_date && ep.air_date <= today && !seen.has(`${ep.season_number}x${ep.episode_number}`)) {
+              return {
+                tmdbId: t.tmdb_id,
+                title: details.name,
+                posterPath: details.poster_path,
+                season: ep.season_number,
+                episode: ep.episode_number,
+                episodeName: ep.name,
+                airDate: ep.air_date,
+              };
+            }
           }
         }
+      } catch {
+        // TMDB hiccup on one show shouldn't kill the page
       }
-    } catch {
-      // TMDB hiccup on one show shouldn't kill the page
-    }
-  }
+      return null;
+    })
+  );
+  const nextUp = perShow.filter((x): x is NextUpItem => x !== null);
   const wl = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND status = 'watchlist'")
     .bind(user.id)
     .first<{ n: number }>();
@@ -904,10 +907,30 @@ app.get("/:key{[a-f0-9]{32}\\.txt}", (c) => {
 app.get("/api/stats", async (c) => {
   const user = c.get("user");
   if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
-  const rows = await c.env.DB.prepare(
-    "SELECT date(ts) AS day, COUNT(*) AS views FROM analytics_events WHERE ua_class != 'bot' GROUP BY day ORDER BY day DESC LIMIT 30"
-  ).all();
-  return c.json(rows.results);
+  const [daily, countries, topPaths, searches, signups, waitlist] = await Promise.all([
+    c.env.DB.prepare(
+      "SELECT date(ts) AS day, COUNT(*) AS views FROM analytics_events WHERE ua_class != 'bot' GROUP BY day ORDER BY day DESC LIMIT 30"
+    ).all(),
+    c.env.DB.prepare(
+      "SELECT country, COUNT(*) AS views FROM analytics_events WHERE ua_class != 'bot' AND ts >= datetime('now', '-30 days') GROUP BY country ORDER BY views DESC LIMIT 15"
+    ).all(),
+    c.env.DB.prepare(
+      "SELECT path, COUNT(*) AS views FROM analytics_events WHERE ua_class != 'bot' AND ts >= datetime('now', '-30 days') GROUP BY path ORDER BY views DESC LIMIT 20"
+    ).all(),
+    c.env.DB.prepare(
+      "SELECT q, COUNT(*) AS n, MAX(results) AS results FROM search_queries WHERE ts >= datetime('now', '-30 days') GROUP BY q ORDER BY n DESC LIMIT 20"
+    ).all(),
+    c.env.DB.prepare("SELECT COUNT(*) AS n FROM users").first<{ n: number }>(),
+    c.env.DB.prepare("SELECT COUNT(*) AS n FROM email_signups").first<{ n: number }>(),
+  ]);
+  return c.json({
+    daily: daily.results,
+    countries: countries.results,
+    topPaths: topPaths.results,
+    topSearches: searches.results,
+    users: signups?.n ?? 0,
+    waitlist: waitlist?.n ?? 0,
+  });
 });
 
 app.notFound((c) =>
