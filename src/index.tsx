@@ -39,6 +39,8 @@ import {
   BrowseGenre,
   type UserStats,
   type NextUpItem,
+  type HistoryItem,
+  HistoryPage,
   type WatchlistPreviewItem,
   type LibraryRow,
   type CalendarItem,
@@ -624,6 +626,56 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     byMonth: byMonth.results,
   };
 }
+
+app.get("/history", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const [eps, movies] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT w.tmdb_id, w.season, w.episode, w.watched_at, t.title, t.poster_path
+       FROM episode_watches w
+       LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
+       WHERE w.user_id = ? ORDER BY w.watched_at DESC LIMIT 100`
+    )
+      .bind(user.id)
+      .all<{ tmdb_id: number; season: number; episode: number; watched_at: string; title: string | null; poster_path: string | null }>(),
+    c.env.DB.prepare(
+      `SELECT w.tmdb_id, w.watched_at, t.title, t.poster_path
+       FROM movie_watches w
+       LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'movie'
+       WHERE w.user_id = ? ORDER BY w.watched_at DESC LIMIT 100`
+    )
+      .bind(user.id)
+      .all<{ tmdb_id: number; watched_at: string; title: string | null; poster_path: string | null }>(),
+  ]);
+  const items: HistoryItem[] = [
+    ...eps.results.map((e) => ({
+      tmdbId: e.tmdb_id,
+      mediaType: "tv" as const,
+      title: e.title ?? `Show #${e.tmdb_id}`,
+      posterPath: e.poster_path,
+      season: e.season,
+      episode: e.episode,
+      watchedAt: e.watched_at,
+    })),
+    ...movies.results.map((m) => ({
+      tmdbId: m.tmdb_id,
+      mediaType: "movie" as const,
+      title: m.title ?? `Movie #${m.tmdb_id}`,
+      posterPath: m.poster_path,
+      season: null,
+      episode: null,
+      watchedAt: m.watched_at,
+    })),
+  ]
+    .sort((a, b) => (a.watchedAt < b.watchedAt ? 1 : -1))
+    .slice(0, 100);
+  return c.html(
+    <Layout user={user} title="History">
+      <HistoryPage items={items} />
+    </Layout>
+  );
+});
 
 app.get("/stats", async (c) => {
   const user = c.get("user");

@@ -61,6 +61,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
                 <a href="/library" class="px-1 py-2 hover:text-violet-400">Library</a>
                 <a href="/calendar" class="px-1 py-2 hover:text-violet-400">Calendar</a>
                 <a href="/import" class="px-1 py-2 hover:text-violet-400">Import</a>
+                <a href="/history" class="px-1 py-2 hover:text-violet-400">History</a>
                 <a href="/stats" class="px-1 py-2 hover:text-violet-400">Stats</a>
                 <form action="/logout" method="post" class="inline">
                   <button class="px-1 py-2 text-slate-400 hover:text-slate-200">Log out</button>
@@ -959,6 +960,48 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
     </div>
   );
 };
+
+export interface HistoryItem {
+  tmdbId: number;
+  mediaType: "tv" | "movie";
+  title: string;
+  posterPath: string | null;
+  season: number | null;
+  episode: number | null;
+  watchedAt: string;
+}
+
+export const HistoryPage: FC<{ items: HistoryItem[] }> = ({ items }) => (
+  <div>
+    <h1 class="mb-6 text-2xl font-bold">History</h1>
+    {items.length === 0 ? (
+      <p class="text-slate-400">
+        Nothing watched yet. <a href="/home" class="text-violet-400 hover:underline">Mark an episode watched</a> and it shows up here.
+      </p>
+    ) : (
+      <ul class="divide-y divide-slate-800 rounded-2xl border border-slate-800 bg-slate-900/50">
+        {items.map((it) => (
+          <li class="flex items-center gap-4 px-4 py-3">
+            <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="shrink-0">
+              <img src={poster(it.posterPath, "w92")} alt={it.title} loading="lazy" class="h-16 w-auto rounded-md border border-slate-800 object-cover" />
+            </a>
+            <div class="min-w-0 flex-1">
+              <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
+                {it.title}
+              </a>
+              <p class="text-sm text-slate-400">
+                {it.mediaType === "tv" && it.season != null && it.episode != null
+                  ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}`
+                  : "Movie"}
+              </p>
+            </div>
+            <span class="shrink-0 text-xs text-slate-500">{it.watchedAt.slice(0, 10)}</span>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+);
 
 export const StatsPage: FC<{ stats: UserStats; shareUrl: string | null }> = ({ stats, shareUrl }) => (
   <div>
