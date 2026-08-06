@@ -1167,3 +1167,16 @@
 
 **证据**
 - Version c67c21d4；线上验证（r10 只读解析，未写库）：title,type,rating CSV → The Wire rating:5（9/10 折半）、Heat rating:4；端到端 apply 由 R85 回归覆盖。
+
+---
+
+## Round 83 — 2026-08-06
+
+**驱动：②UX 走查 + ④竞品（TV Time/Trakt 均有评分分布画像；我们评分数据无可视化出口）**
+- /stats 无「Your ratings」维度，R82 导入的评分数据没有展示价值出口。
+
+**修复（P2）**
+- userStats 新增 tracked.rating GROUP BY 统计；StatsBody 新增「Your ratings」5→1 星分布条形卡（无评分时隐藏），/stats 与公开分享页同时生效。
+
+**证据**
+- Version 2dd2db4c；线上验证（r10）：打 ★4 后 /stats 出现 Your ratings 卡，清除评分后卡片消失，r10 评分已复原（D1 复核 rating 非空行数 0）。
