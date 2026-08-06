@@ -170,8 +170,46 @@ export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
         <button class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Notify me</button>
       </form>
     </section>
+    <section class="py-12">
+      <h2 class="mb-6 text-center text-2xl font-bold">Frequently asked questions</h2>
+      <div class="mx-auto max-w-2xl space-y-3">
+        {landingFaqs.map(([q, a]) => (
+          <details class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+            <summary class="cursor-pointer font-medium">{q}</summary>
+            <p class="mt-2 text-sm text-slate-400">{a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
   </div>
 );
+
+export const landingFaqs: [string, string][] = [
+  [
+    "How do I import my TV Time data?",
+    "Request your GDPR data export from TV Time (or use the ZIP you already downloaded before the shutdown), then upload it as-is on the Import page. WatchDeck matches your shows, watched episodes and movies automatically — no unpacking or reformatting needed.",
+  ],
+  [
+    "Is WatchDeck really free?",
+    "Yes. Tracking, importing, statistics, the calendar, iCal feeds and email reminders are all free. There is no paywall on core features.",
+  ],
+  [
+    "Does WatchDeck track movies as well as TV shows?",
+    "Yes — both. Your library, watch history, calendar and statistics cover TV shows and movies together, and TV Time exports import both.",
+  ],
+  [
+    "Can I import from Trakt, Serializd or Netflix?",
+    "Yes. Any CSV export with a title column works (Trakt- and Serializd-style exports), and Netflix's ViewingActivity.csv is supported too — shows are added to your library and movies marked watched.",
+  ],
+  [
+    "Can I get my data back out?",
+    "Always. You can download your complete data (library, episodes, movies, ratings, notes) as JSON from Settings at any time, and delete your account whenever you want.",
+  ],
+  [
+    "Do I need to install an app?",
+    "No. WatchDeck runs entirely in your browser and works on phones, tablets and desktops.",
+  ],
+];
 
 export const AuthForm: FC<{ mode: "login" | "signup"; error?: string }> = ({ mode, error }) => (
   <div class="mx-auto max-w-sm py-10">

@@ -963,3 +963,17 @@
 
 **证据**
 - Version c66de13e；线上验证：/search?q=zzzqqqxx 显示新文案 + Trending 区块；正常搜索（severance）结果不受影响。
+
+---
+
+## Round 68 — 2026-08-06
+
+**驱动：④竞品/SEO（TV Time 难民搜索意图）**
+- 落地页缺少针对「how to import TV Time data / is it free / can I export」等高意图长尾问题的内容与 FAQ 富结果资格。
+
+**修复（P2）**
+- 落地页新增 6 题 FAQ 区（`<details>` 折叠：TV Time 导入方法、免费、电影支持、Trakt/Serializd/Netflix 导入、数据可导出、无需装 App）。
+- 首页 JSON-LD 改为 @graph：WebSite+SearchAction 之外注入 FAQPage（6 个 Question/Answer，与页面文案一致）。
+
+**证据**
+- Version 3a2847ce；线上验证：落地页渲染 6 个 FAQ 折叠项，JSON-LD 含 FAQPage + 6 Question。

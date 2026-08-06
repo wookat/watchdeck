@@ -32,6 +32,7 @@ import { shareOgImage } from "./og";
 import {
   Layout,
   Landing,
+  landingFaqs,
   AuthForm,
   ForgotForm,
   ResetForm,
@@ -144,14 +145,26 @@ app.get("/", async (c) => {
       canonical={c.env.SITE_URL + "/"}
       jsonLd={{
         "@context": "https://schema.org",
-        "@type": "WebSite",
-        name: "WatchDeck",
-        url: c.env.SITE_URL + "/",
-        potentialAction: {
-          "@type": "SearchAction",
-          target: { "@type": "EntryPoint", urlTemplate: `${c.env.SITE_URL}/search?q={search_term_string}` },
-          "query-input": "required name=search_term_string",
-        },
+        "@graph": [
+          {
+            "@type": "WebSite",
+            name: "WatchDeck",
+            url: c.env.SITE_URL + "/",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: { "@type": "EntryPoint", urlTemplate: `${c.env.SITE_URL}/search?q={search_term_string}` },
+              "query-input": "required name=search_term_string",
+            },
+          },
+          {
+            "@type": "FAQPage",
+            mainEntity: landingFaqs.map(([q, a]) => ({
+              "@type": "Question",
+              name: q,
+              acceptedAnswer: { "@type": "Answer", text: a },
+            })),
+          },
+        ],
       }}
     >
       <div>
