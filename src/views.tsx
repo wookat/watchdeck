@@ -923,7 +923,7 @@ export interface LibraryRow {
   rating: number | null;
 }
 
-export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string; q?: string; counts?: Record<string, number> }> = ({ rows, status, sort, q, counts }) => (
+export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string; q?: string; counts?: Record<string, number>; page?: number; lastPage?: number }> = ({ rows, status, sort, q, counts, page = 1, lastPage = 1 }) => (
   <div>
     <h1 class="mb-4 text-2xl font-bold">Library</h1>
     <form action="/library" method="get" class="mb-3 max-w-xs">
@@ -1029,6 +1029,33 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
           </div>
         ))}
       </div>
+    )}
+    {lastPage > 1 && (
+      <nav class="mt-8 flex items-center justify-center gap-4 text-sm" aria-label="Library pages">
+        {page > 1 ? (
+          <a
+            href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}${q ? `&q=${encodeURIComponent(q)}` : ""}&page=${page - 1}`}
+            class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500"
+          >
+            ← Previous
+          </a>
+        ) : (
+          <span class="rounded-lg border border-slate-800 px-3 py-1.5 text-slate-600">← Previous</span>
+        )}
+        <span class="text-slate-400">
+          Page {page} of {lastPage}
+        </span>
+        {page < lastPage ? (
+          <a
+            href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}${q ? `&q=${encodeURIComponent(q)}` : ""}&page=${page + 1}`}
+            class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500"
+          >
+            Next →
+          </a>
+        ) : (
+          <span class="rounded-lg border border-slate-800 px-3 py-1.5 text-slate-600">Next →</span>
+        )}
+      </nav>
     )}
   </div>
 );

@@ -563,20 +563,28 @@ app.get("/library", async (c) => {
     conds.push("title LIKE ? COLLATE NOCASE");
     binds.push(`%${q}%`);
   }
-  const rows = await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE ${conds.join(" AND ")} ORDER BY updated_at DESC LIMIT 200`)
+  const sort = ["recent", "title", "progress"].includes(c.req.query("sort") ?? "") ? c.req.query("sort")! : "recent";
+  const orderBy =
+    sort === "title" ? "title COLLATE NOCASE ASC" : sort === "progress" ? "eps_watched DESC, updated_at DESC" : "updated_at DESC";
+  const perPage = 120;
+  const [filteredTotal, countRows] = await Promise.all([
+    c.env.DB.prepare(`SELECT COUNT(*) AS n FROM tracked WHERE ${conds.join(" AND ")}`).bind(...binds).first<{ n: number }>(),
+    c.env.DB.prepare("SELECT status, COUNT(*) AS n FROM tracked WHERE user_id = ? GROUP BY status")
+      .bind(user.id)
+      .all<{ status: string; n: number }>(),
+  ]);
+  const total = filteredTotal?.n ?? 0;
+  const lastPage = Math.max(1, Math.ceil(total / perPage));
+  const page = Math.min(lastPage, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const rows = await c.env.DB.prepare(
+    `SELECT ${cols} FROM tracked WHERE ${conds.join(" AND ")} ORDER BY ${orderBy} LIMIT ${perPage} OFFSET ${(page - 1) * perPage}`
+  )
     .bind(...binds)
     .all<LibraryRow>();
-  const sort = ["recent", "title", "progress"].includes(c.req.query("sort") ?? "") ? c.req.query("sort")! : "recent";
-  const sorted = [...rows.results];
-  if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
-  else if (sort === "progress") sorted.sort((a, b) => b.eps_watched - a.eps_watched);
-  const countRows = await c.env.DB.prepare("SELECT status, COUNT(*) AS n FROM tracked WHERE user_id = ? GROUP BY status")
-    .bind(user.id)
-    .all<{ status: string; n: number }>();
   const counts = Object.fromEntries(countRows.results.map((r) => [r.status, r.n]));
   return c.html(
     <Layout user={user} title="Library">
-      <LibraryPage rows={sorted} status={status} sort={sort} q={q} counts={counts} />
+      <LibraryPage rows={rows.results} status={status} sort={sort} q={q} counts={counts} page={page} lastPage={lastPage} />
     </Layout>
   );
 });

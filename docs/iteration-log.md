@@ -1031,3 +1031,17 @@
 
 **证据**
 - Version 9251b087；线上验证：详情页 CTA href 含 ?next=%2Fshows%2F95396-severance，/signup 页面渲染 hidden next。
+
+---
+
+## Round 73 — 2026-08-06
+
+**驱动：①QA 新用例（大库导入边界）**
+- /library 静默 LIMIT 200：TV Time 大库难民（数百部剧）第 201 条起完全不可见且无任何提示；排序还在 JS 内存中做，只对当前 200 条生效。
+
+**修复（P1）**
+- 排序下推 SQL（recent=updated_at DESC / title=COLLATE NOCASE / progress=eps_watched DESC），全库全局排序。
+- 新增分页：每页 120，COUNT 计算总页数并钳制 page，底部 Previous/Page x of y/Next 分页条（保留 status/sort/q 参数），仅多页时显示。
+
+**证据**
+- Version 02a57b25；线上验证（r10 只读登录）：title 排序 SQL 生效（Breaking Bad→Inception→Severance），3 条不足一页时无分页条，?page 越界被钳制。
