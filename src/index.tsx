@@ -17,12 +17,14 @@ import {
   slugify,
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, type ParsedImport } from "./importer";
-import { sendEmail, welcomeEmail } from "./email";
+import { sendEmail, welcomeEmail, resetEmail } from "./email";
 import { shareOgImage } from "./og";
 import {
   Layout,
   Landing,
   AuthForm,
+  ForgotForm,
+  ResetForm,
   HomePage,
   SearchPage,
   TrendingSection,
@@ -131,6 +133,62 @@ app.post("/login", async (c) => {
   return c.redirect("/home");
 });
 
+app.get("/forgot", (c) => c.html(<Layout user={c.get("user")} title="Reset password"><ForgotForm /></Layout>));
+
+app.post("/forgot", async (c) => {
+  if (!(await rateLimit(c, "forgot", 5))) {
+    return c.html(<Layout user={null} title="Reset password"><ForgotForm error="Too many attempts. Please try again in a few minutes." /></Layout>, 429);
+  }
+  const form = await c.req.parseBody();
+  const email = String(form.email ?? "").trim().toLowerCase();
+  const row = await c.env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first<{ id: number }>();
+  if (row) {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    await c.env.DB.prepare("INSERT INTO password_resets (token, user_id, expires_at) VALUES (?, ?, datetime('now', '+1 hour'))")
+      .bind(token, row.id)
+      .run();
+    c.executionCtx.waitUntil(sendEmail(c.env, email, ...resetEmail(c.env.SITE_URL, token)));
+  }
+  return c.html(<Layout user={c.get("user")} title="Reset password"><ForgotForm sent /></Layout>);
+});
+
+async function validResetToken(env: Env, token: string): Promise<number | null> {
+  if (!/^[0-9a-f]{32}$/.test(token)) return null;
+  const row = await env.DB.prepare("SELECT user_id FROM password_resets WHERE token = ? AND expires_at > datetime('now')")
+    .bind(token)
+    .first<{ user_id: number }>();
+  return row?.user_id ?? null;
+}
+
+app.get("/reset/:token", async (c) => {
+  const token = c.req.param("token");
+  if (!(await validResetToken(c.env, token))) {
+    return c.html(<Layout user={null} title="Reset password"><ForgotForm error="That reset link is invalid or expired. Request a new one below." /></Layout>, 404);
+  }
+  return c.html(<Layout user={null} title="Choose a new password"><ResetForm token={token} /></Layout>);
+});
+
+app.post("/reset/:token", async (c) => {
+  const token = c.req.param("token");
+  const userId = await validResetToken(c.env, token);
+  if (!userId) {
+    return c.html(<Layout user={null} title="Reset password"><ForgotForm error="That reset link is invalid or expired. Request a new one below." /></Layout>, 404);
+  }
+  const form = await c.req.parseBody();
+  const password = String(form.password ?? "");
+  if (password.length < 8) {
+    return c.html(<Layout user={null} title="Choose a new password"><ResetForm token={token} error="Password must be 8+ characters." /></Layout>, 400);
+  }
+  const { hash, salt } = await hashPassword(password);
+  await c.env.DB.prepare("UPDATE users SET password_hash = ?, salt = ? WHERE id = ?").bind(hash, salt, userId).run();
+  await c.env.DB.prepare("DELETE FROM password_resets WHERE user_id = ?").bind(userId).run();
+  await c.env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(userId).run();
+  await createSession(c, userId);
+  return c.redirect("/home");
+});
+
 app.post("/logout", async (c) => {
   await destroySession(c);
   return c.redirect("/");
@@ -200,6 +258,12 @@ app.get("/search", async (c) => {
     );
   }
   const res = await searchMulti(c.env, q);
+  c.executionCtx.waitUntil(
+    c.env.DB.prepare("INSERT INTO search_queries (q, results) VALUES (?, ?)")
+      .bind(q.slice(0, 200), res.results.length)
+      .run()
+      .catch(() => {})
+  );
   return c.html(
     <Layout user={user} title={`Search: ${q}`}>
       <SearchPage q={q} results={res.results} />

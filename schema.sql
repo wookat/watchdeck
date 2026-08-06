@@ -86,6 +86,22 @@ CREATE TABLE IF NOT EXISTS share_tokens (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- one-time password reset tokens
+CREATE TABLE IF NOT EXISTS password_resets (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- first-party search-term log (no user id, privacy-preserving)
+CREATE TABLE IF NOT EXISTS search_queries (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  q TEXT NOT NULL,
+  results INTEGER NOT NULL DEFAULT 0,
+  ts TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- import job summaries
 CREATE TABLE IF NOT EXISTS imports (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
