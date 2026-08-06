@@ -456,3 +456,16 @@
 
 **证据（线上验证）**
 - 测试代理报告 /home/ubuntu/test-report-rounds26-29-regression.md + 录屏；修复后 curl 复验三条 ?page=99 URL 均 Page 20 of 20。
+
+---
+
+## Round 31 — 2026-08-06
+
+**发现（竞品驱动）**
+- [P1] Trakt/Simkl 搜索均可按类型过滤；WatchDeck 搜索把 TV/电影混排且无过滤，重名标题（如 Inception 相关剧集与电影）难区分。
+
+**修复（已部署，Version 6b6e8abd）**
+- 搜索结果页新增 All / TV shows / Movies 过滤 tab（?type=tv|movie，role=group + aria-current 可访问性标记），空结果时提示「try All」。
+
+**证据（线上验证）**
+- /search?q=inception&type=tv 仅剩 /shows/ 链接（无 /movies/27205）；&type=movie 含 /movies/27205；tab 组 aria-label="Filter results by type" 输出。

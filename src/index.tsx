@@ -310,9 +310,11 @@ app.get("/search", async (c) => {
       .run()
       .catch(() => {})
   );
+  const typeQ = c.req.query("type");
+  const type = typeQ === "tv" || typeQ === "movie" ? typeQ : "all";
   return c.html(
     <Layout user={user} title={`Search: ${q}`}>
-      <SearchPage q={q} results={res.results} libraryIds={libraryIds} />
+      <SearchPage q={q} results={res.results} libraryIds={libraryIds} type={type} />
     </Layout>
   );
 });

@@ -387,28 +387,48 @@ export const HomePage: FC<{
   </div>
 );
 
-export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: Set<string> }> = ({ q, results, libraryIds }) => (
-  <div>
-    <form action="/search" method="get" class="mb-6">
-      <input
-        type="search"
-        name="q"
-        value={q}
-        placeholder="Search shows & movies…"
-        class="w-full max-w-xl rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 placeholder-slate-500 focus:border-violet-500 focus:outline-none"
-      />
-    </form>
-    {q && <h1 class="mb-4 text-xl font-semibold">Results for “{q}”</h1>}
-    <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-      {results
-        .filter((r) => r.media_type === "tv" || r.media_type === "movie")
-        .map((r) => (
+export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: Set<string>; type?: "all" | "tv" | "movie" }> = ({ q, results, libraryIds, type = "all" }) => {
+  const filtered = results.filter((r) => (r.media_type === "tv" || r.media_type === "movie") && (type === "all" || r.media_type === type));
+  return (
+    <div>
+      <form action="/search" method="get" class="mb-6">
+        <input
+          type="search"
+          name="q"
+          value={q}
+          placeholder="Search shows & movies…"
+          class="w-full max-w-xl rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+        />
+      </form>
+      {q && <h1 class="mb-4 text-xl font-semibold">Results for “{q}”</h1>}
+      {q && (
+        <div class="mb-6 flex gap-2" role="group" aria-label="Filter results by type">
+          {(
+            [
+              ["all", "All"],
+              ["tv", "TV shows"],
+              ["movie", "Movies"],
+            ] as const
+          ).map(([t, label]) => (
+            <a
+              href={`/search?q=${encodeURIComponent(q)}${t === "all" ? "" : `&type=${t}`}`}
+              aria-current={type === t ? "page" : undefined}
+              class={`rounded-lg border px-3 py-1.5 text-sm ${type === t ? "border-violet-500 bg-violet-950/60 text-violet-300" : "border-slate-700 hover:border-violet-500 hover:text-violet-300"}`}
+            >
+              {label}
+            </a>
+          ))}
+        </div>
+      )}
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        {filtered.map((r) => (
           <MediaCard item={r} type={r.media_type as "tv" | "movie"} inLibrary={libraryIds?.has(`${r.media_type}:${r.id}`)} />
         ))}
+      </div>
+      {q && filtered.length === 0 && <p class="text-slate-400">Nothing found{type !== "all" ? ` in ${type === "tv" ? "TV shows" : "movies"} — try All` : ""}.</p>}
     </div>
-    {q && results.length === 0 && <p class="text-slate-400">Nothing found.</p>}
-  </div>
-);
+  );
+};
 
 export const TrendingSection: FC<{ shows: SearchResult[]; movies: SearchResult[] }> = ({ shows, movies }) => (
   <div class="space-y-10">
