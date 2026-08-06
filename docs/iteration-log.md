@@ -591,3 +591,16 @@
 
 **证据**
 - 测试代理报告 test-report-rounds36-39-regression.md + 录屏；PR #34 评论附截图。
+
+---
+
+## Round 41 — 2026-08-06
+
+**发现（UX/视觉驱动）**
+- [P2] /history 是无分组的流水列表，每行重复裸 ISO 日期，长列表扫读性差（Trakt history 按日分组）。
+
+**修复（已部署，Version d6512e75）**
+- History 按日分组渲染：Today/Yesterday/「Thu, Jan 2, 2025」小节标题（原始日期在 title 提示），行内不再重复日期。
+
+**证据（线上验证）**
+- r10 /history 呈现「Today」「Thu, Jan 2, 2025」「Wed, Jan 1, 2025」三个日期小节。

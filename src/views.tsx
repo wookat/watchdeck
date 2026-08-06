@@ -1358,26 +1358,49 @@ export const HistoryPage: FC<{ items: HistoryItem[] }> = ({ items }) => (
         Nothing watched yet. <a href="/home" class="text-violet-400 hover:underline">Mark an episode watched</a> and it shows up here.
       </p>
     ) : (
-      <ul class="divide-y divide-slate-800 rounded-2xl border border-slate-800 bg-slate-900/50">
-        {items.map((it) => (
-          <li class="flex items-center gap-4 px-4 py-3">
-            <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="shrink-0">
-              <img src={poster(it.posterPath, "w92")} alt={it.title} loading="lazy" class="h-16 w-auto rounded-md border border-slate-800 object-cover" />
-            </a>
-            <div class="min-w-0 flex-1">
-              <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
-                {it.title}
-              </a>
-              <p class="text-sm text-slate-400">
-                {it.mediaType === "tv" && it.season != null && it.episode != null
-                  ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}`
-                  : "Movie"}
-              </p>
-            </div>
-            <span class="shrink-0 text-xs text-slate-400">{it.watchedAt.slice(0, 10)}</span>
-          </li>
-        ))}
-      </ul>
+      (() => {
+        const groups: { day: string; rows: HistoryItem[] }[] = [];
+        for (const it of items) {
+          const day = it.watchedAt.slice(0, 10);
+          const last = groups[groups.length - 1];
+          if (last && last.day === day) last.rows.push(it);
+          else groups.push({ day, rows: [it] });
+        }
+        const dayLabel = (iso: string) => {
+          const today = new Date().toISOString().slice(0, 10);
+          if (iso === today) return "Today";
+          if (iso === new Date(Date.now() - 86400000).toISOString().slice(0, 10)) return "Yesterday";
+          return new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" });
+        };
+        return (
+          <div class="space-y-6">
+            {groups.map((g) => (
+              <section>
+                <h2 class="mb-2 text-sm font-semibold text-slate-400" title={g.day}>{dayLabel(g.day)}</h2>
+                <ul class="divide-y divide-slate-800 rounded-2xl border border-slate-800 bg-slate-900/50">
+                  {g.rows.map((it) => (
+                    <li class="flex items-center gap-4 px-4 py-3">
+                      <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="shrink-0">
+                        <img src={poster(it.posterPath, "w92")} alt={it.title} loading="lazy" class="h-16 w-auto rounded-md border border-slate-800 object-cover" />
+                      </a>
+                      <div class="min-w-0 flex-1">
+                        <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
+                          {it.title}
+                        </a>
+                        <p class="text-sm text-slate-400">
+                          {it.mediaType === "tv" && it.season != null && it.episode != null
+                            ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}`
+                            : "Movie"}
+                        </p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        );
+      })()
     )}
   </div>
 );
