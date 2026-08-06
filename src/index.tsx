@@ -16,6 +16,7 @@ import {
   discoverByNetwork,
   NETWORKS,
   recommendations,
+  watchProviders,
   slugify,
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, type ParsedImport } from "./importer";
@@ -335,6 +336,10 @@ app.get("/shows/:idslug", async (c) => {
   try {
     recs = (await recommendations(c.env, "tv", id)).results;
   } catch {}
+  let providers = null;
+  try {
+    providers = await watchProviders(c.env, "tv", id);
+  } catch {}
   const showCanonical = `${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`;
   return c.html(
     <Layout
@@ -355,7 +360,7 @@ app.get("/shows/:idslug", async (c) => {
         ...(show.genres?.length ? { genre: show.genres.map((g) => g.name) } : {}),
       }}
     >
-      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} />
+      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} />
     </Layout>
   );
 });
@@ -382,6 +387,10 @@ app.get("/movies/:idslug", async (c) => {
   try {
     recs = (await recommendations(c.env, "movie", id)).results;
   } catch {}
+  let providers = null;
+  try {
+    providers = await watchProviders(c.env, "movie", id);
+  } catch {}
   const movieCanonical = `${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`;
   return c.html(
     <Layout
@@ -401,7 +410,7 @@ app.get("/movies/:idslug", async (c) => {
         ...(movie.genres?.length ? { genre: movie.genres.map((g) => g.name) } : {}),
       }}
     >
-      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} />
+      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} />
     </Layout>
   );
 });

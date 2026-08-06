@@ -132,6 +132,16 @@ export function discoverByGenre(env: Env, type: "tv" | "movie", genreId: number,
   );
 }
 
+export interface WatchProviders {
+  link: string;
+  flatrate?: { provider_id: number; provider_name: string; logo_path: string }[];
+}
+
+export async function watchProviders(env: Env, type: "tv" | "movie", id: number, region = "US"): Promise<WatchProviders | null> {
+  const res = await tmdb<{ results: Record<string, WatchProviders | undefined> }>(env, `/${type}/${id}/watch/providers`, 24 * 3600);
+  return res.results[region] ?? null;
+}
+
 export function recommendations(env: Env, type: "tv" | "movie", id: number) {
   return tmdb<{ results: SearchResult[] }>(env, `/${type}/${id}/recommendations`, 24 * 3600);
 }
