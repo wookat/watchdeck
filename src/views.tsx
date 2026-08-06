@@ -1,6 +1,6 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
-import { poster, slugify, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders } from "./tmdb";
+import { poster, slugify, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember } from "./tmdb";
 
 export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; jsonLd?: object; prev?: string; next?: string }>> = ({
   children,
@@ -452,6 +452,27 @@ export const TrendingSection: FC<{ shows: SearchResult[]; movies: SearchResult[]
   </div>
 );
 
+export const CastSection: FC<{ cast: CastMember[] }> = ({ cast }) =>
+  cast.length === 0 ? null : (
+    <div class="mt-12">
+      <h2 class="mb-4 text-xl font-semibold">Top cast</h2>
+      <ul class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
+        {cast.map((m) => (
+          <li class="text-center">
+            <img
+              src={m.profile_path ? `https://image.tmdb.org/t/p/w185${m.profile_path}` : "/placeholder-poster.svg"}
+              alt={m.name}
+              loading="lazy"
+              class="mx-auto aspect-[2/3] w-full max-w-[7rem] rounded-xl border border-slate-800 object-cover"
+            />
+            <p class="mt-2 line-clamp-1 text-sm font-medium">{m.name}</p>
+            {m.character && <p class="line-clamp-1 text-xs text-slate-400">{m.character}</p>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+
 export const RecsSection: FC<{ recs: SearchResult[]; type: "tv" | "movie" }> = ({ recs, type }) =>
   recs.length === 0 ? null : (
     <div class="mt-12">
@@ -549,7 +570,8 @@ export const ShowPage: FC<{
   user: User | null;
   recs: SearchResult[];
   providers?: WatchProviders | null;
-}> = ({ show, season, watched, tracked, user, recs, providers }) => {
+  cast?: CastMember[];
+}> = ({ show, season, watched, tracked, user, recs, providers, cast }) => {
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
@@ -713,6 +735,7 @@ export const ShowPage: FC<{
           </ul>
         )}
       </div>
+      <CastSection cast={cast ?? []} />
       <RecsSection recs={recs} type="tv" />
     </div>
   );
@@ -725,7 +748,8 @@ export const MoviePage: FC<{
   user: User | null;
   recs: SearchResult[];
   providers?: WatchProviders | null;
-}> = ({ movie, watched, tracked, user, recs, providers }) => {
+  cast?: CastMember[];
+}> = ({ movie, watched, tracked, user, recs, providers, cast }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
   return (
     <div>
@@ -792,6 +816,7 @@ export const MoviePage: FC<{
         {user && tracked && <NotesBox tmdbId={movie.id} mediaType="movie" notes={tracked.notes} redirect={movieUrl} />}
       </div>
     </div>
+    <CastSection cast={cast ?? []} />
     <RecsSection recs={recs} type="movie" />
     </div>
   );

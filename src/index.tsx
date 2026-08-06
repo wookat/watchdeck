@@ -21,6 +21,8 @@ import {
   watchProviders,
   slugify,
   type SearchResult,
+  topCast,
+  type CastMember,
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, type ParsedImport } from "./importer";
 import { sendEmail, welcomeEmail, resetEmail } from "./email";
@@ -402,6 +404,10 @@ app.get("/shows/:idslug", async (c) => {
   try {
     providers = await watchProviders(c.env, "tv", id);
   } catch {}
+  let cast: CastMember[] = [];
+  try {
+    cast = await topCast(c.env, "tv", id);
+  } catch {}
   const showCanonical = `${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`;
   return c.html(
     <Layout
@@ -434,7 +440,7 @@ app.get("/shows/:idslug", async (c) => {
         ],
       }}
     >
-      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} />
+      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} />
     </Layout>
   );
 });
@@ -464,6 +470,10 @@ app.get("/movies/:idslug", async (c) => {
   let providers = null;
   try {
     providers = await watchProviders(c.env, "movie", id);
+  } catch {}
+  let cast: CastMember[] = [];
+  try {
+    cast = await topCast(c.env, "movie", id);
   } catch {}
   const movieCanonical = `${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`;
   return c.html(
@@ -496,7 +506,7 @@ app.get("/movies/:idslug", async (c) => {
         ],
       }}
     >
-      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} />
+      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} />
     </Layout>
   );
 });

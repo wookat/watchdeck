@@ -170,3 +170,20 @@ export function slugify(title: string): string {
 export function poster(path: string | null, size = "w342"): string {
   return path ? `${IMG}/${size}${path}` : "/placeholder-poster.svg";
 }
+
+export interface CastMember {
+  id: number;
+  name: string;
+  character: string | null;
+  profile_path: string | null;
+}
+
+export async function topCast(env: Env, type: "tv" | "movie", id: number, limit = 8): Promise<CastMember[]> {
+  const res = await tmdb<{ cast: CastMember[] }>(env, `/${type}/${id}/${type === "tv" ? "aggregate_credits" : "credits"}`, 7 * 24 * 3600);
+  return (res.cast ?? []).slice(0, limit).map((m) => ({
+    id: m.id,
+    name: m.name,
+    character: (m as { roles?: { character: string }[] }).roles?.[0]?.character ?? m.character ?? null,
+    profile_path: m.profile_path,
+  }));
+}

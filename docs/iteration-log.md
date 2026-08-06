@@ -672,3 +672,16 @@
 
 **证据（线上验证）**
 - /shows/95396-severance 与 /movies/27205-inception 的 ld+json 均含两个实体（TVSeries|Movie + BreadcrumbList）。
+
+---
+
+## Round 47 — 2026-08-06
+
+**发现（竞品/pSEO 驱动）**
+- [P2] 详情页无演员阵容——TV Time/Trakt/Serializd/IMDb 详情页均有 cast；纯文本人名也是 pSEO 长尾入口。
+
+**修复（已部署，Version 6161a31e）**
+- 新增 tmdb topCast()（TV 用 aggregate_credits、电影用 credits，7 天缓存，取前 8）；详情页 Recs 前插入 CastSection（头像+姓名+角色，响应式 2/4/8 列）。
+
+**证据（线上验证）**
+- /shows/95396-severance 显示 Top cast（Adam Scott、Britt Lower…）；/movies/27205-inception 显示 Leonardo DiCaprio 等。
