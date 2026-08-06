@@ -28,8 +28,9 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <meta property="og:title" content={title ? `${title} — WatchDeck` : "WatchDeck — Track your TV shows & movies on the web"} />
       {description && <meta property="og:description" content={description} />}
       {canonical && <meta property="og:url" content={canonical} />}
-      {ogImage && <meta property="og:image" content={ogImage} />}
-      {ogImage && <meta name="twitter:card" content="summary_large_image" />}
+      <meta property="og:site_name" content="WatchDeck" />
+      <meta property="og:image" content={ogImage ?? "https://watchdeck.zalize.com/og-default.png"} />
+      <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <link rel="stylesheet" href="/styles.css" />
       <script src="/app.js" defer></script>

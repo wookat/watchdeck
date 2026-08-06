@@ -1113,3 +1113,16 @@
 
 **证据**
 - Version f8d54abb；线上验证（r10，幂等同状态 POST）：redirect=https://evil.com → 302 /home（回落默认），站内相对路径正常保留。
+
+---
+
+## Round 79 — 2026-08-06
+
+**驱动：③视觉/社交分享 + ⑤数据（落地页是分享/引流主入口却无 og:image）**
+- 仅详情页与分享页有 og:image；首页/browse/FAQ 等被分享到社交平台时无预览卡片，og:site_name 缺失。
+
+**修复（P2）**
+- 新增品牌 OG 卡 public/og-default.png（1200×630，渐变 logo+标语+域名）；Layout 对所有页面输出 og:site_name 与 og:image 回落（页面自带 ogImage 时优先，如详情页海报）。
+
+**证据**
+- Version cdb6632f；线上验证：/og-default.png 200，首页 og:image=og-default.png、og:site_name=WatchDeck，Severance 详情页仍为海报 og:image（未被覆盖）。
