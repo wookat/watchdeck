@@ -428,3 +428,17 @@
 
 **证据（线上验证）**
 - /browse/year/tv/2025?page=2 head 内输出 rel=prev（…/2025）与 rel=next（…?page=3）；/browse 显示新标题。
+
+---
+
+## Round 29 — 2026-08-06
+
+**发现（竞品/合规驱动）**
+- [P1] TV Time 关停的最大教训是「数据被锁死」，但 WatchDeck 自己也只进不出：只有导入没有导出，GDPR 数据可携带权仅靠删除不够，Trakt 免费档亦提供数据导出。
+
+**修复（已部署，Version 4e30794a）**
+- 新增 GET /api/export（需登录，匿名 302 → /login）：一次性导出 tracked（含状态/评分/时间戳）、episode_watches、movie_watches 为格式化 JSON，Content-Disposition 附件下载、no-store。
+- /settings 新增「Export your data」区块，一键下载。
+
+**证据（线上验证）**
+- 匿名 GET /api/export → 302 /login；r10 账号导出 JSON 含 Breaking Bad tracked + 22 集观看记录，文件名 watchdeck-export-YYYY-MM-DD.json；/settings 显示导出区块。

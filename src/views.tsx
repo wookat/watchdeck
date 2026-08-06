@@ -1232,6 +1232,15 @@ export const SettingsPage: FC<{ user: User; saved?: string; error?: string }> = 
         <button class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Update password</button>
       </form>
     </section>
+    <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+      <h2 class="font-semibold">Export your data</h2>
+      <p class="mt-1 text-sm text-slate-400">
+        Download everything you've tracked — library, statuses, ratings and full watch history — as a JSON file. Your data is always yours to take.
+      </p>
+      <a href="/api/export" class="mt-4 inline-block rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium hover:border-violet-500 hover:text-violet-300" download>
+        Download export (JSON)
+      </a>
+    </section>
     <section class="mt-6 rounded-2xl border border-red-900/60 bg-red-950/20 p-6">
       <h2 class="font-semibold text-red-300">Delete account</h2>
       <p class="mt-1 text-sm text-slate-400">

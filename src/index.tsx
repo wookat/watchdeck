@@ -794,6 +794,29 @@ app.get("/settings", async (c) => {
   );
 });
 
+app.get("/api/export", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const [tracked, episodes, movies] = await c.env.DB.batch([
+    c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating, created_at, updated_at FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
+    c.env.DB.prepare("SELECT tmdb_id, season, episode, watched_at FROM episode_watches WHERE user_id = ? ORDER BY tmdb_id, season, episode").bind(user.id),
+    c.env.DB.prepare("SELECT tmdb_id, watched_at FROM movie_watches WHERE user_id = ? ORDER BY tmdb_id").bind(user.id),
+  ]);
+  const payload = {
+    exported_at: new Date().toISOString(),
+    source: "watchdeck.zalize.com",
+    account: { email: user.email, display_name: user.display_name ?? null },
+    tracked: tracked.results,
+    episode_watches: episodes.results,
+    movie_watches: movies.results,
+  };
+  return c.body(JSON.stringify(payload, null, 2), 200, {
+    "content-type": "application/json; charset=utf-8",
+    "content-disposition": `attachment; filename="watchdeck-export-${new Date().toISOString().slice(0, 10)}.json"`,
+    "cache-control": "no-store",
+  });
+});
+
 app.post("/api/settings/profile", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
