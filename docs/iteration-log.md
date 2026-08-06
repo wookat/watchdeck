@@ -1045,3 +1045,16 @@
 
 **证据**
 - Version 02a57b25；线上验证（r10 只读登录）：title 排序 SQL 生效（Breaking Bad→Inception→Severance），3 条不足一页时无分页条，?page 越界被钳制。
+
+---
+
+## Round 74 — 2026-08-06
+
+**驱动：⑤数据分析（imports 表复盘）**
+- imports/tracked 的 source 一律硬编码 'tvtime'——Netflix/Trakt/Serializd CSV 导入全被误标，导入漏斗无法按来源分析。
+
+**修复（P2）**
+- /api/import/parse 返回检测到的 source（tvtime/netflix/csv）；import.js 随每个 batch 回传；/api/import/batch 白名单校验后写入 imports 与 tracked.source。
+
+**证据**
+- Version b8038c9c；线上验证（r10 登录，仅 parse 未写库）：Netflix 风格 CSV parse 返回 "source":"netflix"。

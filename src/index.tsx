@@ -1366,7 +1366,8 @@ app.post("/api/import/parse", async (c) => {
   const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
   try {
     const text = isZip ? "" : new TextDecoder().decode(bytes);
-    const parsed = isZip ? parseTvTimeZip(bytes) : isNetflixCsv(text) ? parseNetflixCsv(text) : parseGenericCsv(text);
+    const source = isZip ? "tvtime" : isNetflixCsv(text) ? "netflix" : "csv";
+    const parsed = isZip ? parseTvTimeZip(bytes) : source === "netflix" ? parseNetflixCsv(text) : parseGenericCsv(text);
     if (parsed.shows.length === 0 && parsed.movies.length === 0) {
       logFunnel(c, "import-parse-empty");
       return c.json(
@@ -1375,7 +1376,7 @@ app.post("/api/import/parse", async (c) => {
       );
     }
     logFunnel(c, "import-parse-ok");
-    return c.json(parsed);
+    return c.json({ ...parsed, source });
   } catch {
     logFunnel(c, "import-parse-fail");
     return c.json({ error: isZip ? "Could not read that ZIP file." : "Could not read that file. Upload a TV Time ZIP or a CSV export." }, 422);
@@ -1386,7 +1387,8 @@ app.post("/api/import/parse", async (c) => {
 app.post("/api/import/batch", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: "auth" }, 401);
-  const batch = (await c.req.json()) as ParsedImport;
+  const batch = (await c.req.json()) as ParsedImport & { source?: string };
+  const source = batch.source === "netflix" || batch.source === "csv" ? batch.source : "tvtime";
   let showsImported = 0;
   let episodesImported = 0;
   let moviesImported = 0;
@@ -1404,10 +1406,10 @@ app.post("/api/import/batch", async (c) => {
       const allWatched = show.episodes.length > 0;
       await c.env.DB.prepare(
         `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, source)
-         VALUES (?, ?, 'tv', ?, ?, ?, 'tvtime')
+         VALUES (?, ?, 'tv', ?, ?, ?, ?)
          ON CONFLICT(user_id, tmdb_id, media_type) DO NOTHING`
       )
-        .bind(user.id, match.id, title, match.poster_path, allWatched ? "watching" : "watchlist")
+        .bind(user.id, match.id, title, match.poster_path, allWatched ? "watching" : "watchlist", source)
         .run();
       showsImported++;
       const stmts = show.episodes.slice(0, 400).map((e) =>
@@ -1435,9 +1437,9 @@ app.post("/api/import/batch", async (c) => {
       await c.env.DB.batch([
         c.env.DB.prepare(
           `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, source)
-           VALUES (?, ?, 'movie', ?, ?, 'completed', 'tvtime')
+           VALUES (?, ?, 'movie', ?, ?, 'completed', ?)
            ON CONFLICT(user_id, tmdb_id, media_type) DO NOTHING`
-        ).bind(user.id, match.id, match.title ?? movie.name, match.poster_path),
+        ).bind(user.id, match.id, match.title ?? movie.name, match.poster_path, source),
         c.env.DB.prepare(
           "INSERT OR IGNORE INTO movie_watches (user_id, tmdb_id, watched_at) VALUES (?, ?, COALESCE(?, datetime('now')))"
         ).bind(user.id, match.id, movie.watchedAt),
@@ -1449,9 +1451,9 @@ app.post("/api/import/batch", async (c) => {
   }
 
   await c.env.DB.prepare(
-    "INSERT INTO imports (user_id, source, shows_imported, episodes_imported, movies_imported, unmatched) VALUES (?, 'tvtime', ?, ?, ?, ?)"
+    "INSERT INTO imports (user_id, source, shows_imported, episodes_imported, movies_imported, unmatched) VALUES (?, ?, ?, ?, ?, ?)"
   )
-    .bind(user.id, showsImported, episodesImported, moviesImported, unmatchedNames.length)
+    .bind(user.id, source, showsImported, episodesImported, moviesImported, unmatchedNames.length)
     .run();
 
   invalidateHours(c, user.id);
