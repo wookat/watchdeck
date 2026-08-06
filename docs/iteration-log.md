@@ -698,3 +698,16 @@
 
 **证据（线上验证）**
 - 冷 TTFB 2.05s → 1.2-1.3s，暖缓存 0.09-0.18s；Top cast / More like this 区块正常渲染。
+
+---
+
+## Round 49 — 2026-08-06
+
+**发现（SEO/运营驱动）**
+- [P2] IndexNow 只有管理员手动接口，sitemap 扩容后（182 URL）无自动提交——「周更 pSEO + IndexNow」运营环节缺自动化。
+
+**修复（已部署，Version 4ab81336）**
+- 新增 submitSitemapToIndexNow()：抓自家 sitemap.xml、解析 loc、按 ≤100 分批 POST api.indexnow.org；挂到既有每日 08:00 UTC Cron，仅周一（UTC）执行，随邮件摘要并行 waitUntil，失败静默。
+
+**证据**
+- tsc 通过、已部署；下次周一 Cron 自动首跑（正向路径依赖 Cron 触发，无法即时线上验证；接口与 key 文件路由此前已验证 403/200）。

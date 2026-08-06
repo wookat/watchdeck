@@ -1511,9 +1511,31 @@ async function sendAiringDigests(env: Env): Promise<void> {
   }
 }
 
+async function submitSitemapToIndexNow(env: Env): Promise<void> {
+  if (!env.INDEXNOW_KEY) return;
+  const res = await fetch(`${env.SITE_URL}/sitemap.xml`);
+  if (!res.ok) return;
+  const xml = await res.text();
+  const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  const host = new URL(env.SITE_URL).host;
+  for (let i = 0; i < urls.length; i += 100) {
+    await fetch("https://api.indexnow.org/indexnow", {
+      method: "POST",
+      headers: { "content-type": "application/json; charset=utf-8" },
+      body: JSON.stringify({
+        host,
+        key: env.INDEXNOW_KEY,
+        keyLocation: `${env.SITE_URL}/${env.INDEXNOW_KEY}.txt`,
+        urlList: urls.slice(i, i + 100),
+      }),
+    });
+  }
+}
+
 export default {
   fetch: app.fetch,
   scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(sendAiringDigests(env));
+    if (new Date().getUTCDay() === 1) ctx.waitUntil(submitSitemapToIndexNow(env).catch(() => {}));
   },
 };
