@@ -1100,3 +1100,16 @@
 
 **证据**
 - Version 146e2552；线上验证（r10 只读登录）：42 条流水单页全显（41 集 + 1 电影），不足一页无分页条，?page=99 被钳制正常渲染。
+
+---
+
+## Round 78 — 2026-08-06
+
+**驱动：合规与安全审计（开放重定向纵深防御）**
+- 10 个 POST API（track/untrack/notes/watch/watch-season/watch-up-to/watch-movie 等）把表单 redirect 参数原样传给 302，可被用作绝对 URL 开放重定向（CSRF Origin 校验挡住跨站 POST，但同源触发仍可能，属纵深防御缺口）。
+
+**修复（P2 安全）**
+- 全部 10 处改为 safeNext(form.redirect) ?? 默认路径——只接受站内相对路径（拒绝绝对 URL、//、\\）。
+
+**证据**
+- Version f8d54abb；线上验证（r10，幂等同状态 POST）：redirect=https://evil.com → 302 /home（回落默认），站内相对路径正常保留。

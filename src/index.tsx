@@ -1143,7 +1143,7 @@ app.post("/api/rate", async (c) => {
   )
     .bind(user.id, tmdbId, mediaType, title, posterPath, mediaType === "movie" ? "completed" : "watching", rating === 0 ? null : rating)
     .run();
-  return c.redirect(String(form.redirect ?? "/library"));
+  return c.redirect(safeNext(form.redirect) ?? "/library");
 });
 
 app.post("/api/notes", async (c) => {
@@ -1159,7 +1159,7 @@ app.post("/api/notes", async (c) => {
   )
     .bind(notes || null, user.id, tmdbId, mediaType)
     .run();
-  return c.redirect(String(form.redirect ?? "/library"));
+  return c.redirect(safeNext(form.redirect) ?? "/library");
 });
 
 app.post("/api/track", async (c) => {
@@ -1180,7 +1180,7 @@ app.post("/api/track", async (c) => {
   )
     .bind(user.id, tmdbId, mediaType, title, details.poster_path, status)
     .run();
-  return c.redirect(String(form.redirect ?? "/home"));
+  return c.redirect(safeNext(form.redirect) ?? "/home");
 });
 
 app.post("/api/untrack", async (c) => {
@@ -1192,7 +1192,7 @@ app.post("/api/untrack", async (c) => {
   await c.env.DB.prepare("DELETE FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = ?")
     .bind(user.id, tmdbId, mediaType)
     .run();
-  return c.redirect(String(form.redirect ?? "/library"));
+  return c.redirect(safeNext(form.redirect) ?? "/library");
 });
 
 app.post("/api/watch", async (c) => {
@@ -1224,7 +1224,7 @@ app.post("/api/watch", async (c) => {
     await maybeAutoComplete(c.env, user.id, tmdbId, details);
   }
   invalidateHours(c, user.id);
-  return c.redirect(String(form.redirect ?? "/home"));
+  return c.redirect(safeNext(form.redirect) ?? "/home");
 });
 
 app.post("/api/reminders", async (c) => {
@@ -1250,7 +1250,7 @@ app.post("/api/watch-season", async (c) => {
       .bind(user.id, tmdbId)
       .run();
     invalidateHours(c, user.id);
-    return c.redirect(String(form.redirect ?? "/home"));
+    return c.redirect(safeNext(form.redirect) ?? "/home");
   }
   const details = await tvDetails(c.env, tmdbId);
   const season = await seasonDetails(c.env, tmdbId, seasonNum);
@@ -1274,7 +1274,7 @@ app.post("/api/watch-season", async (c) => {
     .run();
   await maybeAutoComplete(c.env, user.id, tmdbId, details);
   invalidateHours(c, user.id);
-  return c.redirect(String(form.redirect ?? "/home"));
+  return c.redirect(safeNext(form.redirect) ?? "/home");
 });
 
 app.post("/api/watch-up-to", async (c) => {
@@ -1285,7 +1285,7 @@ app.post("/api/watch-up-to", async (c) => {
   const targetSeason = parseInt(String(form.season), 10);
   const targetEpisode = parseInt(String(form.episode), 10);
   if (!Number.isFinite(tmdbId) || !Number.isFinite(targetSeason) || !Number.isFinite(targetEpisode)) {
-    return c.redirect(String(form.redirect ?? "/home"));
+    return c.redirect(safeNext(form.redirect) ?? "/home");
   }
   const details = await tvDetails(c.env, tmdbId);
   const today = new Date().toISOString().slice(0, 10);
@@ -1319,7 +1319,7 @@ app.post("/api/watch-up-to", async (c) => {
     .run();
   await maybeAutoComplete(c.env, user.id, tmdbId, details);
   invalidateHours(c, user.id);
-  return c.redirect(String(form.redirect ?? "/home"));
+  return c.redirect(safeNext(form.redirect) ?? "/home");
 });
 
 app.post("/api/watch-movie", async (c) => {
@@ -1346,7 +1346,7 @@ app.post("/api/watch-movie", async (c) => {
       .run();
   }
   invalidateHours(c, user.id);
-  return c.redirect(String(form.redirect ?? "/home"));
+  return c.redirect(safeNext(form.redirect) ?? "/home");
 });
 
 // step 1: parse the uploaded export (TV Time ZIP, or a Trakt/Serializd-style CSV) into JSON (no TMDB calls here)
