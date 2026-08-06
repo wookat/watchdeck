@@ -469,3 +469,16 @@
 
 **证据（线上验证）**
 - /search?q=inception&type=tv 仅剩 /shows/ 链接（无 /movies/27205）；&type=movie 含 /movies/27205；tab 组 aria-label="Filter results by type" 输出。
+
+---
+
+## Round 32 — 2026-08-06
+
+**发现（UX/竞品驱动）**
+- [P1] Trakt 剧集页醒目显示下一集播出信息；WatchDeck 剧集页无「下一集何时播」，用户须去日历翻找。
+
+**修复（已部署，Version 59b0b265）**
+- 剧集详情页在类型行下方新增「Next episode: SxxExx — 集名 · 日期」高亮徽章（TMDB next_episode_to_air，UTC 格式化，无未播集则不渲染）。
+
+**证据（线上验证）**
+- 在播剧集页显示「Next episode: S03E06 — The Drive · Aug 6, 2026」；已完结剧（Severance 等）无徽章。

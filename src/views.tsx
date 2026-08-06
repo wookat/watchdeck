@@ -539,6 +539,14 @@ export const ShowPage: FC<{
             {show.number_of_episodes} episodes · {show.status} · ★ {show.vote_average?.toFixed(1)}
           </p>
           <p class="mt-1 text-sm text-slate-400">{show.genres.map((g) => g.name).join(", ")}</p>
+          {show.next_episode_to_air?.air_date && (
+            <p class="mt-3 inline-block rounded-lg border border-violet-800 bg-violet-950/50 px-3 py-1.5 text-sm text-violet-300">
+              Next episode: S{String(show.next_episode_to_air.season_number).padStart(2, "0")}E
+              {String(show.next_episode_to_air.episode_number).padStart(2, "0")}
+              {show.next_episode_to_air.name ? ` — ${show.next_episode_to_air.name}` : ""} ·{" "}
+              {new Date(show.next_episode_to_air.air_date + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}
+            </p>
+          )}
           <p class="mt-4 max-w-2xl text-slate-300">{show.overview}</p>
           <WhereToWatch providers={providers ?? null} />
           {user ? (
