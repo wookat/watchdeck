@@ -251,3 +251,16 @@
 
 **证据（线上验证）**
 - throwaway 账号对 Breaking Bad S02E05 执行 up-to → D1：S1=7 集全标、S2=5 集，精确到目标集为止。
+
+---
+
+## Round 16 — 2026-08-05
+
+**发现**
+- [前端视觉/无障碍 / P2] 对比度审计（WCAG 1.4.3 AA 需 ≥4.5:1）：正文尺寸的次要文字大量使用 text-slate-500（#64748b），在 slate-950 背景上 4.24:1、在 slate-900 卡片上仅 3.75:1，均不达标（集数日期、SxxExx 编码、题材行、History 日期等都受影响）。竞品调研侧：复查 Bingers 官网仍为 iOS/Android only，无 Web 端动向。
+
+**修复（已部署，Version f560db81）**
+- views.tsx 全量 text-slate-500 → text-slate-400（#94a3b8，slate-950 上 7.87:1 / slate-900 上 6.96:1，AA 达标且不破坏层级：主文字仍为更亮的 slate-100/白）。
+
+**证据（线上验证）**
+- 线上 HTML 已无 text-slate-500；对比度计算脚本输出见本轮记录。

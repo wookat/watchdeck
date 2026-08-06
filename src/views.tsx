@@ -256,7 +256,7 @@ export const MediaCard: FC<{ item: SearchResult; type: "tv" | "movie" }> = ({ it
         class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
       />
       <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{title}</p>
-      <p class="text-xs text-slate-500">
+      <p class="text-xs text-slate-400">
         {year ? `${year} · ` : ""}{type === "tv" ? "TV" : "Movie"}
       </p>
     </a>
@@ -351,7 +351,7 @@ export const HomePage: FC<{
                 S{String(n.season).padStart(2, "0")}E{String(n.episode).padStart(2, "0")}
                 {n.episodeName ? ` · ${n.episodeName}` : ""}
               </p>
-              {n.airDate && <p class="text-xs text-slate-500">aired {n.airDate}</p>}
+              {n.airDate && <p class="text-xs text-slate-400">aired {n.airDate}</p>}
               <form action="/api/watch" method="post" class="mt-2">
                 <input type="hidden" name="tmdb_id" value={String(n.tmdbId)} />
                 <input type="hidden" name="season" value={String(n.season)} />
@@ -480,7 +480,7 @@ export const ShowPage: FC<{
             {show.first_air_date?.slice(0, 4)} · {show.number_of_seasons} season{show.number_of_seasons === 1 ? "" : "s"} ·{" "}
             {show.number_of_episodes} episodes · {show.status} · ★ {show.vote_average?.toFixed(1)}
           </p>
-          <p class="mt-1 text-sm text-slate-500">{show.genres.map((g) => g.name).join(", ")}</p>
+          <p class="mt-1 text-sm text-slate-400">{show.genres.map((g) => g.name).join(", ")}</p>
           <p class="mt-4 max-w-2xl text-slate-300">{show.overview}</p>
           {user ? (
             <div class="mt-5 flex flex-wrap gap-2">
@@ -506,7 +506,7 @@ export const ShowPage: FC<{
                   <input type="hidden" name="tmdb_id" value={String(show.id)} />
                   <input type="hidden" name="media_type" value="tv" />
                   <input type="hidden" name="redirect" value={showUrl} />
-                  <button class="rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:text-red-400" title="Removes it from your library; watch history is kept">
+                  <button class="rounded-lg px-3 py-1.5 text-sm text-slate-400 hover:text-red-400" title="Removes it from your library; watch history is kept">
                     Remove
                   </button>
                 </form>
@@ -574,12 +574,12 @@ export const ShowPage: FC<{
               const isWatched = watched.has(`${ep.season_number}x${ep.episode_number}`);
               return (
                 <li class="flex items-center gap-4 bg-slate-900/40 px-4 py-3">
-                  <span class="w-14 shrink-0 text-sm text-slate-500">
+                  <span class="w-14 shrink-0 text-sm text-slate-400">
                     S{String(ep.season_number).padStart(2, "0")}E{String(ep.episode_number).padStart(2, "0")}
                   </span>
                   <div class="min-w-0 flex-1">
                     <p class="line-clamp-1 font-medium">{ep.name}</p>
-                    <p class="text-xs text-slate-500">{ep.air_date ?? "TBA"}</p>
+                    <p class="text-xs text-slate-400">{ep.air_date ?? "TBA"}</p>
                   </div>
                   {user && (
                     <div class="flex shrink-0 items-center gap-2">
@@ -590,7 +590,7 @@ export const ShowPage: FC<{
                           <input type="hidden" name="episode" value={String(ep.episode_number)} />
                           <input type="hidden" name="redirect" value={`${showUrl}?season=${season.season_number}`} />
                           <button
-                            class="rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:text-violet-300"
+                            class="rounded-lg px-2 py-1.5 text-sm text-slate-400 hover:text-violet-300"
                             title={`Mark everything up to S${String(ep.season_number).padStart(2, "0")}E${String(ep.episode_number).padStart(2, "0")} watched`}
                             aria-label={`Mark everything up to season ${ep.season_number} episode ${ep.episode_number} watched`}
                           >
@@ -644,7 +644,7 @@ export const MoviePage: FC<{
         <p class="mt-1 text-sm text-slate-400">
           {movie.release_date?.slice(0, 4)} {movie.runtime ? `· ${movie.runtime} min` : ""} · ★ {movie.vote_average?.toFixed(1)}
         </p>
-        <p class="mt-1 text-sm text-slate-500">{movie.genres.map((g) => g.name).join(", ")}</p>
+        <p class="mt-1 text-sm text-slate-400">{movie.genres.map((g) => g.name).join(", ")}</p>
         <p class="mt-4 max-w-2xl text-slate-300">{movie.overview}</p>
         {user ? (
           <div class="mt-5 flex flex-wrap gap-2">
@@ -682,7 +682,7 @@ export const MoviePage: FC<{
                 <input type="hidden" name="tmdb_id" value={String(movie.id)} />
                 <input type="hidden" name="media_type" value="movie" />
                 <input type="hidden" name="redirect" value={movieUrl} />
-                <button class="rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:text-red-400" title="Removes it from your library; watch history is kept">
+                <button class="rounded-lg px-3 py-1.5 text-sm text-slate-400 hover:text-red-400" title="Removes it from your library; watch history is kept">
                   Remove
                 </button>
               </form>
@@ -743,7 +743,7 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
       ))}
     </div>
     <div class="mb-6 flex flex-wrap items-center gap-2 text-sm">
-      <span class="text-slate-500">Sort:</span>
+      <span class="text-slate-400">Sort:</span>
       {(
         [
           ["recent", "Recently updated"],
@@ -781,7 +781,7 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
               class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
             />
             <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{r.title}</p>
-            <p class="text-xs text-slate-500">
+            <p class="text-xs text-slate-400">
               {r.status}
               {r.media_type === "tv" && r.eps_watched > 0 ? ` · ${r.eps_watched} ep${r.eps_watched === 1 ? "" : "s"} watched` : ""}
               {r.rating ? <span class="text-amber-400"> · ★ {r.rating}</span> : ""}
@@ -837,7 +837,7 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
               <a href={`/shows/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
                 {it.title}
               </a>
-              <p class="text-sm text-slate-500">
+              <p class="text-sm text-slate-400">
                 S{String(it.season).padStart(2, "0")}E{String(it.episode).padStart(2, "0")} · {it.episodeName}
               </p>
             </div>
@@ -902,7 +902,7 @@ export const BrowseGenre: FC<{
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">
         {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
-        <span class="text-slate-500">Page {page} of {Math.min(totalPages, 20)}</span>
+        <span class="text-slate-400">Page {page} of {Math.min(totalPages, 20)}</span>
         {page < Math.min(totalPages, 20) && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
       </div>
     </div>
@@ -946,7 +946,7 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
             <ol class="space-y-2">
               {stats.topShows.map((s, i) => (
                 <li class="flex items-center gap-3 text-sm">
-                  <span class="w-5 text-slate-500">{i + 1}.</span>
+                  <span class="w-5 text-slate-400">{i + 1}.</span>
                   <a href={`/shows/${s.tmdb_id}-${slugify(s.title)}`} class="flex-1 truncate hover:text-violet-400">{s.title}</a>
                   <span class="text-slate-400">{s.eps} eps</span>
                 </li>
@@ -954,7 +954,7 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
             </ol>
           )}
           {stats.topShows.length > 0 && stats.topShows.length < stats.showsTracked && (
-            <p class="mt-3 text-xs text-slate-500">Your other tracked shows appear here once you log episodes for them.</p>
+            <p class="mt-3 text-xs text-slate-400">Your other tracked shows appear here once you log episodes for them.</p>
           )}
         </div>
         <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
@@ -965,7 +965,7 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
             <ul class="space-y-1.5">
               {stats.byMonth.map((m) => (
                 <li class="flex items-center gap-2 text-xs">
-                  <span class="w-16 shrink-0 text-slate-500">{m.month}</span>
+                  <span class="w-16 shrink-0 text-slate-400">{m.month}</span>
                   <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((m.eps / maxMonth) * 100))}%`} />
                   <span class="text-slate-400">{m.eps}</span>
                 </li>
@@ -1012,7 +1012,7 @@ export const HistoryPage: FC<{ items: HistoryItem[] }> = ({ items }) => (
                   : "Movie"}
               </p>
             </div>
-            <span class="shrink-0 text-xs text-slate-500">{it.watchedAt.slice(0, 10)}</span>
+            <span class="shrink-0 text-xs text-slate-400">{it.watchedAt.slice(0, 10)}</span>
           </li>
         ))}
       </ul>
@@ -1078,7 +1078,7 @@ export const ImportPage: FC = () => (
       class="mt-6 cursor-pointer rounded-2xl border-2 border-dashed border-slate-700 bg-slate-900/40 p-10 text-center transition hover:border-violet-500"
     >
       <p class="text-lg">📦 Drag & drop your TV Time ZIP (or CSV) here</p>
-      <p class="mt-1 text-sm text-slate-500">or click to choose the file</p>
+      <p class="mt-1 text-sm text-slate-400">or click to choose the file</p>
       <input id="zipfile" type="file" accept=".zip,.csv" class="hidden" />
     </div>
     <div id="progress" class="mt-6 hidden rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
