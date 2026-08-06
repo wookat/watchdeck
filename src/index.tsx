@@ -42,6 +42,8 @@ import {
   type HistoryItem,
   HistoryPage,
   SettingsPage,
+  PrivacyPage,
+  TermsPage,
   type WatchlistPreviewItem,
   type LibraryRow,
   type CalendarItem,
@@ -681,6 +683,22 @@ app.get("/history", async (c) => {
   );
 });
 
+app.get("/privacy", (c) =>
+  c.html(
+    <Layout user={c.get("user")} title="Privacy policy" canonical={`${c.env.SITE_URL}/privacy`}>
+      <PrivacyPage />
+    </Layout>
+  )
+);
+
+app.get("/terms", (c) =>
+  c.html(
+    <Layout user={c.get("user")} title="Terms of service" canonical={`${c.env.SITE_URL}/terms`}>
+      <TermsPage />
+    </Layout>
+  )
+);
+
 app.get("/settings", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
@@ -1144,7 +1162,7 @@ app.get("/robots.txt", (c) =>
 );
 
 app.get("/sitemap.xml", async (c) => {
-  const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`];
+  const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`, `${c.env.SITE_URL}/privacy`, `${c.env.SITE_URL}/terms`];
   try {
     const [shows, movies, tvGenres, movieGenres] = await Promise.all([
       trendingTv(c.env),
