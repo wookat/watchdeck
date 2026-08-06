@@ -870,3 +870,16 @@
 
 **证据**
 - test-report-round60-regression.md + 录屏；PR #35 回归评论。
+
+---
+
+## Round 61 — 2026-08-06
+
+**发现（R60 回归测试代理反馈的 UX 缺陷）**
+- [P1] /import 上传后 parse 完立即自动写库，无任何确认步——传错文件（如别人的导出、错的 CSV）会直接污染账号数据，也是测试时只能用一次性账号的根因。
+
+**修复（已部署，Version 2ed63a70）**
+- ImportPage 新增「Ready to import」确认卡（找到 N shows / N watched episodes / N movies，"Nothing has been added yet"），Import now / Cancel 两按钮；import.js 在 parse 与 batch 写入之间加 Promise 确认门，Cancel 恢复 dropzone 不写任何数据。
+
+**证据（线上验证）**
+- /import HTML 含 confirm 卡、/import.js 含确认逻辑（curl 验证）；交互路径留待下轮回归代理点击验证。

@@ -1556,6 +1556,14 @@ export const ImportPage: FC = () => (
       </div>
       <p id="progress-detail" class="mt-2 text-sm text-slate-400"></p>
     </div>
+    <div id="confirm" class="mt-6 hidden rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+      <p class="font-semibold">Ready to import</p>
+      <p id="confirm-detail" class="mt-1 text-sm text-slate-300"></p>
+      <div class="mt-4 flex gap-3">
+        <button id="confirm-btn" class="rounded-lg bg-violet-600 px-4 py-2 font-medium text-white hover:bg-violet-500">Import now</button>
+        <button id="cancel-btn" class="rounded-lg border border-slate-700 px-4 py-2 text-slate-300 hover:border-red-500 hover:text-red-400">Cancel</button>
+      </div>
+    </div>
     <div id="done" class="mt-6 hidden rounded-2xl border border-emerald-800 bg-emerald-950/40 p-6">
       <p class="font-semibold text-emerald-300">Import complete 🎉</p>
       <p id="done-detail" class="mt-1 text-sm text-slate-300"></p>
