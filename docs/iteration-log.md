@@ -724,3 +724,16 @@
 
 **证据**
 - 测试代理报告 test-report-round50-regression.md + 录屏；PR #35 评论附截图。
+
+---
+
+## Round 51 — 2026-08-06
+
+**发现（竞品驱动）**
+- [P1] 日历/iCal/邮件提醒只覆盖 TV 下一集，watchlist 里的未上映电影完全不出现——TV Time 电影上映提醒是招牌功能，我们丢了「电影」半边。
+
+**修复（已部署，Version 84af02ad）**
+- CalendarItem 增加 mediaType（season/episode 可空）；upcomingItems 同时查 TV+电影（watching/watchlist，LIMIT 40），电影取未来 release_date；日历页标题改「Upcoming episodes & releases」、电影行显示「🎬 Movie release」；iCal 电影事件 UID wd-m-<id>、SUMMARY「— movie release」；每日邮件摘要同步包含当日上映电影。
+
+**证据（线上验证）**
+- r10 加 Avengers: Doomsday（watchlist）后：/calendar 显示「Movie release」行；.ics 含 UID:wd-m-1003596 / DTSTART 20261216；测试后已 untrack，r10 复核 3 tracked 净零。

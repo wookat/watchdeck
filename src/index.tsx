@@ -532,30 +532,46 @@ app.get("/library", async (c) => {
 
 async function upcomingItems(env: AppContext["Bindings"], userId: number): Promise<CalendarItem[]> {
   const tracked = await env.DB.prepare(
-    "SELECT tmdb_id FROM tracked WHERE user_id = ? AND media_type = 'tv' AND status IN ('watching','watchlist') LIMIT 30"
+    "SELECT tmdb_id, media_type FROM tracked WHERE user_id = ? AND status IN ('watching','watchlist') LIMIT 40"
   )
     .bind(userId)
-    .all<{ tmdb_id: number }>();
-  const perShow = await Promise.all(
+    .all<{ tmdb_id: number; media_type: "tv" | "movie" }>();
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const perItem = await Promise.all(
     tracked.results.map(async (t): Promise<CalendarItem | null> => {
       try {
-        const d = await tvDetails(env, t.tmdb_id);
-        if (!d.next_episode_to_air?.air_date) return null;
+        if (t.media_type === "tv") {
+          const d = await tvDetails(env, t.tmdb_id);
+          if (!d.next_episode_to_air?.air_date) return null;
+          return {
+            tmdbId: d.id,
+            title: d.name,
+            posterPath: d.poster_path,
+            mediaType: "tv",
+            season: d.next_episode_to_air.season_number,
+            episode: d.next_episode_to_air.episode_number,
+            episodeName: d.next_episode_to_air.name,
+            airDate: d.next_episode_to_air.air_date,
+          };
+        }
+        const m = await movieDetails(env, t.tmdb_id);
+        if (!m.release_date || m.release_date < todayIso) return null;
         return {
-          tmdbId: d.id,
-          title: d.name,
-          posterPath: d.poster_path,
-          season: d.next_episode_to_air.season_number,
-          episode: d.next_episode_to_air.episode_number,
-          episodeName: d.next_episode_to_air.name,
-          airDate: d.next_episode_to_air.air_date,
+          tmdbId: m.id,
+          title: m.title,
+          posterPath: m.poster_path,
+          mediaType: "movie",
+          season: null,
+          episode: null,
+          episodeName: null,
+          airDate: m.release_date,
         };
       } catch {
         return null;
       }
     })
   );
-  const items = perShow.filter((i): i is CalendarItem => i !== null);
+  const items = perItem.filter((i): i is CalendarItem => i !== null);
   items.sort((a, b) => a.airDate.localeCompare(b.airDate));
   return items;
 }
@@ -594,12 +610,13 @@ app.get("/feed/:token", async (c) => {
   ];
   for (const it of items) {
     const day = it.airDate.replace(/-/g, "");
+    const isTv = it.mediaType === "tv" && it.season != null && it.episode != null;
     lines.push(
       "BEGIN:VEVENT",
-      `UID:wd-${it.tmdbId}-s${it.season}e${it.episode}@watchdeck.zalize.com`,
+      isTv ? `UID:wd-${it.tmdbId}-s${it.season}e${it.episode}@watchdeck.zalize.com` : `UID:wd-m-${it.tmdbId}@watchdeck.zalize.com`,
       `DTSTART;VALUE=DATE:${day}`,
-      `SUMMARY:${esc(`${it.title} S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}`)}`,
-      `URL:${c.env.SITE_URL}/shows/${it.tmdbId}-${slugify(it.title)}`,
+      `SUMMARY:${esc(isTv ? `${it.title} S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}` : `${it.title} \u2014 movie release`)}`,
+      `URL:${c.env.SITE_URL}/${isTv ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`,
       "END:VEVENT"
     );
   }
@@ -1498,15 +1515,18 @@ async function sendAiringDigests(env: Env): Promise<void> {
   for (const u of users.results) {
     const items = (await upcomingItems(env, u.id)).filter((it) => it.airDate === today);
     if (items.length === 0) continue;
-    const lines = items.map(
-      (it) =>
-        `<li style=\"margin:6px 0\"><a href=\"${env.SITE_URL}/shows/${it.tmdbId}-${slugify(it.title)}\" style=\"color:#7c3aed\">${it.title}</a> S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}</li>`
-    );
+    const lines = items.map((it) => {
+      const isTv = it.mediaType === "tv" && it.season != null && it.episode != null;
+      const label = isTv
+        ? ` S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}`
+        : " \u2014 movie release";
+      return `<li style=\"margin:6px 0\"><a href=\"${env.SITE_URL}/${isTv ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}\" style=\"color:#7c3aed\">${it.title}</a>${label}</li>`;
+    });
     await sendEmail(
       env,
       u.email,
       `Airing today: ${items[0].title}${items.length > 1 ? ` and ${items.length - 1} more` : ""}`,
-      `<p>These shows you track air new episodes today:</p><ul>${lines.join("")}</ul><p style=\"color:#64748b;font-size:13px\">You get this because email reminders are on \u2014 turn them off any time on your <a href=\"${env.SITE_URL}/calendar\">calendar page</a>.</p>`
+      `<p>These titles you track air or release today:</p><ul>${lines.join("")}</ul><p style=\"color:#64748b;font-size:13px\">You get this because email reminders are on \u2014 turn them off any time on your <a href=\"${env.SITE_URL}/calendar\">calendar page</a>.</p>`
     );
   }
 }

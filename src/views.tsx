@@ -946,9 +946,10 @@ export interface CalendarItem {
   tmdbId: number;
   title: string;
   posterPath: string | null;
-  season: number;
-  episode: number;
-  episodeName: string;
+  mediaType: "tv" | "movie";
+  season: number | null;
+  episode: number | null;
+  episodeName: string | null;
   airDate: string;
 }
 
@@ -966,7 +967,7 @@ const airDateLabel = (iso: string): { label: string; today: boolean } => {
 export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEmail: boolean }> = ({ items, feedUrl, remindEmail }) => (
   <div>
     <div class="mb-6 flex flex-wrap items-center gap-3">
-      <h1 class="text-2xl font-bold">Upcoming episodes</h1>
+      <h1 class="text-2xl font-bold">Upcoming episodes &amp; releases</h1>
       <a href={feedUrl} class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-violet-300 hover:border-violet-500">
         📅 Subscribe (iCal)
       </a>
@@ -996,11 +997,13 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
             <span class={d.today ? "w-24 shrink-0 text-sm font-semibold text-violet-300" : "w-24 shrink-0 text-sm text-violet-300"} title={it.airDate}>{d.label}</span>
             <img src={poster(it.posterPath, "w92")} alt="" class="h-14 w-auto rounded border border-slate-800" />
             <div class="min-w-0">
-              <a href={`/shows/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
+              <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
                 {it.title}
               </a>
               <p class="text-sm text-slate-400">
-                S{String(it.season).padStart(2, "0")}E{String(it.episode).padStart(2, "0")} · {it.episodeName}
+                {it.mediaType === "tv" && it.season != null && it.episode != null
+                  ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` · ${it.episodeName}` : ""}`
+                  : "🎬 Movie release"}
               </p>
             </div>
           </li>
