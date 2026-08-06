@@ -1574,10 +1574,21 @@ app.get("/api/stats", async (c) => {
 app.notFound((c) =>
   c.html(
     <Layout user={c.get("user")} title="Not found">
-      <div class="py-20 text-center">
+      <div class="mx-auto max-w-md py-20 text-center">
         <h1 class="text-3xl font-bold">404</h1>
-        <p class="mt-2 text-slate-400">
-          That page drifted off the deck. <a href="/" class="text-violet-400 hover:underline">Go home</a>.
+        <p class="mt-2 text-slate-400">That page drifted off the deck.</p>
+        <form action="/search" method="get" class="mt-6 flex gap-2">
+          <input
+            type="search"
+            name="q"
+            placeholder="Search shows & movies…"
+            aria-label="Search shows and movies"
+            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+          />
+          <button class="shrink-0 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Search</button>
+        </form>
+        <p class="mt-4 text-sm text-slate-400">
+          Or <a href="/browse" class="text-violet-400 hover:underline">browse by genre</a> · <a href="/" class="text-violet-400 hover:underline">go home</a>.
         </p>
       </div>
     </Layout>,
