@@ -922,3 +922,17 @@
 
 **证据（线上验证）**
 - /signup 渲染 label + autocomplete=email/new-password；/login current-password（curl 验证）。
+
+---
+
+## Round 65 — 2026-08-06（QA 回归轮）
+
+**发现与结果（测试代理完整回归 61-64 轮，目标 Version f184c52f）**
+- 无 P0/P1/P2；R60 的两项遗留（导入自动写库、Netflix 原始日期）均确认修复并线上端到端复验。
+- R61 确认卡：Cancel 不写库（D1 0 行）、Import now 正常导入 3 剧 2 电影；R60 日期修复端到端：watched_at 为 ISO、/history 正常日期标题、/stats 不再把 2022 观影计入 2026。
+- R62 词边界 meta description、R63 匿名 CTA、R64 表单 label/autocomplete 全过。
+- 覆盖备注：/reset/:token 表单的 autocomplete 仅源码核验（无法凭空铸造有效 token）。
+- 冒烟 + QA 基线 8/4/0 前后一致 + r10 净零 + 一次性账号自删（D1 复核）。
+
+**证据**
+- test-report-round65-regression.md + 录屏；PR #36 回归评论。
