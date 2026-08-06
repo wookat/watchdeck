@@ -318,3 +318,16 @@
 
 **证据（线上验证）**
 - curl 线上 styles.css grep right-1\.5 = 1；测试代理报告 /home/ubuntu/test-report-rounds16-19-regression.md + 录屏。
+
+---
+
+## Round 23 — 2026-08-06
+
+**发现**
+- [竞品 / P1] TV Time/Simkl 详情页都有「在哪看」流媒体平台标识，我们没有——这是迁移用户高频使用的功能，TMDB 免费提供 JustWatch 数据（要求署名）。
+
+**修复（已部署，Version 8285a086）**
+- tmdb.ts 新增 watchProviders()（/​{type}/{id}/watch/providers，US 区，24h 缓存）；剧集/电影详情页 overview 下方新增 WhereToWatch 组件：最多 6 个流媒体 logo（w45，链接到 JustWatch 聚合页）+ "data by JustWatch" 署名；无 flatrate 数据时整块隐藏。
+
+**证据（线上验证）**
+- Severance/Breaking Bad/Inception 详情页均渲染 "Where to stream (US)" 与 JustWatch 署名。

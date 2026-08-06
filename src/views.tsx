@@ -1,6 +1,6 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
-import { poster, slugify, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails } from "./tmdb";
+import { poster, slugify, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders } from "./tmdb";
 
 export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; jsonLd?: object }>> = ({
   children,
@@ -470,6 +470,30 @@ export const RatingStars: FC<{ tmdbId: number; mediaType: "tv" | "movie"; title:
   </div>
 );
 
+export const WhereToWatch: FC<{ providers: WatchProviders | null }> = ({ providers }) =>
+  !providers?.flatrate?.length ? null : (
+    <div class="mt-4">
+      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Where to stream (US)</p>
+      <div class="flex flex-wrap items-center gap-2">
+        {providers.flatrate.slice(0, 6).map((p) => (
+          <a href={providers.link} rel="noopener" title={`Stream on ${p.provider_name}`} class="block">
+            <img
+              src={`https://image.tmdb.org/t/p/w45${p.logo_path}`}
+              alt={p.provider_name}
+              width={32}
+              height={32}
+              loading="lazy"
+              class="rounded-lg border border-slate-800"
+            />
+          </a>
+        ))}
+        <span class="text-xs text-slate-400">
+          data by <a href="https://www.justwatch.com/" rel="noopener" class="hover:underline">JustWatch</a>
+        </span>
+      </div>
+    </div>
+  );
+
 export const ShowPage: FC<{
   show: TvDetails;
   season: SeasonDetails | null;
@@ -477,7 +501,8 @@ export const ShowPage: FC<{
   tracked: { status: string; rating: number | null } | null;
   user: User | null;
   recs: SearchResult[];
-}> = ({ show, season, watched, tracked, user, recs }) => {
+  providers?: WatchProviders | null;
+}> = ({ show, season, watched, tracked, user, recs, providers }) => {
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
@@ -491,6 +516,7 @@ export const ShowPage: FC<{
           </p>
           <p class="mt-1 text-sm text-slate-400">{show.genres.map((g) => g.name).join(", ")}</p>
           <p class="mt-4 max-w-2xl text-slate-300">{show.overview}</p>
+          <WhereToWatch providers={providers ?? null} />
           {user ? (
             <div class="mt-5 flex flex-wrap gap-2">
               {(["watching", "watchlist", "completed", "dropped"] as const).map((s) => (
@@ -642,7 +668,8 @@ export const MoviePage: FC<{
   tracked: { status: string; rating: number | null } | null;
   user: User | null;
   recs: SearchResult[];
-}> = ({ movie, watched, tracked, user, recs }) => {
+  providers?: WatchProviders | null;
+}> = ({ movie, watched, tracked, user, recs, providers }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
   return (
     <div>
@@ -655,6 +682,7 @@ export const MoviePage: FC<{
         </p>
         <p class="mt-1 text-sm text-slate-400">{movie.genres.map((g) => g.name).join(", ")}</p>
         <p class="mt-4 max-w-2xl text-slate-300">{movie.overview}</p>
+        <WhereToWatch providers={providers ?? null} />
         {user ? (
           <div class="mt-5 flex flex-wrap gap-2">
             <form action="/api/watch-movie" method="post">
