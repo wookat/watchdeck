@@ -180,3 +180,17 @@
 **回归发现（测试代理，Rounds 6-10 全项通过后追加修复）**
 - P2：`hasAnything` 只统计 watching 状态的 TV，movie-only watchlist 用户看到的是 onboarding 空态而非 watchlist 网格。已改为 `tracked(watching TV) > 0 || watchlist > 0`，重新部署。
 - P3（记录待议）：场记板占位图在海报尺寸下略像日历图标。
+
+---
+
+## Round 11 — 2026-08-05
+
+**发现**
+- [UX 走查 / P2] 条目一旦加入 library 无法移除：详情页只有 4 个状态按钮（watching/watchlist/completed/dropped），误加的剧/电影只能永远留在 Library（Trakt/TV Time 都有 remove）。上轮回归也确认「no UI to delete rows」。
+
+**修复（已部署，Version 775e0bcc）**
+- 新增 `POST /api/untrack`：删除该用户的 tracked 行（保留 episode/movie 观看历史，重加即恢复进度）。
+- 剧集/电影详情页在已追踪时显示「Remove」按钮（灰色，hover 变红，title 说明保留历史）。
+
+**证据（线上验证）**
+- throwaway 账号 track Chernobyl → 详情页出现 untrack 表单；POST /api/untrack → 按钮消失、tracked 行删除（302 + 页面复查）。

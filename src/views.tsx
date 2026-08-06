@@ -500,6 +500,16 @@ export const ShowPage: FC<{
                   </button>
                 </form>
               ))}
+              {tracked && (
+                <form action="/api/untrack" method="post">
+                  <input type="hidden" name="tmdb_id" value={String(show.id)} />
+                  <input type="hidden" name="media_type" value="tv" />
+                  <input type="hidden" name="redirect" value={showUrl} />
+                  <button class="rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:text-red-400" title="Removes it from your library; watch history is kept">
+                    Remove
+                  </button>
+                </form>
+              )}
             </div>
           ) : (
             <p class="mt-5 text-sm text-slate-400">
@@ -649,6 +659,16 @@ export const MoviePage: FC<{
                 + Watchlist
               </button>
             </form>
+            {tracked && (
+              <form action="/api/untrack" method="post">
+                <input type="hidden" name="tmdb_id" value={String(movie.id)} />
+                <input type="hidden" name="media_type" value="movie" />
+                <input type="hidden" name="redirect" value={movieUrl} />
+                <button class="rounded-lg px-3 py-1.5 text-sm text-slate-500 hover:text-red-400" title="Removes it from your library; watch history is kept">
+                  Remove
+                </button>
+              </form>
+            )}
           </div>
         ) : (
           <p class="mt-5 text-sm text-slate-400">
