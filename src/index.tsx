@@ -452,9 +452,13 @@ app.get("/library", async (c) => {
   const sorted = [...rows.results];
   if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
   else if (sort === "progress") sorted.sort((a, b) => b.eps_watched - a.eps_watched);
+  const countRows = await c.env.DB.prepare("SELECT status, COUNT(*) AS n FROM tracked WHERE user_id = ? GROUP BY status")
+    .bind(user.id)
+    .all<{ status: string; n: number }>();
+  const counts = Object.fromEntries(countRows.results.map((r) => [r.status, r.n]));
   return c.html(
     <Layout user={user} title="Library">
-      <LibraryPage rows={sorted} status={status} sort={sort} q={q} />
+      <LibraryPage rows={sorted} status={status} sort={sort} q={q} counts={counts} />
     </Layout>
   );
 });

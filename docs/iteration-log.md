@@ -496,3 +496,16 @@
 
 **证据（线上验证）**
 - r10 账号 Breaking Bad 页保存笔记 → 刷新可见 → /api/export tracked.notes 含同一内容 → 清空后不再显示（数据已还原，r10 无残留笔记）。
+
+---
+
+## Round 34 — 2026-08-06
+
+**发现（UX/视觉驱动）**
+- [P2] Library 状态 tab（All/Watching/Watchlist/Completed/Dropped）无数量提示，须点进每个 tab 才知道有没有内容（TV Time/Trakt 均带计数）。
+
+**修复（已部署，Version 99ed3cc6）**
+- /library 增加一次 GROUP BY status 计数查询，每个 tab 显示条目数（All 为总和），当前 tab 用浅紫、其余用 slate-500 弱化。
+
+**证据（线上验证）**
+- r10 账号 /library tab 呈现 All 3 / Watching 2 / Watchlist 0 / Completed 1 / Dropped 0，与 D1 数据一致。

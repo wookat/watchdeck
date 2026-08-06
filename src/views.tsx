@@ -806,7 +806,7 @@ export interface LibraryRow {
   rating: number | null;
 }
 
-export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string; q?: string }> = ({ rows, status, sort, q }) => (
+export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string; q?: string; counts?: Record<string, number> }> = ({ rows, status, sort, q, counts }) => (
   <div>
     <h1 class="mb-4 text-2xl font-bold">Library</h1>
     <form action="/library" method="get" class="mb-3 max-w-xs">
@@ -832,6 +832,11 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
           }
         >
           {s[0].toUpperCase() + s.slice(1)}
+          {counts && (
+            <span class={status === s ? "ml-1.5 text-xs text-violet-200" : "ml-1.5 text-xs text-slate-500"}>
+              {s === "all" ? Object.values(counts).reduce((a, b) => a + b, 0) : counts[s] ?? 0}
+            </span>
+          )}
         </a>
       ))}
     </div>
