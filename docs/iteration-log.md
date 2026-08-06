@@ -5,6 +5,24 @@
 
 ---
 
+## Round 2 — 2026-08-05
+
+**发现**
+- [测试(性能) / P1] `/home` Next Up 对每个在追剧集串行调用 TMDB（详情+逐季），追 10+ 部剧时首屏可达数秒——这是产品最重要的页面。
+- [数据分析 / P2] `/api/stats` 只返回日 PV，缺周报所需的国家分布、热门路径、热门搜索词、注册/waitlist 数。
+- [QA 走查 / P3] round-1 QA 发现：`/reset/<token>` 页导航固定渲染未登录态，与 `/forgot` 不一致。
+
+**修复（已部署，Version eb82b5a3）**
+- `/home` 各剧集 Next Up 计算改为 `Promise.all` 并行，单剧内部季循环保持短路。
+- `/api/stats` 扩展为 `{daily, countries, topPaths, topSearches, users, waitlist}`（30 天窗口），一次调用出周报。
+- `/reset/<token>` 有效页传入当前用户，导航状态一致。
+
+**证据（线上验证）**
+- QA 账号加 8 部在追剧后 `/home` 200 且 0.31–0.71s（此前串行按剧数线性增长）。
+- 非管理员访问 `/api/stats` 仍 403（访问控制回归通过）。
+
+---
+
 ## Round 1 — 2026-08-05
 
 **发现**
