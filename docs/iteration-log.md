@@ -575,3 +575,19 @@
 
 **证据（线上验证）**
 - curl 首页解析 ld+json 成功，urlTemplate=https://watchdeck.zalize.com/search?q={search_term_string}。
+
+---
+
+## Round 40 — 2026-08-06（QA 回归轮）
+
+**发现（测试驱动，测试代理完整回归 36-39 轮 + 冒烟）**
+- 无 P0/P1/P2。1 个 P3：Top genres 同计数并列时排序不确定（Map 插入序），截前 6 时结果随机。
+
+**修复（已部署，Version b35db39b）**
+- Top genres 排序加字母序二级排序（count desc, name asc），并列结果确定化；线上复验 r10 显示 Drama/Action/Adventure/Crime/Mystery/Sci-Fi & Fantasy。
+
+**结果（回归目标 Version 835735b5）**
+- R36 Top genres 卡片通过；R37 sitemap 182 loc / 98 详情 URL 通过；R38 日历 Today（高亮加粗）/Tomorrow/Sun, Sep 27 通过；R39 首页 WebSite+SearchAction JSON-LD 通过；冒烟（搜索 tab/标记撤销/Library 计数/年份页）通过；QA 基线 8/4/0 前后一致；r10 净零还原。
+
+**证据**
+- 测试代理报告 test-report-rounds36-39-regression.md + 录屏；PR #34 评论附截图。

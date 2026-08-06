@@ -742,7 +742,7 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
   );
   const topGenres = [...genreCounts.entries()]
     .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
     .slice(0, 6);
   return {
     hoursWatched: hours,
