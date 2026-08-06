@@ -41,6 +41,7 @@ import {
   type NextUpItem,
   type HistoryItem,
   HistoryPage,
+  SettingsPage,
   type WatchlistPreviewItem,
   type LibraryRow,
   type CalendarItem,
@@ -678,6 +679,71 @@ app.get("/history", async (c) => {
       <HistoryPage items={items} />
     </Layout>
   );
+});
+
+app.get("/settings", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const saved = c.req.query("saved") ?? undefined;
+  const error = c.req.query("error") ?? undefined;
+  return c.html(
+    <Layout user={user} title="Settings">
+      <SettingsPage user={user} saved={saved} error={error} />
+    </Layout>
+  );
+});
+
+app.post("/api/settings/profile", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const name = String(form.display_name ?? "").trim().slice(0, 40);
+  await c.env.DB.prepare("UPDATE users SET display_name = ? WHERE id = ?").bind(name || null, user.id).run();
+  return c.redirect("/settings?saved=" + encodeURIComponent("Profile updated."));
+});
+
+app.post("/api/settings/password", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const current = String(form.current ?? "");
+  const next = String(form.next ?? "");
+  if (next.length < 8) return c.redirect("/settings?error=" + encodeURIComponent("New password must be at least 8 characters."));
+  const row = await c.env.DB.prepare("SELECT password_hash, salt FROM users WHERE id = ?")
+    .bind(user.id)
+    .first<{ password_hash: string; salt: string }>();
+  if (!row || !(await verifyPassword(current, row.salt, row.password_hash))) {
+    return c.redirect("/settings?error=" + encodeURIComponent("Current password is incorrect."));
+  }
+  const { hash, salt } = await hashPassword(next);
+  await c.env.DB.prepare("UPDATE users SET password_hash = ?, salt = ? WHERE id = ?").bind(hash, salt, user.id).run();
+  return c.redirect("/settings?saved=" + encodeURIComponent("Password updated."));
+});
+
+app.post("/api/settings/delete", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const password = String(form.password ?? "");
+  const row = await c.env.DB.prepare("SELECT password_hash, salt FROM users WHERE id = ?")
+    .bind(user.id)
+    .first<{ password_hash: string; salt: string }>();
+  if (!row || !(await verifyPassword(password, row.salt, row.password_hash))) {
+    return c.redirect("/settings?error=" + encodeURIComponent("Password is incorrect \u2014 account not deleted."));
+  }
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM episode_watches WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("DELETE FROM movie_watches WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("DELETE FROM tracked WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("DELETE FROM share_tokens WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("DELETE FROM feed_tokens WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("DELETE FROM password_resets WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("DELETE FROM imports WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id),
+  ]);
+  await destroySession(c);
+  return c.redirect("/");
 });
 
 app.get("/stats", async (c) => {
