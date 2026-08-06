@@ -32,6 +32,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       {ogImage && <meta name="twitter:card" content="summary_large_image" />}
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <link rel="stylesheet" href="/styles.css" />
+      <script src="/app.js" defer></script>
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     </head>
     <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
@@ -896,7 +897,7 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
               <select
                 name="status"
                 aria-label={`Status for ${r.title}`}
-                onchange="this.form.submit()"
+                data-autosubmit
                 class="w-full rounded-md border border-slate-800 bg-slate-900 px-1.5 py-1 text-xs text-slate-300 focus:border-violet-500 focus:outline-none"
               >
                 {(["watching", "watchlist", "completed", "dropped"] as const).map((s) => (
@@ -1332,7 +1333,7 @@ export const SettingsPage: FC<{ user: User; saved?: string; error?: string }> = 
       <p class="mt-1 text-sm text-slate-400">
         Permanently deletes your account and all data — library, watch history, ratings, share page and calendar feed. This cannot be undone.
       </p>
-      <form action="/api/settings/delete" method="post" class="mt-4 flex gap-2" onsubmit="return confirm('Delete your account and all data permanently?')">
+      <form action="/api/settings/delete" method="post" class="mt-4 flex gap-2" data-confirm="Delete your account and all data permanently?">
         <input type="password" name="password" required placeholder="Confirm with your password" aria-label="Confirm password to delete account" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-red-500 focus:outline-none" />
         <button class="shrink-0 rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-600">Delete</button>
       </form>

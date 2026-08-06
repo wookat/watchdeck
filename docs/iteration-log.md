@@ -617,3 +617,19 @@
 
 **证据（线上验证）**
 - curl -I 首页六个安全头全部返回；/browse、/search 页面正常渲染（TMDB 海报在 img-src 白名单内）。
+
+---
+
+## Round 43 — 2026-08-06
+
+**发现（安全驱动，承接 R42）**
+- [P2] CSP script-src 因两处内联事件处理器（library 状态下拉 onchange、删号确认 onsubmit）被迫保留 'unsafe-inline'。
+
+**修复（已部署，Version cd7a24a2）**
+- 新增 public/app.js（事件委托：select[data-autosubmit] 自动提交、form[data-confirm] 确认弹窗），Layout 全站 defer 加载；两处内联处理器改为 data-* 属性；CSP script-src 收紧为 'self'。
+
+**证据（线上验证）**
+- 响应头 script-src 'self'；/app.js 200；r10 /library 下拉渲染 data-autosubmit。
+
+**附带发现**
+- [P2 → R44] 登录速率限制每次尝试都刷新 600s TTL 且成功登录不清零，导致持续尝试时锁定无限延长（QA 验证时实测触发）。
