@@ -13,7 +13,10 @@ import {
   trendingMovies,
   genreList,
   discoverByGenre,
+  discoverByNetwork,
+  NETWORKS,
   recommendations,
+  watchProviders,
   slugify,
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, type ParsedImport } from "./importer";
@@ -37,6 +40,7 @@ import {
   PublicProfilePage,
   BrowseIndex,
   BrowseGenre,
+  BrowseNetwork,
   type UserStats,
   type NextUpItem,
   type HistoryItem,
@@ -332,6 +336,10 @@ app.get("/shows/:idslug", async (c) => {
   try {
     recs = (await recommendations(c.env, "tv", id)).results;
   } catch {}
+  let providers = null;
+  try {
+    providers = await watchProviders(c.env, "tv", id);
+  } catch {}
   const showCanonical = `${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`;
   return c.html(
     <Layout
@@ -352,7 +360,7 @@ app.get("/shows/:idslug", async (c) => {
         ...(show.genres?.length ? { genre: show.genres.map((g) => g.name) } : {}),
       }}
     >
-      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} />
+      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} />
     </Layout>
   );
 });
@@ -379,6 +387,10 @@ app.get("/movies/:idslug", async (c) => {
   try {
     recs = (await recommendations(c.env, "movie", id)).results;
   } catch {}
+  let providers = null;
+  try {
+    providers = await watchProviders(c.env, "movie", id);
+  } catch {}
   const movieCanonical = `${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`;
   return c.html(
     <Layout
@@ -398,7 +410,7 @@ app.get("/movies/:idslug", async (c) => {
         ...(movie.genres?.length ? { genre: movie.genres.map((g) => g.name) } : {}),
       }}
     >
-      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} />
+      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} />
     </Layout>
   );
 });
@@ -523,7 +535,26 @@ app.get("/browse", async (c) => {
       description="Explore popular TV shows and movies by genre and start tracking them for free on WatchDeck."
       canonical={`${c.env.SITE_URL}/browse`}
     >
-      <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} />
+      <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} networks={NETWORKS} />
+    </Layout>
+  );
+});
+
+app.get("/browse/network/:idslug", async (c) => {
+  const id = parseInt(c.req.param("idslug"), 10);
+  const network = NETWORKS.find((n) => n.id === id);
+  if (!network) return c.notFound();
+  const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
+  const res = await discoverByNetwork(c.env, network.id, page);
+  const base = `${c.env.SITE_URL}/browse/network/${network.id}-${slugify(network.name)}`;
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={`${network.name} TV shows to watch`}
+      description={`Popular TV shows on ${network.name} to discover and track for free on WatchDeck.`}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+    >
+      <BrowseNetwork network={network} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
   );
 });
@@ -1181,6 +1212,7 @@ app.get("/sitemap.xml", async (c) => {
     for (const m of movies.results) urls.push(`${c.env.SITE_URL}/movies/${m.id}-${slugify(m.title ?? "")}`);
     for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
     for (const g of movieGenres.genres) urls.push(`${c.env.SITE_URL}/browse/movie/${g.id}-${slugify(g.name)}`);
+    for (const n of NETWORKS) urls.push(`${c.env.SITE_URL}/browse/network/${n.id}-${slugify(n.name)}`);
   } catch {}
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map((u) => `  <url><loc>${u}</loc></url>`)
@@ -1192,6 +1224,30 @@ app.get("/:key{[a-f0-9]{32}\\.txt}", (c) => {
   const key = c.req.param("key").replace(/\.txt$/, "");
   if (c.env.INDEXNOW_KEY && key === c.env.INDEXNOW_KEY) return c.text(key);
   return c.notFound();
+});
+
+app.post("/api/indexnow", async (c) => {
+  const user = c.get("user");
+  if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
+  if (!c.env.INDEXNOW_KEY) return c.json({ error: "no key configured" }, 400);
+  const form = await c.req.parseBody();
+  const paths = String(form.paths ?? "")
+    .split(/\s+/)
+    .map((p) => p.trim())
+    .filter((p) => p.startsWith("/"));
+  if (paths.length === 0 || paths.length > 100) return c.json({ error: "provide 1-100 paths" }, 400);
+  const host = new URL(c.env.SITE_URL).host;
+  const res = await fetch("https://api.indexnow.org/indexnow", {
+    method: "POST",
+    headers: { "content-type": "application/json; charset=utf-8" },
+    body: JSON.stringify({
+      host,
+      key: c.env.INDEXNOW_KEY,
+      keyLocation: `${c.env.SITE_URL}/${c.env.INDEXNOW_KEY}.txt`,
+      urlList: paths.map((p) => `${c.env.SITE_URL}${p}`),
+    }),
+  });
+  return c.json({ submitted: paths.length, status: res.status });
 });
 
 app.get("/api/stats", async (c) => {

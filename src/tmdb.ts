@@ -101,12 +101,45 @@ export function genreList(env: Env, type: "tv" | "movie") {
   return tmdb<{ genres: { id: number; name: string }[] }>(env, `/genre/${type}/list`, 7 * 24 * 3600);
 }
 
+export const NETWORKS = [
+  { id: 213, name: "Netflix" },
+  { id: 49, name: "HBO" },
+  { id: 2739, name: "Disney+" },
+  { id: 2552, name: "Apple TV+" },
+  { id: 1024, name: "Prime Video" },
+  { id: 453, name: "Hulu" },
+  { id: 4330, name: "Paramount+" },
+  { id: 3353, name: "Peacock" },
+  { id: 174, name: "AMC" },
+  { id: 88, name: "FX" },
+  { id: 67, name: "Showtime" },
+  { id: 4, name: "BBC One" },
+] as const;
+
+export function discoverByNetwork(env: Env, networkId: number, page = 1) {
+  return tmdb<{ results: SearchResult[]; total_pages: number }>(
+    env,
+    `/discover/tv?with_networks=${networkId}&sort_by=popularity.desc&page=${Math.min(Math.max(page, 1), 20)}`,
+    24 * 3600
+  );
+}
+
 export function discoverByGenre(env: Env, type: "tv" | "movie", genreId: number, page = 1) {
   return tmdb<{ results: SearchResult[]; total_pages: number }>(
     env,
     `/discover/${type}?with_genres=${genreId}&sort_by=popularity.desc&page=${Math.min(Math.max(page, 1), 20)}`,
     24 * 3600
   );
+}
+
+export interface WatchProviders {
+  link: string;
+  flatrate?: { provider_id: number; provider_name: string; logo_path: string }[];
+}
+
+export async function watchProviders(env: Env, type: "tv" | "movie", id: number, region = "US"): Promise<WatchProviders | null> {
+  const res = await tmdb<{ results: Record<string, WatchProviders | undefined> }>(env, `/${type}/${id}/watch/providers`, 24 * 3600);
+  return res.results[region] ?? null;
 }
 
 export function recommendations(env: Env, type: "tv" | "movie", id: number) {

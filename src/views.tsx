@@ -1,6 +1,6 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
-import { poster, slugify, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails } from "./tmdb";
+import { poster, slugify, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders } from "./tmdb";
 
 export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; jsonLd?: object }>> = ({
   children,
@@ -470,6 +470,30 @@ export const RatingStars: FC<{ tmdbId: number; mediaType: "tv" | "movie"; title:
   </div>
 );
 
+export const WhereToWatch: FC<{ providers: WatchProviders | null }> = ({ providers }) =>
+  !providers?.flatrate?.length ? null : (
+    <div class="mt-4">
+      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Where to stream (US)</p>
+      <div class="flex flex-wrap items-center gap-2">
+        {providers.flatrate.slice(0, 6).map((p) => (
+          <a href={providers.link} rel="noopener" title={`Stream on ${p.provider_name}`} class="block">
+            <img
+              src={`https://image.tmdb.org/t/p/w45${p.logo_path}`}
+              alt={p.provider_name}
+              width={32}
+              height={32}
+              loading="lazy"
+              class="rounded-lg border border-slate-800"
+            />
+          </a>
+        ))}
+        <span class="text-xs text-slate-400">
+          data by <a href="https://www.justwatch.com/" rel="noopener" class="hover:underline">JustWatch</a>
+        </span>
+      </div>
+    </div>
+  );
+
 export const ShowPage: FC<{
   show: TvDetails;
   season: SeasonDetails | null;
@@ -477,7 +501,8 @@ export const ShowPage: FC<{
   tracked: { status: string; rating: number | null } | null;
   user: User | null;
   recs: SearchResult[];
-}> = ({ show, season, watched, tracked, user, recs }) => {
+  providers?: WatchProviders | null;
+}> = ({ show, season, watched, tracked, user, recs, providers }) => {
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
@@ -491,6 +516,7 @@ export const ShowPage: FC<{
           </p>
           <p class="mt-1 text-sm text-slate-400">{show.genres.map((g) => g.name).join(", ")}</p>
           <p class="mt-4 max-w-2xl text-slate-300">{show.overview}</p>
+          <WhereToWatch providers={providers ?? null} />
           {user ? (
             <div class="mt-5 flex flex-wrap gap-2">
               {(["watching", "watchlist", "completed", "dropped"] as const).map((s) => (
@@ -642,7 +668,8 @@ export const MoviePage: FC<{
   tracked: { status: string; rating: number | null } | null;
   user: User | null;
   recs: SearchResult[];
-}> = ({ movie, watched, tracked, user, recs }) => {
+  providers?: WatchProviders | null;
+}> = ({ movie, watched, tracked, user, recs, providers }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
   return (
     <div>
@@ -655,6 +682,7 @@ export const MoviePage: FC<{
         </p>
         <p class="mt-1 text-sm text-slate-400">{movie.genres.map((g) => g.name).join(", ")}</p>
         <p class="mt-4 max-w-2xl text-slate-300">{movie.overview}</p>
+        <WhereToWatch providers={providers ?? null} />
         {user ? (
           <div class="mt-5 flex flex-wrap gap-2">
             <form action="/api/watch-movie" method="post">
@@ -782,20 +810,45 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
     ) : (
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {rows.map((r) => (
-          <a href={`/${r.media_type === "tv" ? "shows" : "movies"}/${r.tmdb_id}-${slugify(r.title)}`} class="group">
-            <img
-              src={poster(r.poster_path)}
-              alt={r.title}
-              loading="lazy"
-              class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
-            />
-            <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{r.title}</p>
-            <p class="text-xs text-slate-400">
-              {r.status}
-              {r.media_type === "tv" && r.eps_watched > 0 ? ` · ${r.eps_watched} ep${r.eps_watched === 1 ? "" : "s"} watched` : ""}
-              {r.rating ? <span class="text-amber-400"> · ★ {r.rating}</span> : ""}
-            </p>
-          </a>
+          <div>
+            <a href={`/${r.media_type === "tv" ? "shows" : "movies"}/${r.tmdb_id}-${slugify(r.title)}`} class="group block">
+              <img
+                src={poster(r.poster_path)}
+                alt={r.title}
+                loading="lazy"
+                class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
+              />
+              <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{r.title}</p>
+              <p class="text-xs text-slate-400">
+                {r.media_type === "tv" && r.eps_watched > 0 ? `${r.eps_watched} ep${r.eps_watched === 1 ? "" : "s"} watched` : ""}
+                {r.rating ? <span class="text-amber-400">{r.media_type === "tv" && r.eps_watched > 0 ? " · " : ""}★ {r.rating}</span> : ""}
+              </p>
+            </a>
+            <form action="/api/track" method="post" class="mt-1">
+              <input type="hidden" name="tmdb_id" value={String(r.tmdb_id)} />
+              <input type="hidden" name="media_type" value={r.media_type} />
+              <input
+                type="hidden"
+                name="redirect"
+                value={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+              />
+              <select
+                name="status"
+                aria-label={`Status for ${r.title}`}
+                onchange="this.form.submit()"
+                class="w-full rounded-md border border-slate-800 bg-slate-900 px-1.5 py-1 text-xs text-slate-300 focus:border-violet-500 focus:outline-none"
+              >
+                {(["watching", "watchlist", "completed", "dropped"] as const).map((s) => (
+                  <option value={s} selected={r.status === s}>
+                    {s[0].toUpperCase() + s.slice(1)}
+                  </option>
+                ))}
+              </select>
+              <noscript>
+                <button class="mt-1 rounded-md border border-slate-700 px-2 py-1 text-xs">Save</button>
+              </noscript>
+            </form>
+          </div>
         ))}
       </div>
     )}
@@ -857,10 +910,11 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
   </div>
 );
 
-export const BrowseIndex: FC<{ tvGenres: { id: number; name: string }[]; movieGenres: { id: number; name: string }[] }> = ({
-  tvGenres,
-  movieGenres,
-}) => (
+export const BrowseIndex: FC<{
+  tvGenres: { id: number; name: string }[];
+  movieGenres: { id: number; name: string }[];
+  networks: readonly { id: number; name: string }[];
+}> = ({ tvGenres, movieGenres, networks }) => (
   <div>
     <h1 class="mb-2 text-2xl font-bold">Browse by genre</h1>
     <p class="mb-8 text-slate-400">Find your next watch across every genre — powered by TMDB.</p>
@@ -884,6 +938,19 @@ export const BrowseIndex: FC<{ tvGenres: { id: number; name: string }[]; movieGe
         </div>
       </section>
     ))}
+    <section class="mb-10">
+      <h2 class="mb-4 text-xl font-semibold">By network</h2>
+      <div class="flex flex-wrap gap-2">
+        {networks.map((n) => (
+          <a
+            href={`/browse/network/${n.id}-${slugify(n.name)}`}
+            class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300"
+          >
+            {n.name}
+          </a>
+        ))}
+      </div>
+    </section>
   </div>
 );
 
@@ -907,6 +974,34 @@ export const BrowseGenre: FC<{
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {results.map((r) => (
           <MediaCard item={r} type={type} />
+        ))}
+      </div>
+      <div class="mt-8 flex items-center gap-3 text-sm">
+        {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+        <span class="text-slate-400">Page {page} of {Math.min(totalPages, 20)}</span>
+        {page < Math.min(totalPages, 20) && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+      </div>
+    </div>
+  );
+};
+
+export const BrowseNetwork: FC<{
+  network: { id: number; name: string };
+  results: SearchResult[];
+  page: number;
+  totalPages: number;
+}> = ({ network, results, page, totalPages }) => {
+  const base = `/browse/network/${network.id}-${slugify(network.name)}`;
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">{network.name} TV shows</h1>
+      <p class="mb-6 text-slate-400">
+        Popular series on {network.name} to track on WatchDeck.{" "}
+        <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; networks</a>
+      </p>
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        {results.map((r) => (
+          <MediaCard item={r} type="tv" />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">

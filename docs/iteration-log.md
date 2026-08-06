@@ -318,3 +318,70 @@
 
 **证据（线上验证）**
 - curl 线上 styles.css grep right-1\.5 = 1；测试代理报告 /home/ubuntu/test-report-rounds16-19-regression.md + 录屏。
+
+---
+
+## Round 21 — 2026-08-06
+
+**发现**
+- [pSEO/竞品 / P2] 浏览发现仅有题材维度；用户找剧的高频入口是「平台/电视网」（Netflix shows、HBO shows 等高搜索量词），Trakt/Simkl 均有 network 维度浏览。
+
+**修复（已部署，Version be4a4723）**
+- 新增 12 个电视网聚合页 /browse/network/:id-slug（Netflix/HBO/Disney+/Apple TV+/Prime Video/Hulu/Paramount+/Peacock/AMC/FX/Showtime/BBC One），TMDB discover with_networks、20 页分页、canonical；/browse 增「By network」区块；12 个 URL 入 sitemap。
+
+**证据（线上验证）**
+- /browse/network/213-netflix 200（h1 "Netflix TV shows"）、无效 id 404、HBO page=2 200；sitemap 含 12 个 network URL；/browse 显示 By network。
+
+
+---
+
+## Round 22 — 2026-08-06
+
+**发现**
+- [UX / P2] Library 卡片上无法直接改状态（watching/watchlist/completed/dropped），必须进详情页；TV Time/Trakt 均支持列表内快速改状态。
+
+**修复（已部署，Version 691d4cb9）**
+- Library 每张卡片下方新增紧凑状态下拉（onchange 自动提交，noscript 有 Save 按钮兜底），POST 复用 /api/track upsert；redirect 保留当前 status/sort/q 筛选参数；下拉带 aria-label。
+
+**证据（线上验证）**
+- r10 账号 /library 渲染下拉；POST 改 Breaking Bad→completed 后出现在 completed 筛选（grep=1），已还原 watching。
+
+---
+
+## Round 23 — 2026-08-06
+
+**发现**
+- [竞品 / P1] TV Time/Simkl 详情页都有「在哪看」流媒体平台标识，我们没有——这是迁移用户高频使用的功能，TMDB 免费提供 JustWatch 数据（要求署名）。
+
+**修复（已部署，Version 8285a086）**
+- tmdb.ts 新增 watchProviders()（/​{type}/{id}/watch/providers，US 区，24h 缓存）；剧集/电影详情页 overview 下方新增 WhereToWatch 组件：最多 6 个流媒体 logo（w45，链接到 JustWatch 聚合页）+ "data by JustWatch" 署名；无 flatrate 数据时整块隐藏。
+
+**证据（线上验证）**
+- Severance/Breaking Bad/Inception 详情页均渲染 "Where to stream (US)" 与 JustWatch 署名。
+
+---
+
+## Round 24 — 2026-08-06
+
+**发现**
+- [SEO/数据 / P2] 近几轮新增了 14 个可索引 URL（12 个 network 聚合页 + /privacy + /terms），但 IndexNow 只在最初上线时提交过一次，且提交脚本依赖只有 Worker 能读的 INDEXNOW_KEY，无法复用。
+
+**修复（已部署，Version ec780f63）**
+- 新增管理端点 POST /api/indexnow（仅 ADMIN_EMAIL，可提交 1-100 个以 / 开头的路径），Worker 内部用 INDEXNOW_KEY 调 api.indexnow.org 批量提交；管理员登录后一次表单提交即可通知搜索引擎新页面。
+
+**证据（线上验证）**
+- 未登录 POST → 403 {"error":"forbidden"}；非管理员账号 POST → 403（部署传播完成后连续 4 次一致）。实际提交待管理员（老板邮箱）登录后触发。
+
+---
+
+## Round 25 — 2026-08-06
+
+**发现（QA 回归驱动，测试代理完整回归 21-24 轮）**
+- [P0，已当场修复] 21-24 轮各自独立基于 main 分支开发并逐轮部署，导致最后一次部署（iteration-24 分支）覆盖掉了 21-23 轮的代码——线上一度缺失 network 页/状态下拉/流媒体标识。根因：并行 sibling 分支 + 单 Worker 部署互相覆盖。
+- [P3] 流媒体 logo 链接指向 JustWatch 首页而非该剧目页面。
+
+**修复（已部署，Version 83e6024c）**
+- 合并 21+22+23+24 为累计分支 devin/1786007015-iterations-21-24 并重新部署；四轮功能全部在线复验通过。流程改进：此后每轮基于累计分支开发，避免覆盖。
+
+**证据（线上验证）**
+- 测试代理报告 /home/ubuntu/test-report-rounds21-24-regression.md + 录屏：21-24 轮全过、QA 基线（8 shows/Severance 4/Friends 0）前后一致、r10 状态往返还原。
