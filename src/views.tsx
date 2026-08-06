@@ -1137,6 +1137,7 @@ export interface UserStats {
   completedShows: number;
   topShows: { title: string; tmdb_id: number; eps: number }[];
   byMonth: { month: string; eps: number }[];
+  topGenres: { name: string; count: number }[];
 }
 
 const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
@@ -1194,6 +1195,20 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
           )}
         </div>
       </div>
+      {stats.topGenres.length > 0 && (
+        <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h2 class="mb-4 font-semibold">Top genres</h2>
+          <ul class="space-y-1.5">
+            {stats.topGenres.map((g) => (
+              <li class="flex items-center gap-2 text-xs">
+                <span class="w-28 shrink-0 truncate text-slate-400">{g.name}</span>
+                <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((g.count / Math.max(1, stats.topGenres[0].count)) * 100))}%`} />
+                <span class="text-slate-400">{g.count}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

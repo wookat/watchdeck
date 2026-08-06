@@ -523,3 +523,16 @@
 
 **证据**
 - 测试代理报告 test-report-rounds31-34-regression.md + 录屏；PR #34 评论附截图。
+
+---
+
+## Round 36 — 2026-08-06
+
+**发现（竞品驱动）**
+- [P1] TV Time/Trakt 均有「口味画像」类统计（Top genres）；WatchDeck /stats 只有数量与月度条形图，缺题材维度。
+
+**修复（已部署，Version b0efd363）**
+- userStats 新增 topGenres：取最近 40 个 tracked 条目并行读 TMDB 详情（已有 12/24h KV 缓存，零新增配额压力），聚合 genre 计数取前 6；/stats 与公开分享页复用 StatsBody 渲染「Top genres」条形图（无数据不渲染）。
+
+**证据（线上验证）**
+- r10 账号 /stats 显示 Top genres：Drama/Mystery/Sci-Fi & Fantasy/Action/Science Fiction/Adventure，与其 3 个 tracked 条目的 TMDB 题材一致。

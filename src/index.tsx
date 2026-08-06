@@ -711,6 +711,24 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     ).bind(userId).all<{ month: string; eps: number }>(),
     hoursWatched(env, userId),
   ]);
+  const items = await env.DB.prepare(
+    "SELECT tmdb_id, media_type FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 40"
+  )
+    .bind(userId)
+    .all<{ tmdb_id: number; media_type: "tv" | "movie" }>();
+  const genreCounts = new Map<string, number>();
+  await Promise.all(
+    items.results.map(async (t) => {
+      try {
+        const d = t.media_type === "tv" ? await tvDetails(env, t.tmdb_id) : await movieDetails(env, t.tmdb_id);
+        for (const g of d.genres ?? []) genreCounts.set(g.name, (genreCounts.get(g.name) ?? 0) + 1);
+      } catch {}
+    })
+  );
+  const topGenres = [...genreCounts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6);
   return {
     hoursWatched: hours,
     epsWatched: eps?.n ?? 0,
@@ -719,6 +737,7 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     completedShows: completed?.n ?? 0,
     topShows: topShows.results,
     byMonth: byMonth.results,
+    topGenres,
   };
 }
 
