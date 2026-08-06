@@ -668,7 +668,8 @@ export const ShowPage: FC<{
   recs: SearchResult[];
   providers?: WatchProviders | null;
   cast?: CastMember[];
-}> = ({ show, season, watched, tracked, user, recs, providers, cast }) => {
+  trailer?: string | null;
+}> = ({ show, season, watched, tracked, user, recs, providers, cast, trailer }) => {
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
@@ -680,7 +681,15 @@ export const ShowPage: FC<{
             {show.first_air_date?.slice(0, 4)} · {show.number_of_seasons} season{show.number_of_seasons === 1 ? "" : "s"} ·{" "}
             {show.number_of_episodes} episodes · {show.status} · ★ {show.vote_average?.toFixed(1)}
           </p>
-          <p class="mt-1 text-sm text-slate-400">{show.genres.map((g) => g.name).join(", ")}</p>
+          <p class="mt-1 text-sm text-slate-400">
+            {show.genres.map((g) => g.name).join(", ")}
+            {trailer && (
+              <>
+                {" · "}
+                <a href={trailer} rel="noopener" target="_blank" class="text-violet-400 hover:underline">▶ Trailer</a>
+              </>
+            )}
+          </p>
           {show.next_episode_to_air?.air_date && (
             <p class="mt-3 inline-block rounded-lg border border-violet-800 bg-violet-950/50 px-3 py-1.5 text-sm text-violet-300">
               Next episode: S{String(show.next_episode_to_air.season_number).padStart(2, "0")}E
@@ -847,7 +856,8 @@ export const MoviePage: FC<{
   recs: SearchResult[];
   providers?: WatchProviders | null;
   cast?: CastMember[];
-}> = ({ movie, watched, tracked, user, recs, providers, cast }) => {
+  trailer?: string | null;
+}> = ({ movie, watched, tracked, user, recs, providers, cast, trailer }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
   return (
     <div>
@@ -858,7 +868,15 @@ export const MoviePage: FC<{
         <p class="mt-1 text-sm text-slate-400">
           {movie.release_date?.slice(0, 4)} {movie.runtime ? `· ${movie.runtime} min` : ""} · ★ {movie.vote_average?.toFixed(1)}
         </p>
-        <p class="mt-1 text-sm text-slate-400">{movie.genres.map((g) => g.name).join(", ")}</p>
+        <p class="mt-1 text-sm text-slate-400">
+          {movie.genres.map((g) => g.name).join(", ")}
+          {trailer && (
+            <>
+              {" · "}
+              <a href={trailer} rel="noopener" target="_blank" class="text-violet-400 hover:underline">▶ Trailer</a>
+            </>
+          )}
+        </p>
         <p class="mt-4 max-w-2xl text-slate-300">{movie.overview}</p>
         <WhereToWatch providers={providers ?? null} />
         {user ? (

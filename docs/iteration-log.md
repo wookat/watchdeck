@@ -1234,3 +1234,15 @@
 
 **证据**
 - Version a7d58fb4；线上验证（r10 只读浏览后登出）：/home 正常渲染含 eps left 徽章，整页 curl 1.07s。
+
+---
+
+## Round 88 — 2026-08-06
+
+**驱动：④竞品（TV Time/Trakt/IMDb 详情页均有预告片入口）+ ②UX（详情页无试看出口，决定「要不要追」缺一环）**
+
+**修复（P2）**
+- 新增 tmdb.trailerUrl（/videos 端点，KV 缓存 7 天，优先 official YouTube Trailer）；剧集/电影详情页题材行追加「▶ Trailer」外链（新标签打开），无预告片时不显示。
+
+**证据**
+- Version 0787eda1；线上验证：Inception 页出现 youtube.com/watch?v=JE9z-gy4De4，Severance 页出现 xEQP4VVuyrY；Breaking Bad（TMDB 无 Trailer 条目）正确不显示。

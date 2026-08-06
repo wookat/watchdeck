@@ -20,6 +20,7 @@ import {
   NETWORKS,
   recommendations,
   watchProviders,
+  trailerUrl,
   slugify,
   metaDescription,
   type SearchResult,
@@ -436,7 +437,7 @@ app.get("/shows/:idslug", async (c) => {
     return c.redirect(`/shows/${showSlug}${qs}`, 301);
   }
   const seasonNum = parseInt(c.req.query("season") ?? "1", 10) || 1;
-  const [season, watchedRows, tracked, recsRes, providers, cast] = await Promise.all([
+  const [season, watchedRows, tracked, recsRes, providers, cast, trailer] = await Promise.all([
     seasonDetails(c.env, id, seasonNum).catch(() => null),
     user
       ? c.env.DB.prepare("SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
@@ -451,6 +452,7 @@ app.get("/shows/:idslug", async (c) => {
     recommendations(c.env, "tv", id).catch(() => ({ results: [] as SearchResult[] })),
     watchProviders(c.env, "tv", id).catch(() => null),
     topCast(c.env, "tv", id).catch(() => [] as CastMember[]),
+    trailerUrl(c.env, "tv", id).catch(() => null),
   ]);
   const watched = new Set((watchedRows?.results ?? []).map((r) => `${r.season}x${r.episode}`));
   const recs = recsRes.results;
@@ -489,7 +491,7 @@ app.get("/shows/:idslug", async (c) => {
         ],
       }}
     >
-      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} />
+      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} />
     </Layout>
   );
 });
@@ -506,7 +508,7 @@ app.get("/movies/:idslug", async (c) => {
   }
   const movieSlug = `${movie.id}-${slugify(movie.title)}`;
   if (c.req.param("idslug") !== movieSlug) return c.redirect(`/movies/${movieSlug}`, 301);
-  const [watchedRow, tracked, recsRes, providers, cast] = await Promise.all([
+  const [watchedRow, tracked, recsRes, providers, cast, trailer] = await Promise.all([
     user ? c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first() : Promise.resolve(null),
     user
       ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
@@ -516,6 +518,7 @@ app.get("/movies/:idslug", async (c) => {
     recommendations(c.env, "movie", id).catch(() => ({ results: [] as SearchResult[] })),
     watchProviders(c.env, "movie", id).catch(() => null),
     topCast(c.env, "movie", id).catch(() => [] as CastMember[]),
+    trailerUrl(c.env, "movie", id).catch(() => null),
   ]);
   const watched = !!watchedRow;
   const recs = recsRes.results;
@@ -553,7 +556,7 @@ app.get("/movies/:idslug", async (c) => {
         ],
       }}
     >
-      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} />
+      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} />
     </Layout>
   );
 });
