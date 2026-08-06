@@ -480,7 +480,8 @@ export const HomePage: FC<{
   </div>
 );
 
-export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: Set<string>; type?: "all" | "tv" | "movie" }> = ({ q, results, libraryIds, type = "all" }) => {
+export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: Set<string>; type?: "all" | "tv" | "movie"; loggedIn?: boolean }> = ({ q, results, libraryIds, type = "all", loggedIn }) => {
+  const backTo = `/search?q=${encodeURIComponent(q)}${type === "all" ? "" : `&type=${type}`}`;
   const filtered = results.filter((r) => (r.media_type === "tv" || r.media_type === "movie") && (type === "all" || r.media_type === type));
   return (
     <div>
@@ -515,9 +516,25 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
         </div>
       )}
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-        {filtered.map((r) => (
-          <MediaCard item={r} type={r.media_type as "tv" | "movie"} inLibrary={libraryIds?.has(`${r.media_type}:${r.id}`)} />
-        ))}
+        {filtered.map((r) => {
+          const inLib = libraryIds?.has(`${r.media_type}:${r.id}`);
+          return (
+            <div>
+              <MediaCard item={r} type={r.media_type as "tv" | "movie"} inLibrary={inLib} />
+              {loggedIn && !inLib && (
+                <form action="/api/track" method="post" class="mt-1.5">
+                  <input type="hidden" name="tmdb_id" value={String(r.id)} />
+                  <input type="hidden" name="media_type" value={r.media_type} />
+                  <input type="hidden" name="status" value="watchlist" />
+                  <input type="hidden" name="redirect" value={backTo} />
+                  <button class="w-full rounded-lg border border-slate-700 px-2 py-1 text-xs text-slate-300 hover:border-violet-500 hover:text-violet-300">
+                    + Watchlist
+                  </button>
+                </form>
+              )}
+            </div>
+          );
+        })}
       </div>
       {q && filtered.length === 0 && (
         <p class="text-slate-400">

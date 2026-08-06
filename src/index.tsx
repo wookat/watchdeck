@@ -412,7 +412,7 @@ app.get("/search", async (c) => {
   }
   return c.html(
     <Layout user={user} title={`Search: ${q}`}>
-      <SearchPage q={q} results={res.results} libraryIds={libraryIds} type={type} />
+      <SearchPage q={q} results={res.results} libraryIds={libraryIds} type={type} loggedIn={!!user} />
     </Layout>
   );
 });

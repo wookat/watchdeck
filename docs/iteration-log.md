@@ -1310,3 +1310,15 @@
 
 **证据**
 - Version 0f65c823；线上验证：搜索「TeSt CaSe R93」入库为「test case r93」；/privacy 已含 90 天保留声明；移动端截图走查无缺陷。
+
+---
+
+## Round 94 — 2026-08-06
+
+**驱动：④竞品（Trakt 搜索结果可直接快捷添加，我们必须进详情页才能加）+ ②UX（搜索→加 watchlist 需 3 步）**
+
+**修复（P2）**
+- 登录用户搜索结果卡片下方新增「+ Watchlist」一键加入按钮（已在库条目不显示，仍显示 ✓ In library 角标）；POST /api/track status=watchlist，redirect 经 safeNext 回落原搜索页（含 type 过滤参数）。匿名用户不显示。
+
+**证据**
+- Version 00c358d8；线上验证：r10 登录搜「the pitt」出现 + Watchlist 按钮，匿名同查询无按钮。写库正向路径留给测试代理用 throwaway 账号回归。
