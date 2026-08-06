@@ -896,3 +896,16 @@
 
 **证据（线上验证）**
 - Breaking Bad meta description 现以 "…He becomes filled…" 词边界+省略号收尾（curl 验证）。
+
+---
+
+## Round 63 — 2026-08-06
+
+**发现（转化/竞品驱动）**
+- [P1] 254 个 sitemap 详情页是主要 SEO 落地页，但匿名访客只看到一行小字文本链接「Join free to track this show」——无按钮级 CTA、无 TV Time 导入钩子，自然流量到达后无转化路径。竞品核查：Bingers 官网仍只有 App Store/Play 链接，无 Web 端（无重大动向）。
+
+**修复（已部署，Version f9570e88）**
+- 剧集/电影详情页匿名态改为按钮 CTA「Track this show/movie — join free」+「Coming from TV Time? Import your export →」双链接。
+
+**证据（线上验证）**
+- Breaking Bad / Inception 匿名页均渲染新 CTA（curl 验证）。

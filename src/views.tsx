@@ -653,9 +653,10 @@ export const ShowPage: FC<{
               )}
             </div>
           ) : (
-            <p class="mt-5 text-sm text-slate-400">
-              <a href="/signup" class="text-violet-400 hover:underline">Join free</a> to track this show.
-            </p>
+            <div class="mt-5 flex flex-wrap items-center gap-3">
+              <a href="/signup" class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this show — join free</a>
+              <a href="/signup" class="text-sm text-violet-400 hover:underline">Coming from TV Time? Import your export →</a>
+            </div>
           )}
           {user && (
             <RatingStars tmdbId={show.id} mediaType="tv" title={show.name} posterPath={show.poster_path} rating={tracked?.rating ?? null} redirect={showUrl} />
@@ -834,9 +835,10 @@ export const MoviePage: FC<{
             )}
           </div>
         ) : (
-          <p class="mt-5 text-sm text-slate-400">
-            <a href="/signup" class="text-violet-400 hover:underline">Join free</a> to track this movie.
-          </p>
+          <div class="mt-5 flex flex-wrap items-center gap-3">
+            <a href="/signup" class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this movie — join free</a>
+            <a href="/signup" class="text-sm text-violet-400 hover:underline">Coming from TV Time? Import your export →</a>
+          </div>
         )}
         {user && (
           <RatingStars tmdbId={movie.id} mediaType="movie" title={movie.title} posterPath={movie.poster_path} rating={tracked?.rating ?? null} redirect={movieUrl} />
