@@ -1386,3 +1386,19 @@
 
 **证据**
 - Version b9163eb1；/calendar 匿名 302 正常；旧 token 失效 + 新 token 可订阅的端到端验证留给 R100 回归（throwaway 账号）。
+
+---
+
+## Round 100 — 2026-08-06（收官回归轮）
+
+**驱动：①测试（QA 回归 R96-R99 + 全站收官冒烟）**
+
+**回归结果（生产 Version b9163eb1）**
+- R99 端到端：throwaway 旧 .ics 200（含真实 VEVENT）→「↻ Reset feed URL」→ 旧 URL 404、D1 feed_tokens 恰 1 行新 token、新 .ics 200。
+- R96：/home /stats /settings /history（302 上）与 /u/<share> 均带 x-robots-tag: noindex；/、/browse、详情页、/login 无；robots.txt 6 条新 Disallow 生效。
+- R97：styles.css/app.js max-age=3600+SWR、图标 7 天、manifest 1 天、/_headers 404。
+- R98：匿名/非管理员 403（正向路径需 ADMIN_EMAIL 凭据，永久待观察项，同 R93 Cron 清理——现可用 /api/admin/cron job=prune 由管理员触发）。
+- 收官全站冒烟：落地页/注册/搜索+快捷添加/详情（预告片、流媒体）/⇥ up to here → Next Up「S01E03 · 17 eps left」（=19−2）/Library 排序/历史/统计/日历+iCal/导入确认卡 Cancel 不写库/JSON+CSV 导出/隐私条款//u/ 分享页/404 出路——全过。
+- 完整性：throwaway 删除后 users/feed_tokens/share_tokens 级联清零；基线与 r10 与既档一致。
+
+**结论**：R96-R99 无 P0/P1/P2/P3。100 轮持续迭代程序至此收官：100 轮全部完成并逐轮上线回归，未遗留任何 P0/P1/P2 缺陷；仅存两个凭据性待观察项（管理员 Cron 正向路径、90 天清理首跑）。
