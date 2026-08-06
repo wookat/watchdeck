@@ -914,7 +914,8 @@ export const BrowseIndex: FC<{
   tvGenres: { id: number; name: string }[];
   movieGenres: { id: number; name: string }[];
   networks: readonly { id: number; name: string }[];
-}> = ({ tvGenres, movieGenres, networks }) => (
+  years: number[];
+}> = ({ tvGenres, movieGenres, networks, years }) => (
   <div>
     <h1 class="mb-2 text-2xl font-bold">Browse by genre</h1>
     <p class="mb-8 text-slate-400">Find your next watch across every genre — powered by TMDB.</p>
@@ -938,6 +939,29 @@ export const BrowseIndex: FC<{
         </div>
       </section>
     ))}
+    <section class="mb-10">
+      <h2 class="mb-4 text-xl font-semibold">By year</h2>
+      {(
+        [
+          ["TV shows", "tv"],
+          ["Movies", "movie"],
+        ] as const
+      ).map(([label, type]) => (
+        <div class="mb-4">
+          <h3 class="mb-2 text-sm font-medium text-slate-400">{label}</h3>
+          <div class="flex flex-wrap gap-2">
+            {years.map((y) => (
+              <a
+                href={`/browse/year/${type}/${y}`}
+                class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300"
+              >
+                {y}
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
     <section class="mb-10">
       <h2 class="mb-4 text-xl font-semibold">By network</h2>
       <div class="flex flex-wrap gap-2">
@@ -1002,6 +1026,37 @@ export const BrowseNetwork: FC<{
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {results.map((r) => (
           <MediaCard item={r} type="tv" />
+        ))}
+      </div>
+      <div class="mt-8 flex items-center gap-3 text-sm">
+        {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+        <span class="text-slate-400">Page {page} of {Math.min(totalPages, 20)}</span>
+        {page < Math.min(totalPages, 20) && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+      </div>
+    </div>
+  );
+};
+
+export const BrowseYear: FC<{
+  type: "tv" | "movie";
+  year: number;
+  results: SearchResult[];
+  page: number;
+  totalPages: number;
+}> = ({ type, year, results, page, totalPages }) => {
+  const base = `/browse/year/${type}/${year}`;
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">
+        {type === "tv" ? "TV shows" : "Movies"} of {year}
+      </h1>
+      <p class="mb-6 text-slate-400">
+        The most popular {type === "tv" ? `series that premiered in ${year}` : `films released in ${year}`}, ready to track on WatchDeck.{" "}
+        <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; years</a>
+      </p>
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        {results.map((r) => (
+          <MediaCard item={r} type={type} />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">

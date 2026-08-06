@@ -14,6 +14,7 @@ import {
   genreList,
   discoverByGenre,
   discoverByNetwork,
+  discoverByYear,
   NETWORKS,
   recommendations,
   watchProviders,
@@ -41,6 +42,7 @@ import {
   BrowseIndex,
   BrowseGenre,
   BrowseNetwork,
+  BrowseYear,
   type UserStats,
   type NextUpItem,
   type HistoryItem,
@@ -526,6 +528,11 @@ app.get("/feed/:token", async (c) => {
   });
 });
 
+function browseYears(): number[] {
+  const current = new Date().getUTCFullYear();
+  return Array.from({ length: 15 }, (_, i) => current - i);
+}
+
 app.get("/browse", async (c) => {
   const [tv, movie] = await Promise.all([genreList(c.env, "tv"), genreList(c.env, "movie")]);
   return c.html(
@@ -535,7 +542,7 @@ app.get("/browse", async (c) => {
       description="Explore popular TV shows and movies by genre and start tracking them for free on WatchDeck."
       canonical={`${c.env.SITE_URL}/browse`}
     >
-      <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} networks={NETWORKS} />
+      <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} networks={NETWORKS} years={browseYears()} />
     </Layout>
   );
 });
@@ -555,6 +562,26 @@ app.get("/browse/network/:idslug", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
     >
       <BrowseNetwork network={network} results={res.results} page={page} totalPages={res.total_pages} />
+    </Layout>
+  );
+});
+
+app.get("/browse/year/:type/:year", async (c) => {
+  const type = c.req.param("type") === "movie" ? "movie" : c.req.param("type") === "tv" ? "tv" : null;
+  const year = parseInt(c.req.param("year"), 10);
+  const current = new Date().getUTCFullYear();
+  if (!type || !Number.isFinite(year) || year < 1950 || year > current + 1) return c.notFound();
+  const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
+  const res = await discoverByYear(c.env, type, year, page);
+  const base = `${c.env.SITE_URL}/browse/year/${type}/${year}`;
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={`${type === "tv" ? "TV shows" : "Movies"} of ${year}`}
+      description={`The most popular ${type === "tv" ? `TV shows that premiered in ${year}` : `movies released in ${year}`} to discover and track for free on WatchDeck.`}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+    >
+      <BrowseYear type={type} year={year} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
   );
 });
@@ -1213,6 +1240,9 @@ app.get("/sitemap.xml", async (c) => {
     for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
     for (const g of movieGenres.genres) urls.push(`${c.env.SITE_URL}/browse/movie/${g.id}-${slugify(g.name)}`);
     for (const n of NETWORKS) urls.push(`${c.env.SITE_URL}/browse/network/${n.id}-${slugify(n.name)}`);
+    for (const y of browseYears()) {
+      urls.push(`${c.env.SITE_URL}/browse/year/tv/${y}`, `${c.env.SITE_URL}/browse/year/movie/${y}`);
+    }
   } catch {}
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map((u) => `  <url><loc>${u}</loc></url>`)

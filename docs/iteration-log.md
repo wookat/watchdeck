@@ -385,3 +385,17 @@
 
 **证据（线上验证）**
 - 测试代理报告 /home/ubuntu/test-report-rounds21-24-regression.md + 录屏：21-24 轮全过、QA 基线（8 shows/Severance 4/Friends 0）前后一致、r10 状态往返还原。
+
+---
+
+## Round 26 — 2026-08-06
+
+**发现（pSEO/竞品驱动）**
+- [P1] Trakt/Simkl 都有按年份浏览入口；WatchDeck 只有题材/网络聚合，缺「年份」维度的 pSEO 长尾页。
+
+**修复（已部署，Version 21906b4c）**
+- 新增 /browse/year/:type/:year（tv|movie × 1950–明年，超范围 404），TMDB discover 按 first_air_date_year / primary_release_year 热度排序，24h 缓存、页码钳制 20、canonical 就位。
+- /browse 增加「By year」区块（近 15 年 × TV/电影）；sitemap 新增 30 个年份 URL。
+
+**证据（线上验证）**
+- /browse 出现 By year；/browse/year/tv/2025 与 /browse/year/movie/2010 均 200；?page=2 显示 Page 2 of 20；/browse/year/tv/1900 404；sitemap 含 30 个 browse/year URL。
