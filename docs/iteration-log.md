@@ -1154,3 +1154,16 @@
 
 **证据**
 - Version 1cf0d4b5；线上验证：app.js 已含 site-nav 高亮逻辑，页面 nav 已带 id（浏览器端效果由 R85 回归复核）。
+
+---
+
+## Round 82 — 2026-08-06
+
+**驱动：④竞品（Trakt ratings.csv 导出含 1-10 评分；我们 CSV 导入丢弃评分数据）**
+- Trakt/Serializd 难民迁移时个人评分全部丢失，需手动重打。
+
+**修复（P1）**
+- 通用 CSV 导入解析 rating/your rating/user rating 列，1-10 分制自动折半归一到 1-5 星；批量导入把评分写入 tracked.rating（已有评分不覆盖，COALESCE 保护）；导入页文案注明。
+
+**证据**
+- Version c67c21d4；线上验证（r10 只读解析，未写库）：title,type,rating CSV → The Wire rating:5（9/10 折半）、Heat rating:4；端到端 apply 由 R85 回归覆盖。

@@ -1396,12 +1396,13 @@ app.post("/api/import/batch", async (c) => {
       }
       const title = match.name ?? show.name;
       const allWatched = show.episodes.length > 0;
+      const showRating = Number.isInteger(show.rating) && show.rating! >= 1 && show.rating! <= 5 ? show.rating! : null;
       await c.env.DB.prepare(
-        `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, source)
-         VALUES (?, ?, 'tv', ?, ?, ?, ?)
-         ON CONFLICT(user_id, tmdb_id, media_type) DO NOTHING`
+        `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, source, rating)
+         VALUES (?, ?, 'tv', ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, tmdb_id, media_type) DO UPDATE SET rating = COALESCE(tracked.rating, excluded.rating)`
       )
-        .bind(user.id, match.id, title, match.poster_path, allWatched ? "watching" : "watchlist", source)
+        .bind(user.id, match.id, title, match.poster_path, allWatched ? "watching" : "watchlist", source, showRating)
         .run();
       showsImported++;
       const stmts = show.episodes.slice(0, 400).map((e) =>
@@ -1426,12 +1427,13 @@ app.post("/api/import/batch", async (c) => {
         unmatchedNames.push(movie.name);
         continue;
       }
+      const movieRating = Number.isInteger(movie.rating) && movie.rating! >= 1 && movie.rating! <= 5 ? movie.rating! : null;
       await c.env.DB.batch([
         c.env.DB.prepare(
-          `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, source)
-           VALUES (?, ?, 'movie', ?, ?, 'completed', ?)
-           ON CONFLICT(user_id, tmdb_id, media_type) DO NOTHING`
-        ).bind(user.id, match.id, match.title ?? movie.name, match.poster_path, source),
+          `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, source, rating)
+           VALUES (?, ?, 'movie', ?, ?, 'completed', ?, ?)
+           ON CONFLICT(user_id, tmdb_id, media_type) DO UPDATE SET rating = COALESCE(tracked.rating, excluded.rating)`
+        ).bind(user.id, match.id, match.title ?? movie.name, match.poster_path, source, movieRating),
         c.env.DB.prepare(
           "INSERT OR IGNORE INTO movie_watches (user_id, tmdb_id, watched_at) VALUES (?, ?, COALESCE(?, datetime('now')))"
         ).bind(user.id, match.id, movie.watchedAt),

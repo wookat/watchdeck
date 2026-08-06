@@ -4,11 +4,21 @@ export interface ParsedShow {
   name: string;
   episodes: { season: number; episode: number; watchedAt: string | null }[];
   followedOnly: boolean;
+  rating?: number | null;
 }
 
 export interface ParsedImport {
   shows: ParsedShow[];
-  movies: { name: string; watchedAt: string | null }[];
+  movies: { name: string; watchedAt: string | null; rating?: number | null }[];
+}
+
+// Accepts 1-5 or 1-10 scale ratings (Trakt exports 1-10); normalizes to 1-5.
+function parseRating(raw: string): number | null {
+  const v = parseFloat(raw);
+  if (!Number.isFinite(v) || v <= 0) return null;
+  const scaled = v > 5 ? v / 2 : v;
+  const r = Math.round(scaled);
+  return r >= 1 && r <= 5 ? r : null;
 }
 
 function parseCsv(text: string): Record<string, string>[] {
@@ -63,7 +73,7 @@ function pick(rec: Record<string, string>, ...candidates: string[]): string {
 export function parseGenericCsv(text: string): ParsedImport {
   const records = parseCsv(text);
   const showMap = new Map<string, ParsedShow>();
-  const movies = new Map<string, { name: string; watchedAt: string | null }>();
+  const movies = new Map<string, { name: string; watchedAt: string | null; rating?: number | null }>();
   for (const rec of records) {
     const type = pick(rec, "type", "media_type", "entity_type").toLowerCase();
     const title = pick(rec, "title", "show title", "show_title", "show name", "show_name", "show", "series_name", "name");
@@ -71,16 +81,18 @@ export function parseGenericCsv(text: string): ParsedImport {
     const season = parseInt(pick(rec, "season number", "season_number", "season"), 10);
     const episode = parseInt(pick(rec, "episode number", "episode_number", "episode"), 10);
     const watchedAt = pick(rec, "watched_at", "watched at", "watched date", "last_watched_at", "date", "created_at") || null;
+    const rating = parseRating(pick(rec, "rating", "your rating", "user rating", "user_rating"));
     if (type.includes("movie")) {
-      if (!movies.has(title.toLowerCase())) movies.set(title.toLowerCase(), { name: title, watchedAt });
+      if (!movies.has(title.toLowerCase())) movies.set(title.toLowerCase(), { name: title, watchedAt, rating });
       continue;
     }
     const key = title.toLowerCase();
     let show = showMap.get(key);
     if (!show) {
-      show = { name: title, episodes: [], followedOnly: true };
+      show = { name: title, episodes: [], followedOnly: true, rating };
       showMap.set(key, show);
     }
+    if (rating && !show.rating) show.rating = rating;
     if (Number.isFinite(season) && Number.isFinite(episode)) {
       show.followedOnly = false;
       show.episodes.push({ season, episode, watchedAt });
