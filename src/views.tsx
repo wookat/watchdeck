@@ -1270,6 +1270,7 @@ export interface UserStats {
   completedShows: number;
   topShows: { title: string; tmdb_id: number; eps: number }[];
   byMonth: { month: string; eps: number }[];
+  byYear: { year: string; eps: number; movies: number }[];
   topGenres: { name: string; count: number }[];
   epsThisYear: number;
   moviesThisYear: number;
@@ -1336,6 +1337,26 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
           )}
         </div>
       </div>
+      {stats.byYear.length > 0 && (
+        <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h2 class="mb-4 font-semibold">By year</h2>
+          <ul class="space-y-1.5">
+            {stats.byYear.map((y) => {
+              const total = y.eps + y.movies;
+              const maxYear = Math.max(1, ...stats.byYear.map((r) => r.eps + r.movies));
+              return (
+                <li class="flex items-center gap-2 text-xs">
+                  <span class="w-16 shrink-0 text-slate-400">{y.year}</span>
+                  <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((total / maxYear) * 100))}%`} />
+                  <span class="whitespace-nowrap text-slate-400">
+                    {y.eps} ep{y.eps === 1 ? "" : "s"}{y.movies > 0 ? ` · ${y.movies} movie${y.movies === 1 ? "" : "s"}` : ""}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
       {stats.topGenres.length > 0 && (
         <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
           <h2 class="mb-4 font-semibold">Top genres</h2>

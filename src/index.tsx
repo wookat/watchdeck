@@ -825,7 +825,7 @@ async function hoursWatched(env: Env, userId: number): Promise<number> {
 }
 
 async function userStats(env: Env, userId: number): Promise<UserStats> {
-  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear] = await Promise.all([
+  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear, byYear] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(userId).first<{ n: number }>(),
@@ -842,6 +842,13 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     hoursWatched(env, userId),
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ? AND watched_at >= strftime('%Y-01-01', 'now')").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND watched_at >= strftime('%Y-01-01', 'now')").bind(userId).first<{ n: number }>(),
+    env.DB.prepare(
+      `SELECT y AS year, SUM(eps) AS eps, SUM(movies) AS movies FROM (
+         SELECT strftime('%Y', watched_at) AS y, COUNT(*) AS eps, 0 AS movies FROM episode_watches WHERE user_id = ?1 GROUP BY y
+         UNION ALL
+         SELECT strftime('%Y', watched_at) AS y, 0 AS eps, COUNT(*) AS movies FROM movie_watches WHERE user_id = ?1 GROUP BY y
+       ) WHERE y IS NOT NULL GROUP BY y ORDER BY y DESC LIMIT 15`
+    ).bind(userId).all<{ year: string; eps: number; movies: number }>(),
   ]);
   const items = await env.DB.prepare(
     "SELECT tmdb_id, media_type FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 40"
@@ -869,6 +876,7 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     completedShows: completed?.n ?? 0,
     topShows: topShows.results,
     byMonth: byMonth.results,
+    byYear: byYear.results,
     topGenres,
     epsThisYear: epsYear?.n ?? 0,
     moviesThisYear: moviesYear?.n ?? 0,

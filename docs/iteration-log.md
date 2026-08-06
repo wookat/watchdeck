@@ -1005,3 +1005,16 @@
 
 **证据**
 - test-report-round70-regression.md + 录屏；PR #36 回归评论。
+
+---
+
+## Round 71 — 2026-08-06
+
+**驱动：④竞品（TV Time 年度回顾/Trakt 年度统计均为招牌功能）**
+- /stats 只有「今年至今」一行与近 12 个月柱状图，没有跨年份全史维度。
+
+**修复（P1）**
+- /stats（及公开分享页共用的 StatsBody）新增「By year」条形图：每年 episodes+movies 合计条 + 明细文案，SQL 用 episode_watches/movie_watches 按 strftime('%Y') UNION 聚合（最多 15 年，倒序）。
+
+**证据**
+- Version 1e319ca0；线上验证（r10 只读登录）：By year 显示 2026=39 eps·1 movie（100%）、2025=2 eps（5%）。
