@@ -485,6 +485,10 @@ app.get("/browse/:type/:genreslug", async (c) => {
   );
 });
 
+function invalidateHours(c: { env: Env; executionCtx: ExecutionContext }, userId: number): void {
+  c.executionCtx.waitUntil(c.env.CACHE.delete(`hours:${userId}`).catch(() => {}));
+}
+
 async function hoursWatched(env: Env, userId: number): Promise<number> {
   const cacheKey = `hours:${userId}`;
   const cached = await env.CACHE.get(cacheKey);
@@ -699,6 +703,7 @@ app.post("/api/watch", async (c) => {
       .bind(user.id, tmdbId, details.name, details.poster_path)
       .run();
   }
+  invalidateHours(c, user.id);
   return c.redirect(String(form.redirect ?? "/home"));
 });
 
@@ -737,6 +742,7 @@ app.post("/api/watch-season", async (c) => {
   )
     .bind(user.id, tmdbId, details.name, details.poster_path)
     .run();
+  invalidateHours(c, user.id);
   return c.redirect(String(form.redirect ?? "/home"));
 });
 
@@ -763,6 +769,7 @@ app.post("/api/watch-movie", async (c) => {
       .bind(user.id, tmdbId, details.title, details.poster_path)
       .run();
   }
+  invalidateHours(c, user.id);
   return c.redirect(String(form.redirect ?? "/home"));
 });
 
@@ -859,6 +866,7 @@ app.post("/api/import/batch", async (c) => {
     .bind(user.id, showsImported, episodesImported, moviesImported, unmatchedNames.length)
     .run();
 
+  invalidateHours(c, user.id);
   return c.json({ showsImported, episodesImported, moviesImported, unmatched: unmatchedNames.length, unmatchedNames });
 });
 
