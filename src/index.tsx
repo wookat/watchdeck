@@ -13,6 +13,8 @@ import {
   trendingMovies,
   genreList,
   discoverByGenre,
+  discoverByNetwork,
+  NETWORKS,
   recommendations,
   slugify,
 } from "./tmdb";
@@ -37,6 +39,7 @@ import {
   PublicProfilePage,
   BrowseIndex,
   BrowseGenre,
+  BrowseNetwork,
   type UserStats,
   type NextUpItem,
   type HistoryItem,
@@ -523,7 +526,26 @@ app.get("/browse", async (c) => {
       description="Explore popular TV shows and movies by genre and start tracking them for free on WatchDeck."
       canonical={`${c.env.SITE_URL}/browse`}
     >
-      <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} />
+      <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} networks={NETWORKS} />
+    </Layout>
+  );
+});
+
+app.get("/browse/network/:idslug", async (c) => {
+  const id = parseInt(c.req.param("idslug"), 10);
+  const network = NETWORKS.find((n) => n.id === id);
+  if (!network) return c.notFound();
+  const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
+  const res = await discoverByNetwork(c.env, network.id, page);
+  const base = `${c.env.SITE_URL}/browse/network/${network.id}-${slugify(network.name)}`;
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={`${network.name} TV shows to watch`}
+      description={`Popular TV shows on ${network.name} to discover and track for free on WatchDeck.`}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+    >
+      <BrowseNetwork network={network} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
   );
 });
@@ -1181,6 +1203,7 @@ app.get("/sitemap.xml", async (c) => {
     for (const m of movies.results) urls.push(`${c.env.SITE_URL}/movies/${m.id}-${slugify(m.title ?? "")}`);
     for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
     for (const g of movieGenres.genres) urls.push(`${c.env.SITE_URL}/browse/movie/${g.id}-${slugify(g.name)}`);
+    for (const n of NETWORKS) urls.push(`${c.env.SITE_URL}/browse/network/${n.id}-${slugify(n.name)}`);
   } catch {}
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map((u) => `  <url><loc>${u}</loc></url>`)

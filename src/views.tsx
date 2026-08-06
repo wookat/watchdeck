@@ -857,10 +857,11 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
   </div>
 );
 
-export const BrowseIndex: FC<{ tvGenres: { id: number; name: string }[]; movieGenres: { id: number; name: string }[] }> = ({
-  tvGenres,
-  movieGenres,
-}) => (
+export const BrowseIndex: FC<{
+  tvGenres: { id: number; name: string }[];
+  movieGenres: { id: number; name: string }[];
+  networks: readonly { id: number; name: string }[];
+}> = ({ tvGenres, movieGenres, networks }) => (
   <div>
     <h1 class="mb-2 text-2xl font-bold">Browse by genre</h1>
     <p class="mb-8 text-slate-400">Find your next watch across every genre — powered by TMDB.</p>
@@ -884,6 +885,19 @@ export const BrowseIndex: FC<{ tvGenres: { id: number; name: string }[]; movieGe
         </div>
       </section>
     ))}
+    <section class="mb-10">
+      <h2 class="mb-4 text-xl font-semibold">By network</h2>
+      <div class="flex flex-wrap gap-2">
+        {networks.map((n) => (
+          <a
+            href={`/browse/network/${n.id}-${slugify(n.name)}`}
+            class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300"
+          >
+            {n.name}
+          </a>
+        ))}
+      </div>
+    </section>
   </div>
 );
 
@@ -907,6 +921,34 @@ export const BrowseGenre: FC<{
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {results.map((r) => (
           <MediaCard item={r} type={type} />
+        ))}
+      </div>
+      <div class="mt-8 flex items-center gap-3 text-sm">
+        {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+        <span class="text-slate-400">Page {page} of {Math.min(totalPages, 20)}</span>
+        {page < Math.min(totalPages, 20) && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+      </div>
+    </div>
+  );
+};
+
+export const BrowseNetwork: FC<{
+  network: { id: number; name: string };
+  results: SearchResult[];
+  page: number;
+  totalPages: number;
+}> = ({ network, results, page, totalPages }) => {
+  const base = `/browse/network/${network.id}-${slugify(network.name)}`;
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">{network.name} TV shows</h1>
+      <p class="mb-6 text-slate-400">
+        Popular series on {network.name} to track on WatchDeck.{" "}
+        <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; networks</a>
+      </p>
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        {results.map((r) => (
+          <MediaCard item={r} type="tv" />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">

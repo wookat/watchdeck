@@ -318,3 +318,16 @@
 
 **证据（线上验证）**
 - curl 线上 styles.css grep right-1\.5 = 1；测试代理报告 /home/ubuntu/test-report-rounds16-19-regression.md + 录屏。
+
+---
+
+## Round 21 — 2026-08-06
+
+**发现**
+- [pSEO/竞品 / P2] 浏览发现仅有题材维度；用户找剧的高频入口是「平台/电视网」（Netflix shows、HBO shows 等高搜索量词），Trakt/Simkl 均有 network 维度浏览。
+
+**修复（已部署，Version be4a4723）**
+- 新增 12 个电视网聚合页 /browse/network/:id-slug（Netflix/HBO/Disney+/Apple TV+/Prime Video/Hulu/Paramount+/Peacock/AMC/FX/Showtime/BBC One），TMDB discover with_networks、20 页分页、canonical；/browse 增「By network」区块；12 个 URL 入 sitemap。
+
+**证据（线上验证）**
+- /browse/network/213-netflix 200（h1 "Netflix TV shows"）、无效 id 404、HBO page=2 200；sitemap 含 12 个 network URL；/browse 显示 By network。
