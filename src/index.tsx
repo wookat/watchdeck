@@ -750,6 +750,18 @@ app.post("/api/track", async (c) => {
   return c.redirect(String(form.redirect ?? "/home"));
 });
 
+app.post("/api/untrack", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const mediaType = String(form.media_type) === "movie" ? "movie" : "tv";
+  await c.env.DB.prepare("DELETE FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = ?")
+    .bind(user.id, tmdbId, mediaType)
+    .run();
+  return c.redirect(String(form.redirect ?? "/library"));
+});
+
 app.post("/api/watch", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
