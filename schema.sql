@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS tracked (
   poster_path TEXT,
   status TEXT NOT NULL DEFAULT 'watching' CHECK (status IN ('watching','watchlist','completed','dropped')),
   rating INTEGER,
+  notes TEXT,
   source TEXT NOT NULL DEFAULT 'manual',
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now')),

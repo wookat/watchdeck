@@ -101,6 +101,15 @@ export function genreList(env: Env, type: "tv" | "movie") {
   return tmdb<{ genres: { id: number; name: string }[] }>(env, `/genre/${type}/list`, 7 * 24 * 3600);
 }
 
+export function discoverByYear(env: Env, type: "tv" | "movie", year: number, page = 1) {
+  const param = type === "tv" ? `first_air_date_year=${year}` : `primary_release_year=${year}`;
+  return tmdb<{ results: SearchResult[]; total_pages: number }>(
+    env,
+    `/discover/${type}?${param}&sort_by=popularity.desc&page=${Math.min(Math.max(page, 1), 20)}`,
+    24 * 3600
+  );
+}
+
 export const NETWORKS = [
   { id: 213, name: "Netflix" },
   { id: 49, name: "HBO" },

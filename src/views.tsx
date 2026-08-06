@@ -2,7 +2,7 @@ import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
 import { poster, slugify, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders } from "./tmdb";
 
-export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; jsonLd?: object }>> = ({
+export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; jsonLd?: object; prev?: string; next?: string }>> = ({
   children,
   user,
   title,
@@ -10,6 +10,8 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
   canonical,
   ogImage,
   jsonLd,
+  prev,
+  next,
 }) => (
   <html lang="en" class="dark">
     <head>
@@ -21,6 +23,8 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
         content={description ?? "WatchDeck is a free web-first TV show and movie tracker. Import your TV Time export in one click and pick up right where you left off."}
       />
       {canonical && <link rel="canonical" href={canonical} />}
+      {prev && <link rel="prev" href={prev} />}
+      {next && <link rel="next" href={next} />}
       <meta property="og:title" content={title ? `${title} — WatchDeck` : "WatchDeck — Track your TV shows & movies on the web"} />
       {description && <meta property="og:description" content={description} />}
       {canonical && <meta property="og:url" content={canonical} />}
@@ -383,28 +387,48 @@ export const HomePage: FC<{
   </div>
 );
 
-export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: Set<string> }> = ({ q, results, libraryIds }) => (
-  <div>
-    <form action="/search" method="get" class="mb-6">
-      <input
-        type="search"
-        name="q"
-        value={q}
-        placeholder="Search shows & movies…"
-        class="w-full max-w-xl rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 placeholder-slate-500 focus:border-violet-500 focus:outline-none"
-      />
-    </form>
-    {q && <h1 class="mb-4 text-xl font-semibold">Results for “{q}”</h1>}
-    <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-      {results
-        .filter((r) => r.media_type === "tv" || r.media_type === "movie")
-        .map((r) => (
+export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: Set<string>; type?: "all" | "tv" | "movie" }> = ({ q, results, libraryIds, type = "all" }) => {
+  const filtered = results.filter((r) => (r.media_type === "tv" || r.media_type === "movie") && (type === "all" || r.media_type === type));
+  return (
+    <div>
+      <form action="/search" method="get" class="mb-6">
+        <input
+          type="search"
+          name="q"
+          value={q}
+          placeholder="Search shows & movies…"
+          class="w-full max-w-xl rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+        />
+      </form>
+      {q && <h1 class="mb-4 text-xl font-semibold">Results for “{q}”</h1>}
+      {q && (
+        <div class="mb-6 flex gap-2" role="group" aria-label="Filter results by type">
+          {(
+            [
+              ["all", "All"],
+              ["tv", "TV shows"],
+              ["movie", "Movies"],
+            ] as const
+          ).map(([t, label]) => (
+            <a
+              href={`/search?q=${encodeURIComponent(q)}${t === "all" ? "" : `&type=${t}`}`}
+              aria-current={type === t ? "page" : undefined}
+              class={`rounded-lg border px-3 py-1.5 text-sm ${type === t ? "border-violet-500 bg-violet-950/60 text-violet-300" : "border-slate-700 hover:border-violet-500 hover:text-violet-300"}`}
+            >
+              {label}
+            </a>
+          ))}
+        </div>
+      )}
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        {filtered.map((r) => (
           <MediaCard item={r} type={r.media_type as "tv" | "movie"} inLibrary={libraryIds?.has(`${r.media_type}:${r.id}`)} />
         ))}
+      </div>
+      {q && filtered.length === 0 && <p class="text-slate-400">Nothing found{type !== "all" ? ` in ${type === "tv" ? "TV shows" : "movies"} — try All` : ""}.</p>}
     </div>
-    {q && results.length === 0 && <p class="text-slate-400">Nothing found.</p>}
-  </div>
-);
+  );
+};
 
 export const TrendingSection: FC<{ shows: SearchResult[]; movies: SearchResult[] }> = ({ shows, movies }) => (
   <div class="space-y-10">
@@ -470,6 +494,28 @@ export const RatingStars: FC<{ tmdbId: number; mediaType: "tv" | "movie"; title:
   </div>
 );
 
+export const NotesBox: FC<{ tmdbId: number; mediaType: "tv" | "movie"; notes: string | null; redirect: string }> = ({ tmdbId, mediaType, notes, redirect }) => (
+  <details class="mt-3 max-w-2xl" open={!!notes}>
+    <summary class="cursor-pointer text-sm text-slate-400 hover:text-violet-300">📝 Private notes{notes ? " · saved" : ""}</summary>
+    <form action="/api/notes" method="post" class="mt-2">
+      <input type="hidden" name="tmdb_id" value={String(tmdbId)} />
+      <input type="hidden" name="media_type" value={mediaType} />
+      <input type="hidden" name="redirect" value={redirect} />
+      <textarea
+        name="notes"
+        rows={3}
+        maxlength={2000}
+        placeholder="Your thoughts — only you can see this"
+        aria-label="Private notes"
+        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+      >
+        {notes ?? ""}
+      </textarea>
+      <button class="mt-2 rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">Save notes</button>
+    </form>
+  </details>
+);
+
 export const WhereToWatch: FC<{ providers: WatchProviders | null }> = ({ providers }) =>
   !providers?.flatrate?.length ? null : (
     <div class="mt-4">
@@ -498,7 +544,7 @@ export const ShowPage: FC<{
   show: TvDetails;
   season: SeasonDetails | null;
   watched: Set<string>;
-  tracked: { status: string; rating: number | null } | null;
+  tracked: { status: string; rating: number | null; notes: string | null } | null;
   user: User | null;
   recs: SearchResult[];
   providers?: WatchProviders | null;
@@ -515,6 +561,14 @@ export const ShowPage: FC<{
             {show.number_of_episodes} episodes · {show.status} · ★ {show.vote_average?.toFixed(1)}
           </p>
           <p class="mt-1 text-sm text-slate-400">{show.genres.map((g) => g.name).join(", ")}</p>
+          {show.next_episode_to_air?.air_date && (
+            <p class="mt-3 inline-block rounded-lg border border-violet-800 bg-violet-950/50 px-3 py-1.5 text-sm text-violet-300">
+              Next episode: S{String(show.next_episode_to_air.season_number).padStart(2, "0")}E
+              {String(show.next_episode_to_air.episode_number).padStart(2, "0")}
+              {show.next_episode_to_air.name ? ` — ${show.next_episode_to_air.name}` : ""} ·{" "}
+              {new Date(show.next_episode_to_air.air_date + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}
+            </p>
+          )}
           <p class="mt-4 max-w-2xl text-slate-300">{show.overview}</p>
           <WhereToWatch providers={providers ?? null} />
           {user ? (
@@ -555,6 +609,7 @@ export const ShowPage: FC<{
           {user && (
             <RatingStars tmdbId={show.id} mediaType="tv" title={show.name} posterPath={show.poster_path} rating={tracked?.rating ?? null} redirect={showUrl} />
           )}
+          {user && tracked && <NotesBox tmdbId={show.id} mediaType="tv" notes={tracked.notes} redirect={showUrl} />}
         </div>
       </div>
 
@@ -665,7 +720,7 @@ export const ShowPage: FC<{
 export const MoviePage: FC<{
   movie: MovieDetails;
   watched: boolean;
-  tracked: { status: string; rating: number | null } | null;
+  tracked: { status: string; rating: number | null; notes: string | null } | null;
   user: User | null;
   recs: SearchResult[];
   providers?: WatchProviders | null;
@@ -733,6 +788,7 @@ export const MoviePage: FC<{
         {user && (
           <RatingStars tmdbId={movie.id} mediaType="movie" title={movie.title} posterPath={movie.poster_path} rating={tracked?.rating ?? null} redirect={movieUrl} />
         )}
+        {user && tracked && <NotesBox tmdbId={movie.id} mediaType="movie" notes={tracked.notes} redirect={movieUrl} />}
       </div>
     </div>
     <RecsSection recs={recs} type="movie" />
@@ -750,7 +806,7 @@ export interface LibraryRow {
   rating: number | null;
 }
 
-export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string; q?: string }> = ({ rows, status, sort, q }) => (
+export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string; q?: string; counts?: Record<string, number> }> = ({ rows, status, sort, q, counts }) => (
   <div>
     <h1 class="mb-4 text-2xl font-bold">Library</h1>
     <form action="/library" method="get" class="mb-3 max-w-xs">
@@ -776,6 +832,11 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
           }
         >
           {s[0].toUpperCase() + s.slice(1)}
+          {counts && (
+            <span class={status === s ? "ml-1.5 text-xs text-violet-200" : "ml-1.5 text-xs text-slate-500"}>
+              {s === "all" ? Object.values(counts).reduce((a, b) => a + b, 0) : counts[s] ?? 0}
+            </span>
+          )}
         </a>
       ))}
     </div>
@@ -914,10 +975,11 @@ export const BrowseIndex: FC<{
   tvGenres: { id: number; name: string }[];
   movieGenres: { id: number; name: string }[];
   networks: readonly { id: number; name: string }[];
-}> = ({ tvGenres, movieGenres, networks }) => (
+  years: number[];
+}> = ({ tvGenres, movieGenres, networks, years }) => (
   <div>
-    <h1 class="mb-2 text-2xl font-bold">Browse by genre</h1>
-    <p class="mb-8 text-slate-400">Find your next watch across every genre — powered by TMDB.</p>
+    <h1 class="mb-2 text-2xl font-bold">Browse TV shows &amp; movies</h1>
+    <p class="mb-8 text-slate-400">Find your next watch by genre, year or network — powered by TMDB.</p>
     {(
       [
         ["TV shows", "tv", tvGenres],
@@ -938,6 +1000,29 @@ export const BrowseIndex: FC<{
         </div>
       </section>
     ))}
+    <section class="mb-10">
+      <h2 class="mb-4 text-xl font-semibold">By year</h2>
+      {(
+        [
+          ["TV shows", "tv"],
+          ["Movies", "movie"],
+        ] as const
+      ).map(([label, type]) => (
+        <div class="mb-4">
+          <h3 class="mb-2 text-sm font-medium text-slate-400">{label}</h3>
+          <div class="flex flex-wrap gap-2">
+            {years.map((y) => (
+              <a
+                href={`/browse/year/${type}/${y}`}
+                class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300"
+              >
+                {y}
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
     <section class="mb-10">
       <h2 class="mb-4 text-xl font-semibold">By network</h2>
       <div class="flex flex-wrap gap-2">
@@ -1002,6 +1087,37 @@ export const BrowseNetwork: FC<{
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {results.map((r) => (
           <MediaCard item={r} type="tv" />
+        ))}
+      </div>
+      <div class="mt-8 flex items-center gap-3 text-sm">
+        {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+        <span class="text-slate-400">Page {page} of {Math.min(totalPages, 20)}</span>
+        {page < Math.min(totalPages, 20) && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+      </div>
+    </div>
+  );
+};
+
+export const BrowseYear: FC<{
+  type: "tv" | "movie";
+  year: number;
+  results: SearchResult[];
+  page: number;
+  totalPages: number;
+}> = ({ type, year, results, page, totalPages }) => {
+  const base = `/browse/year/${type}/${year}`;
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">
+        {type === "tv" ? "TV shows" : "Movies"} of {year}
+      </h1>
+      <p class="mb-6 text-slate-400">
+        The most popular {type === "tv" ? `series that premiered in ${year}` : `films released in ${year}`}, ready to track on WatchDeck.{" "}
+        <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; years</a>
+      </p>
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        {results.map((r) => (
+          <MediaCard item={r} type={type} />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">
@@ -1172,6 +1288,15 @@ export const SettingsPage: FC<{ user: User; saved?: string; error?: string }> = 
         <input type="password" name="next" required minlength={8} placeholder="New password (min 8 characters)" aria-label="New password" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none" />
         <button class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Update password</button>
       </form>
+    </section>
+    <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+      <h2 class="font-semibold">Export your data</h2>
+      <p class="mt-1 text-sm text-slate-400">
+        Download everything you've tracked — library, statuses, ratings and full watch history — as a JSON file. Your data is always yours to take.
+      </p>
+      <a href="/api/export" class="mt-4 inline-block rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium hover:border-violet-500 hover:text-violet-300" download>
+        Download export (JSON)
+      </a>
     </section>
     <section class="mt-6 rounded-2xl border border-red-900/60 bg-red-950/20 p-6">
       <h2 class="font-semibold text-red-300">Delete account</h2>

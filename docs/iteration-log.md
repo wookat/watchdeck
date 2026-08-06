@@ -385,3 +385,127 @@
 
 **证据（线上验证）**
 - 测试代理报告 /home/ubuntu/test-report-rounds21-24-regression.md + 录屏：21-24 轮全过、QA 基线（8 shows/Severance 4/Friends 0）前后一致、r10 状态往返还原。
+
+---
+
+## Round 26 — 2026-08-06
+
+**发现（pSEO/竞品驱动）**
+- [P1] Trakt/Simkl 都有按年份浏览入口；WatchDeck 只有题材/网络聚合，缺「年份」维度的 pSEO 长尾页。
+
+**修复（已部署，Version 21906b4c）**
+- 新增 /browse/year/:type/:year（tv|movie × 1950–明年，超范围 404），TMDB discover 按 first_air_date_year / primary_release_year 热度排序，24h 缓存、页码钳制 20、canonical 就位。
+- /browse 增加「By year」区块（近 15 年 × TV/电影）；sitemap 新增 30 个年份 URL。
+
+**证据（线上验证）**
+- /browse 出现 By year；/browse/year/tv/2025 与 /browse/year/movie/2010 均 200；?page=2 显示 Page 2 of 20；/browse/year/tv/1900 404；sitemap 含 30 个 browse/year URL。
+
+---
+
+## Round 27 — 2026-08-06
+
+**发现（UX/数据驱动）**
+- [P1] 匿名访客落地页只有营销文案，没有任何真实内容/内链；第一方数据显示 `/` 是最高 PV 路径（70），但落地页对 SEO 与转化贡献低。
+
+**修复（已部署，Version 34ef9dd7）**
+- 落地页在英雄区与订阅卡下方追加「Trending this week」剧集+电影海报网格（复用 TrendingSection，TMDB 12h 缓存，失败降级不渲染）——匿名访客可直接点进详情页，形成 pSEO 内链。
+- 顺带修复 hono/jsx 陷阱：Layout 传入多个直接子节点时第二个不渲染，需包一层容器（已加 <div> 包裹）。
+
+**证据（线上验证）**
+- `/` 包含 "Trending shows this week" 与 "Trending movies this week" 两个海报网格，卡片链接到 /shows/:id、/movies/:id。
+
+---
+
+## Round 28 — 2026-08-06
+
+**发现（视觉/SEO 驱动）**
+- [P2] /browse 标题仍写「Browse by genre」，但页面已含年份与网络维度，标题失真。
+- [P2] 三类分页聚合页（题材/年份/网络）缺 rel=prev/next 链接标记，分页序列对爬虫不友好。
+
+**修复（已部署，Version c7cfebfb）**
+- /browse H1/副标改为「Browse TV shows & movies · by genre, year or network」。
+- Layout 新增 prev/next 可选属性，三个分页路由全部输出 <link rel="prev|next">（第 2 页的 prev 指向无参数首页 URL，与 canonical 一致）。
+
+**证据（线上验证）**
+- /browse/year/tv/2025?page=2 head 内输出 rel=prev（…/2025）与 rel=next（…?page=3）；/browse 显示新标题。
+
+---
+
+## Round 29 — 2026-08-06
+
+**发现（竞品/合规驱动）**
+- [P1] TV Time 关停的最大教训是「数据被锁死」，但 WatchDeck 自己也只进不出：只有导入没有导出，GDPR 数据可携带权仅靠删除不够，Trakt 免费档亦提供数据导出。
+
+**修复（已部署，Version 4e30794a）**
+- 新增 GET /api/export（需登录，匿名 302 → /login）：一次性导出 tracked（含状态/评分/时间戳）、episode_watches、movie_watches 为格式化 JSON，Content-Disposition 附件下载、no-store。
+- /settings 新增「Export your data」区块，一键下载。
+
+**证据（线上验证）**
+- 匿名 GET /api/export → 302 /login；r10 账号导出 JSON 含 Breaking Bad tracked + 22 集观看记录，文件名 watchdeck-export-YYYY-MM-DD.json；/settings 显示导出区块。
+
+---
+
+## Round 30 — 2026-08-06
+
+**发现（QA 回归驱动，测试代理完整回归 26-29 轮）**
+- [P2，已修复] 三类分页聚合页（年份/题材/网络）只有下界钳制，?page=99 会渲染「Page 99 of 20」；TMDB 请求虽被钳制但 UI 页码失真且产生无限分页 URL 面。
+- 其余 26-29 轮全部通过：落地页双 Trending 网格、年份页/站点地图 30 URL、rel prev/next、数据导出（导出前后 D1 计数一致，只读验证）、QA 基线（8/4/0）与核心冒烟全过。
+
+**修复（已部署，Version 6bad3c18）**
+- 三个 browse 路由页码统一 Math.min(20, Math.max(1, …)) 上下界钳制，线上复验 ?page=99 全部显示 Page 20 of 20。
+
+**证据（线上验证）**
+- 测试代理报告 /home/ubuntu/test-report-rounds26-29-regression.md + 录屏；修复后 curl 复验三条 ?page=99 URL 均 Page 20 of 20。
+
+---
+
+## Round 31 — 2026-08-06
+
+**发现（竞品驱动）**
+- [P1] Trakt/Simkl 搜索均可按类型过滤；WatchDeck 搜索把 TV/电影混排且无过滤，重名标题（如 Inception 相关剧集与电影）难区分。
+
+**修复（已部署，Version 6b6e8abd）**
+- 搜索结果页新增 All / TV shows / Movies 过滤 tab（?type=tv|movie，role=group + aria-current 可访问性标记），空结果时提示「try All」。
+
+**证据（线上验证）**
+- /search?q=inception&type=tv 仅剩 /shows/ 链接（无 /movies/27205）；&type=movie 含 /movies/27205；tab 组 aria-label="Filter results by type" 输出。
+
+---
+
+## Round 32 — 2026-08-06
+
+**发现（UX/竞品驱动）**
+- [P1] Trakt 剧集页醒目显示下一集播出信息；WatchDeck 剧集页无「下一集何时播」，用户须去日历翻找。
+
+**修复（已部署，Version 59b0b265）**
+- 剧集详情页在类型行下方新增「Next episode: SxxExx — 集名 · 日期」高亮徽章（TMDB next_episode_to_air，UTC 格式化，无未播集则不渲染）。
+
+**证据（线上验证）**
+- 在播剧集页显示「Next episode: S03E06 — The Drive · Aug 6, 2026」；已完结剧（Severance 等）无徽章。
+
+---
+
+## Round 33 — 2026-08-06
+
+**发现（竞品驱动）**
+- [P1] Serializd 的核心卖点是剧集日记/笔记，TV Time 也有 notes；WatchDeck 无任何私人笔记能力，导入用户的「感想」无处安放。
+
+**修复（已部署，Version 45aa4989）**
+- tracked 表新增 notes 列（D1 已迁移，schema.sql 同步）；新增 POST /api/notes（登录+CSRF Origin 校验，2000 字上限，空值清除）。
+- 剧集/电影详情页对已追踪条目显示「📝 Private notes」折叠区（有笔记默认展开），textarea+保存；/api/export 导出同步包含 notes 字段。
+
+**证据（线上验证）**
+- r10 账号 Breaking Bad 页保存笔记 → 刷新可见 → /api/export tracked.notes 含同一内容 → 清空后不再显示（数据已还原，r10 无残留笔记）。
+
+---
+
+## Round 34 — 2026-08-06
+
+**发现（UX/视觉驱动）**
+- [P2] Library 状态 tab（All/Watching/Watchlist/Completed/Dropped）无数量提示，须点进每个 tab 才知道有没有内容（TV Time/Trakt 均带计数）。
+
+**修复（已部署，Version 99ed3cc6）**
+- /library 增加一次 GROUP BY status 计数查询，每个 tab 显示条目数（All 为总和），当前 tab 用浅紫、其余用 slate-500 弱化。
+
+**证据（线上验证）**
+- r10 账号 /library tab 呈现 All 3 / Watching 2 / Watchlist 0 / Completed 1 / Dropped 0，与 D1 数据一致。
