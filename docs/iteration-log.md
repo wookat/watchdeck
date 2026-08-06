@@ -737,3 +737,17 @@
 
 **证据（线上验证）**
 - r10 加 Avengers: Doomsday（watchlist）后：/calendar 显示「Movie release」行；.ics 含 UID:wd-m-1003596 / DTSTART 20261216；测试后已 untrack，r10 复核 3 tracked 净零。
+
+---
+
+## Round 52 — 2026-08-06
+
+**发现（视觉+pSEO 驱动）**
+- 移动端 375px 视觉走查（落地页/剧集页/browse）：布局、导航、演员网格、季 pills 均正常，无 P0-P2 视觉问题。
+- [P2·pSEO] 详情页 JSON-LD 缺 aggregateRating——Google 富结果星级（搜索结果里直接显示评分）拿不到，竞品 IMDb/Trakt 详情页均有。
+
+**修复（已部署，Version 72b4403a）**
+- TvDetails/MovieDetails 增加 vote_count；TVSeries/Movie JSON-LD 注入 aggregateRating（TMDB vote_average/vote_count，bestRating 10），无投票时省略。
+
+**证据（线上验证）**
+- Breaking Bad：ratingValue 8.9 / ratingCount 18297；Inception：8.4 / 39752（curl 验证）。

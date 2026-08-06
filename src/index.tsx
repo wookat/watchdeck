@@ -419,6 +419,9 @@ app.get("/shows/:idslug", async (c) => {
             ...(show.first_air_date ? { datePublished: show.first_air_date } : {}),
             ...(show.number_of_seasons ? { numberOfSeasons: show.number_of_seasons } : {}),
             ...(show.genres?.length ? { genre: show.genres.map((g) => g.name) } : {}),
+            ...(show.vote_average && show.vote_count
+              ? { aggregateRating: { "@type": "AggregateRating", ratingValue: Math.round(show.vote_average * 10) / 10, bestRating: 10, worstRating: 0, ratingCount: show.vote_count } }
+              : {}),
           },
           {
             "@type": "BreadcrumbList",
@@ -478,6 +481,9 @@ app.get("/movies/:idslug", async (c) => {
             ...(movie.poster_path ? { image: `https://image.tmdb.org/t/p/w500${movie.poster_path}` } : {}),
             ...(movie.release_date ? { datePublished: movie.release_date } : {}),
             ...(movie.genres?.length ? { genre: movie.genres.map((g) => g.name) } : {}),
+            ...(movie.vote_average && movie.vote_count
+              ? { aggregateRating: { "@type": "AggregateRating", ratingValue: Math.round(movie.vote_average * 10) / 10, bestRating: 10, worstRating: 0, ratingCount: movie.vote_count } }
+              : {}),
           },
           {
             "@type": "BreadcrumbList",

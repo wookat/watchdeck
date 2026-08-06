@@ -50,6 +50,7 @@ export interface TvDetails {
   last_air_date: string;
   status: string;
   vote_average: number;
+  vote_count: number;
   genres: { id: number; name: string }[];
   number_of_seasons: number;
   number_of_episodes: number;
@@ -81,6 +82,7 @@ export interface MovieDetails {
   release_date: string;
   runtime: number | null;
   vote_average: number;
+  vote_count: number;
   genres: { id: number; name: string }[];
   status: string;
 }
