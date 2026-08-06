@@ -237,3 +237,17 @@
 
 **证据（线上验证）**
 - /calendar 登录态 200（0.45s，热缓存）；tsc/css 构建通过。
+
+---
+
+## Round 15 — 2026-08-05
+
+**发现**
+- [UX 走查/竞品 / P2] 从中途开始补记进度很痛苦：只能逐集点或整季标。TV Time 有「我看到这里了」——一键把某集之前的所有集标为已看，是补记场景的核心交互。
+
+**修复（已部署，Version 6e6dc1a8）**
+- 新增 `POST /api/watch-up-to`：并行拉取目标季及之前所有季，把已播出且 ≤ 目标集的全部集数批量 INSERT OR IGNORE，写 tracked、触发 maybeAutoComplete 与 invalidateHours。
+- 季页每个未看集旁新增「⇤ up to here」按钮（带 title/aria-label 说明）。
+
+**证据（线上验证）**
+- throwaway 账号对 Breaking Bad S02E05 执行 up-to → D1：S1=7 集全标、S2=5 集，精确到目标集为止。
