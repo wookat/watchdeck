@@ -1193,3 +1193,19 @@
 
 **证据**
 - Version 545a6bcf；线上验证：随机路径返回 404 且含搜索表单与 browse 链接。
+
+---
+
+## Round 85 — 2026-08-06（回归轮）
+
+**驱动：①测试（QA 回归 R81-R84 + 复验 R76-R79）**
+
+**回归结果（生产 Version 545a6bcf，分支 tip 93fd63e）**
+- R81 活动导航高亮：/library、/history 对应链接紫色加粗，logo 与其他链接不高亮（像素级验证）；aria-current 与高亮类在 app.js 同一语句设置（curl 复核线上 app.js）。DOM 属性未能直接读取（CDP 旧标签页干扰），以视觉+代码构造证据通过。
+- R82 CSV 评分导入端到端：throwaway 上传 rating CSV → Library 显示 The Wire ★5（9/10 折半）、Heat ★4，D1 rating=5/4、source='csv'；用 2/1 分重导不覆盖（COALESCE 验证）。
+- R83 Your ratings 卡：有评分账号显示 5→1 分布（★5=1、★4=1），r10（零评分）不显示。
+- R84 404 恢复：未知路径 HTTP 404 + 搜索框 + browse/home 出路，404 搜索 severance 直达真实结果页。
+- 冒烟：home/search/detail/library/calendar/stats 全过。
+- 完整性：保护基线 D1 只读核验不变（8 tracked/Severance 4/Friends 0，另有先前已存在的 Mandalorian ★4）；r10 净零（3/0/41、Severance 19、rating 空）；throwaway r85-qa-* 经 /settings 删除并 D1 复核。
+
+**结论**：R81-R84 无 P0/P1/P2/P3 遗留。证据评论见 PR #37。
