@@ -809,3 +809,16 @@
 
 **证据（线上验证）**
 - r10 /stats 显示「So far in 2026: 39 episodes and 1 movie watched」（41 条中 2 条为 2025-01 历史日期，口径正确）。
+
+---
+
+## Round 57 — 2026-08-06
+
+**发现（无障碍/键盘 UX 驱动）**
+- [P3] 全站无任何键盘快捷键；/search 落地后还要手动点输入框——Trakt/IMDb 等均支持「/」聚焦搜索。
+
+**修复（已部署，Version 9a0e8bfc）**
+- /app.js 新增全局「/」快捷键聚焦搜索框（输入框/textarea/contenteditable 内不劫持，CSP script-src 'self' 下合规）；导航搜索框加 title="Press / to search"；/search 无查询词时输入框 autofocus。
+
+**证据（线上验证）**
+- /app.js 含 keydown handler；/search 无 q 时渲染 autofocus、有 q 时不渲染（curl 验证）。

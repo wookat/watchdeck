@@ -54,6 +54,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
               name="q"
               placeholder="Search shows & movies…"
               aria-label="Search shows and movies"
+              title="Press / to search"
               class="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
             />
           </form>
@@ -423,6 +424,7 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
           type="search"
           name="q"
           value={q}
+          autofocus={!q}
           placeholder="Search shows & movies…"
           class="w-full max-w-xl rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 placeholder-slate-500 focus:border-violet-500 focus:outline-none"
         />
