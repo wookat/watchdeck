@@ -582,22 +582,39 @@ export const ShowPage: FC<{
                     <p class="text-xs text-slate-500">{ep.air_date ?? "TBA"}</p>
                   </div>
                   {user && (
-                    <form action="/api/watch" method="post">
-                      <input type="hidden" name="tmdb_id" value={String(show.id)} />
-                      <input type="hidden" name="season" value={String(ep.season_number)} />
-                      <input type="hidden" name="episode" value={String(ep.episode_number)} />
-                      <input type="hidden" name="undo" value={isWatched ? "1" : ""} />
-                      <input type="hidden" name="redirect" value={`${showUrl}?season=${season.season_number}`} />
-                      <button
-                        class={
-                          isWatched
-                            ? "rounded-lg bg-emerald-700 px-3 py-1.5 text-sm text-white hover:bg-emerald-600"
-                            : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500"
-                        }
-                      >
-                        {isWatched ? "✓ Watched" : "Mark watched"}
-                      </button>
-                    </form>
+                    <div class="flex shrink-0 items-center gap-2">
+                      {!isWatched && (
+                        <form action="/api/watch-up-to" method="post">
+                          <input type="hidden" name="tmdb_id" value={String(show.id)} />
+                          <input type="hidden" name="season" value={String(ep.season_number)} />
+                          <input type="hidden" name="episode" value={String(ep.episode_number)} />
+                          <input type="hidden" name="redirect" value={`${showUrl}?season=${season.season_number}`} />
+                          <button
+                            class="rounded-lg px-2 py-1.5 text-sm text-slate-500 hover:text-violet-300"
+                            title={`Mark everything up to S${String(ep.season_number).padStart(2, "0")}E${String(ep.episode_number).padStart(2, "0")} watched`}
+                            aria-label={`Mark everything up to season ${ep.season_number} episode ${ep.episode_number} watched`}
+                          >
+                            ⇤ up to here
+                          </button>
+                        </form>
+                      )}
+                      <form action="/api/watch" method="post">
+                        <input type="hidden" name="tmdb_id" value={String(show.id)} />
+                        <input type="hidden" name="season" value={String(ep.season_number)} />
+                        <input type="hidden" name="episode" value={String(ep.episode_number)} />
+                        <input type="hidden" name="undo" value={isWatched ? "1" : ""} />
+                        <input type="hidden" name="redirect" value={`${showUrl}?season=${season.season_number}`} />
+                        <button
+                          class={
+                            isWatched
+                              ? "rounded-lg bg-emerald-700 px-3 py-1.5 text-sm text-white hover:bg-emerald-600"
+                              : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500"
+                          }
+                        >
+                          {isWatched ? "✓ Watched" : "Mark watched"}
+                        </button>
+                      </form>
+                    </div>
                   )}
                 </li>
               );

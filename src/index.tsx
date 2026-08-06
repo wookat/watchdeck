@@ -899,6 +899,51 @@ app.post("/api/watch-season", async (c) => {
   return c.redirect(String(form.redirect ?? "/home"));
 });
 
+app.post("/api/watch-up-to", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const targetSeason = parseInt(String(form.season), 10);
+  const targetEpisode = parseInt(String(form.episode), 10);
+  if (!Number.isFinite(tmdbId) || !Number.isFinite(targetSeason) || !Number.isFinite(targetEpisode)) {
+    return c.redirect(String(form.redirect ?? "/home"));
+  }
+  const details = await tvDetails(c.env, tmdbId);
+  const today = new Date().toISOString().slice(0, 10);
+  const seasonNums = details.seasons
+    .filter((s) => s.season_number > 0 && s.season_number <= targetSeason)
+    .map((s) => s.season_number);
+  const seasons = await Promise.all(seasonNums.map((n) => seasonDetails(c.env, tmdbId, n)));
+  const stmts = seasons
+    .flatMap((s) => s.episodes)
+    .filter(
+      (ep) =>
+        ep.air_date &&
+        ep.air_date <= today &&
+        (ep.season_number < targetSeason || (ep.season_number === targetSeason && ep.episode_number <= targetEpisode))
+    )
+    .map((ep) =>
+      c.env.DB.prepare("INSERT OR IGNORE INTO episode_watches (user_id, tmdb_id, season, episode) VALUES (?, ?, ?, ?)").bind(
+        user.id,
+        tmdbId,
+        ep.season_number,
+        ep.episode_number
+      )
+    );
+  for (let i = 0; i < stmts.length; i += 50) await c.env.DB.batch(stmts.slice(i, i + 50));
+  await c.env.DB.prepare(
+    `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status)
+     VALUES (?, ?, 'tv', ?, ?, 'watching')
+     ON CONFLICT(user_id, tmdb_id, media_type) DO UPDATE SET updated_at = datetime('now')`
+  )
+    .bind(user.id, tmdbId, details.name, details.poster_path)
+    .run();
+  await maybeAutoComplete(c.env, user.id, tmdbId, details);
+  invalidateHours(c, user.id);
+  return c.redirect(String(form.redirect ?? "/home"));
+});
+
 app.post("/api/watch-movie", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
