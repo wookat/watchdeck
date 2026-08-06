@@ -241,9 +241,14 @@ app.get("/home", async (c) => {
   const wl = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND status = 'watchlist'")
     .bind(user.id)
     .first<{ n: number }>();
+  const wParam = (c.req.query("w") ?? "").split(".").map((x) => parseInt(x, 10));
+  const justWatched =
+    wParam.length === 3 && wParam.every(Number.isFinite)
+      ? { tmdbId: wParam[0], season: wParam[1], episode: wParam[2] }
+      : null;
   return c.html(
     <Layout user={user} title="Next up">
-      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0} />
+      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0} justWatched={justWatched} />
     </Layout>
   );
 });
@@ -681,6 +686,12 @@ app.post("/api/watch-season", async (c) => {
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   const seasonNum = parseInt(String(form.season), 10);
+  if (String(form.undo) === "1") {
+    await c.env.DB.prepare("DELETE FROM episode_watches WHERE user_id = ? AND tmdb_id = ? AND season = ?")
+      .bind(user.id, tmdbId, seasonNum)
+      .run();
+    return c.redirect(String(form.redirect ?? "/home"));
+  }
   const details = await tvDetails(c.env, tmdbId);
   const season = await seasonDetails(c.env, tmdbId, seasonNum);
   const today = new Date().toISOString().slice(0, 10);

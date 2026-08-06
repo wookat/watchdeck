@@ -247,7 +247,7 @@ export const MediaCard: FC<{ item: SearchResult; type: "tv" | "movie" }> = ({ it
       />
       <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{title}</p>
       <p class="text-xs text-slate-500">
-        {year} {type === "tv" ? "· TV" : "· Movie"}
+        {year ? `${year} · ` : ""}{type === "tv" ? "TV" : "Movie"}
       </p>
     </a>
   );
@@ -263,9 +263,24 @@ export interface NextUpItem {
   airDate: string | null;
 }
 
-export const HomePage: FC<{ nextUp: NextUpItem[]; watchlistCount: number; hasAnything: boolean }> = ({ nextUp, watchlistCount, hasAnything }) => (
+export const HomePage: FC<{ nextUp: NextUpItem[]; watchlistCount: number; hasAnything: boolean; justWatched?: { tmdbId: number; season: number; episode: number } | null }> = ({ nextUp, watchlistCount, hasAnything, justWatched }) => (
   <div>
     <h1 class="mb-6 text-2xl font-bold">Next up</h1>
+    {justWatched && (
+      <div class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-800 bg-emerald-950/40 px-4 py-2.5 text-sm text-emerald-300">
+        <span>
+          Marked S{String(justWatched.season).padStart(2, "0")}E{String(justWatched.episode).padStart(2, "0")} watched.
+        </span>
+        <form action="/api/watch" method="post">
+          <input type="hidden" name="tmdb_id" value={String(justWatched.tmdbId)} />
+          <input type="hidden" name="season" value={String(justWatched.season)} />
+          <input type="hidden" name="episode" value={String(justWatched.episode)} />
+          <input type="hidden" name="undo" value="1" />
+          <input type="hidden" name="redirect" value="/home" />
+          <button class="font-medium text-emerald-200 underline hover:text-white">Undo</button>
+        </form>
+      </div>
+    )}
     {nextUp.length === 0 ? (
       <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-10 text-center">
         {hasAnything ? (
@@ -298,7 +313,7 @@ export const HomePage: FC<{ nextUp: NextUpItem[]; watchlistCount: number; hasAny
                 <input type="hidden" name="tmdb_id" value={String(n.tmdbId)} />
                 <input type="hidden" name="season" value={String(n.season)} />
                 <input type="hidden" name="episode" value={String(n.episode)} />
-                <input type="hidden" name="redirect" value="/home" />
+                <input type="hidden" name="redirect" value={`/home?w=${n.tmdbId}.${n.season}.${n.episode}`} />
                 <button class="rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-500">
                   ✓ Watched
                 </button>
@@ -476,16 +491,28 @@ export const ShowPage: FC<{
               );
             })}
         </div>
-        {season && user && (
-          <form action="/api/watch-season" method="post" class="mb-4">
-            <input type="hidden" name="tmdb_id" value={String(show.id)} />
-            <input type="hidden" name="season" value={String(season.season_number)} />
-            <input type="hidden" name="redirect" value={`${showUrl}?season=${season.season_number}`} />
-            <button class="rounded-lg border border-violet-700 bg-violet-950/50 px-3 py-1.5 text-sm text-violet-300 hover:bg-violet-900/50">
-              ✓ Mark season {season.season_number} watched
-            </button>
-          </form>
-        )}
+        {season && user && (() => {
+          const today = new Date().toISOString().slice(0, 10);
+          const aired = season.episodes.filter((ep) => ep.air_date && ep.air_date <= today);
+          const allWatched = aired.length > 0 && aired.every((ep) => watched.has(`${ep.season_number}x${ep.episode_number}`));
+          return (
+            <form action="/api/watch-season" method="post" class="mb-4">
+              <input type="hidden" name="tmdb_id" value={String(show.id)} />
+              <input type="hidden" name="season" value={String(season.season_number)} />
+              <input type="hidden" name="undo" value={allWatched ? "1" : ""} />
+              <input type="hidden" name="redirect" value={`${showUrl}?season=${season.season_number}`} />
+              <button
+                class={
+                  allWatched
+                    ? "rounded-lg border border-emerald-800 bg-emerald-950/50 px-3 py-1.5 text-sm text-emerald-300 hover:bg-emerald-900/50"
+                    : "rounded-lg border border-violet-700 bg-violet-950/50 px-3 py-1.5 text-sm text-violet-300 hover:bg-violet-900/50"
+                }
+              >
+                {allWatched ? `✓ Season ${season.season_number} watched — unmark all` : `✓ Mark season ${season.season_number} watched`}
+              </button>
+            </form>
+          );
+        })()}
         {season && (
           <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
             {season.episodes.map((ep) => {
@@ -697,7 +724,9 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
       </form>
     </div>
     {items.length === 0 ? (
-      <p class="text-slate-400">No upcoming episodes for the shows you track — try adding more from <a href="/search" class="text-violet-400 hover:underline">search</a>.</p>
+      <p class="text-slate-400">
+        No scheduled air dates right now — the shows you track have no announced upcoming episodes. New dates show up here (and in your iCal feed) automatically. Looking for something new? <a href="/browse" class="text-violet-400 hover:underline">Browse by genre</a>.
+      </p>
     ) : (
       <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
         {items.map((it) => (
@@ -821,6 +850,9 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
                 </li>
               ))}
             </ol>
+          )}
+          {stats.topShows.length > 0 && stats.topShows.length < stats.showsTracked && (
+            <p class="mt-3 text-xs text-slate-500">Your other tracked shows appear here once you log episodes for them.</p>
           )}
         </div>
         <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
