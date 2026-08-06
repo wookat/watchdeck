@@ -100,3 +100,20 @@
 
 **回归发现（测试代理，P0）**
 - iteration-5 分支漏合 iteration-3（Round 3 四项修复未在线上）。已合并 iteration-3 重新部署并复验。
+
+---
+
+## Round 6 — 2026-08-05
+
+**发现**
+- [前端视觉/无障碍 / P2] 无 skip-to-content 链接、导航搜索框无可访问名称、评分星按钮无 aria-label/aria-pressed、键盘 focus 无统一可见轮廓——键盘与读屏用户体验差（WCAG 2.4.1/4.1.2/2.4.7）。
+- [视觉 / P3] round-3 遗留：placeholder 海报是播放三角，易被误解为可播放视频。
+
+**修复（已部署，Version d4591d19）**
+- Layout 加「Skip to content」链接（聚焦时可见）＋ `<main id="main">`。
+- 导航搜索框 `aria-label`；评分星按钮加 `aria-label`（Rate n stars / Clear rating）与 `aria-pressed`。
+- 全局 `:focus-visible` 紫色 2px 轮廓。
+- placeholder 海报改为场记板图标，消除「可播放」歧义。
+
+**证据（线上验证）**
+- 首页 HTML 含「Skip to content」；styles.css 含 `:focus-visible` 规则；`/placeholder-poster.svg` 已更新为场记板。

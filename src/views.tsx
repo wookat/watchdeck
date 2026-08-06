@@ -29,6 +29,12 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     </head>
     <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+      <a
+        href="#main"
+        class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-violet-600 focus:px-4 focus:py-2 focus:text-white"
+      >
+        Skip to content
+      </a>
       <nav class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
         <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-3">
           <a href={user ? "/home" : "/"} class="flex items-center gap-2 text-lg font-bold tracking-tight">
@@ -40,6 +46,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
               type="search"
               name="q"
               placeholder="Search shows & movies…"
+              aria-label="Search shows and movies"
               class="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
             />
           </form>
@@ -68,7 +75,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
           </div>
         </div>
       </nav>
-      <main class="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <main id="main" class="mx-auto max-w-6xl px-4 py-6">{children}</main>
       <footer class="mt-16 border-t border-slate-800 py-8 text-sm text-slate-400">
         <div class="mx-auto max-w-6xl space-y-3 px-4">
           <p>
@@ -408,6 +415,8 @@ export const RatingStars: FC<{ tmdbId: number; mediaType: "tv" | "movie"; title:
         <button
           class={(rating ?? 0) >= n ? "text-xl text-amber-400 transition-colors hover:scale-110" : "text-xl text-slate-600 transition-colors hover:text-amber-300"}
           title={rating === n ? "Clear rating" : `Rate ${n} star${n === 1 ? "" : "s"}`}
+          aria-label={rating === n ? "Clear rating" : `Rate ${n} star${n === 1 ? "" : "s"}`}
+          aria-pressed={(rating ?? 0) >= n ? "true" : "false"}
         >
           ★
         </button>

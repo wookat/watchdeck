@@ -2,3 +2,9 @@
 
 @source "./**/*.tsx";
 @source "../public/**/*.js";
+
+/* keyboard focus visibility (a11y) */
+:focus-visible {
+  outline: 2px solid #8b5cf6;
+  outline-offset: 2px;
+}
