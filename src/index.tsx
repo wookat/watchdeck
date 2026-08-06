@@ -1602,6 +1602,26 @@ app.post("/api/indexnow", async (c) => {
   return c.json({ submitted: paths.length, status: res.status });
 });
 
+app.post("/api/admin/cron", async (c) => {
+  const user = c.get("user");
+  if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
+  const form = await c.req.parseBody();
+  const job = String(form.job ?? "");
+  if (job === "prune") {
+    await pruneAnalytics(c.env);
+    return c.json({ ok: true, job });
+  }
+  if (job === "digest") {
+    await sendAiringDigests(c.env);
+    return c.json({ ok: true, job });
+  }
+  if (job === "indexnow") {
+    await submitSitemapToIndexNow(c.env);
+    return c.json({ ok: true, job });
+  }
+  return c.json({ error: "job must be prune, digest or indexnow" }, 400);
+});
+
 app.get("/api/stats", async (c) => {
   const user = c.get("user");
   if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);

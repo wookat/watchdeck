@@ -1362,3 +1362,15 @@
 
 **证据**
 - Version a2d46315；线上验证：5 类资产 cache-control 逐一符合预期；/_headers 本身 404（不对外暴露）。
+
+---
+
+## Round 98 — 2026-08-06
+
+**驱动：①测试/运维（R49 IndexNow 周任务、R51 每日摘要、R93 90 天清理三个 Cron 正向路径均「无法即时触发」，回归长期存在盲区）**
+
+**修复（P2）**
+- 新增管理员专用 POST /api/admin/cron（job=prune|digest|indexnow），复用 pruneAnalytics/sendAiringDigests/submitSitemapToIndexNow，使 Cron 任务可按需触发验证；非法 job 400。权限模型与 /api/stats、/api/indexnow 一致（ADMIN_EMAIL）。
+
+**证据**
+- Version b8c25b54；线上验证：匿名 403、非管理员（r10）403；管理员正向路径需老板凭据（与既有 /api/indexnow 同为待观察项）。
