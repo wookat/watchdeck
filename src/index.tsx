@@ -488,7 +488,7 @@ app.get("/browse/:type/:genreslug", async (c) => {
   );
 });
 
-function invalidateHours(c: { env: Env; executionCtx: ExecutionContext }, userId: number): void {
+function invalidateHours(c: { env: Env; executionCtx: { waitUntil(promise: Promise<unknown>): void } }, userId: number): void {
   c.executionCtx.waitUntil(c.env.CACHE.delete(`hours:${userId}`).catch(() => {}));
 }
 
