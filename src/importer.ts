@@ -98,6 +98,43 @@ export function parseGenericCsv(text: string): ParsedImport {
   return { shows: [...showMap.values()], movies: [...movies.values()] };
 }
 
+// Netflix ViewingActivity.csv: exactly Title,Date columns.
+// Episode rows look like "Show: Season 1: Episode Name" — Netflix gives no episode
+// numbers, so shows are imported as followed and standalone titles as movies.
+export function isNetflixCsv(text: string): boolean {
+  const header = text.slice(0, 200).split(/\r?\n/)[0].toLowerCase().replace(/"/g, "").trim();
+  return header === "title,date";
+}
+
+function netflixDate(raw: string): string | null {
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+}
+
+export function parseNetflixCsv(text: string): ParsedImport {
+  const records = parseCsv(text);
+  const showMap = new Map<string, ParsedShow>();
+  const movies = new Map<string, { name: string; watchedAt: string | null }>();
+  const seasonRe = /:\s*(season\s*\d+|part\s*\d+|series\s*\d+|volume\s*\d+|limited series|chapter\s*\d+)/i;
+  for (const rec of records) {
+    const title = rec["title"];
+    if (!title) continue;
+    const watchedAt = rec["date"] ? netflixDate(rec["date"]) : null;
+    const m = title.match(seasonRe);
+    if (m || title.split(": ").length >= 3) {
+      const name = (m ? title.slice(0, m.index) : title.split(": ")[0]).trim();
+      if (!name) continue;
+      const key = name.toLowerCase();
+      if (!showMap.has(key)) showMap.set(key, { name, episodes: [], followedOnly: true });
+    } else {
+      const key = title.toLowerCase();
+      if (!movies.has(key)) movies.set(key, { name: title, watchedAt });
+    }
+  }
+  return { shows: [...showMap.values()], movies: [...movies.values()] };
+}
+
 export function parseTvTimeZip(zipBytes: Uint8Array): ParsedImport {
   const files = unzipSync(zipBytes);
   const csvs: Record<string, string> = {};

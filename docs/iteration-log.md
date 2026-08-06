@@ -685,3 +685,201 @@
 
 **证据（线上验证）**
 - /shows/95396-severance 显示 Top cast（Adam Scott、Britt Lower…）；/movies/27205-inception 显示 Leonardo DiCaprio 等。
+
+---
+
+## Round 48 — 2026-08-06
+
+**发现（性能/UX 驱动）**
+- [P1] 详情页 5-6 个数据源串行 await（season/recs/providers/cast/两条 D1），冷 TTFB 实测 ~2.0s。
+
+**修复（已部署，Version 1b3c3e07）**
+- shows/movies 路由改为 tvDetails/movieDetails 先行（404 判定），其余 season+recs+providers+cast+D1 查询 Promise.all 并行，逐项 .catch 降级。
+
+**证据（线上验证）**
+- 冷 TTFB 2.05s → 1.2-1.3s，暖缓存 0.09-0.18s；Top cast / More like this 区块正常渲染。
+
+---
+
+## Round 49 — 2026-08-06
+
+**发现（SEO/运营驱动）**
+- [P2] IndexNow 只有管理员手动接口，sitemap 扩容后（182 URL）无自动提交——「周更 pSEO + IndexNow」运营环节缺自动化。
+
+**修复（已部署，Version 4ab81336）**
+- 新增 submitSitemapToIndexNow()：抓自家 sitemap.xml、解析 loc、按 ≤100 分批 POST api.indexnow.org；挂到既有每日 08:00 UTC Cron，仅周一（UTC）执行，随邮件摘要并行 waitUntil，失败静默。
+
+**证据**
+- tsc 通过、已部署；下次周一 Cron 自动首跑（正向路径依赖 Cron 触发，无法即时线上验证；接口与 key 文件路由此前已验证 403/200）。
+
+---
+
+## Round 50 — 2026-08-06（QA 回归轮）
+
+**发现（测试驱动，测试代理完整回归 46-49 轮 + 冒烟）**
+- 无 P0/P1/P2。R49 周一 IndexNow Cron 正向路径按设计未实测（无法即时触发）。
+
+**结果（生产 Version 4ab81336）**
+- R46 详情页 @graph JSON-LD（TVSeries|Movie + BreadcrumbList）通过；R47 Top cast（BB aggregate_credits / Inception credits / Ariel 无照片占位图回退）通过；R48 并行化后登录态详情页全区块（状态/星级/笔记/看过勾选/流媒体/演员/推荐）无回归、TTFB 0.10-0.42s 通过；冒烟（搜索角标/标记撤销/Library 计数 3-2-0-1-0/stats/日历/history 日分组）通过；QA 基线 8/4/0 前后一致；r10 净零还原。
+
+**证据**
+- 测试代理报告 test-report-round50-regression.md + 录屏；PR #35 评论附截图。
+
+---
+
+## Round 51 — 2026-08-06
+
+**发现（竞品驱动）**
+- [P1] 日历/iCal/邮件提醒只覆盖 TV 下一集，watchlist 里的未上映电影完全不出现——TV Time 电影上映提醒是招牌功能，我们丢了「电影」半边。
+
+**修复（已部署，Version 84af02ad）**
+- CalendarItem 增加 mediaType（season/episode 可空）；upcomingItems 同时查 TV+电影（watching/watchlist，LIMIT 40），电影取未来 release_date；日历页标题改「Upcoming episodes & releases」、电影行显示「🎬 Movie release」；iCal 电影事件 UID wd-m-<id>、SUMMARY「— movie release」；每日邮件摘要同步包含当日上映电影。
+
+**证据（线上验证）**
+- r10 加 Avengers: Doomsday（watchlist）后：/calendar 显示「Movie release」行；.ics 含 UID:wd-m-1003596 / DTSTART 20261216；测试后已 untrack，r10 复核 3 tracked 净零。
+
+---
+
+## Round 52 — 2026-08-06
+
+**发现（视觉+pSEO 驱动）**
+- 移动端 375px 视觉走查（落地页/剧集页/browse）：布局、导航、演员网格、季 pills 均正常，无 P0-P2 视觉问题。
+- [P2·pSEO] 详情页 JSON-LD 缺 aggregateRating——Google 富结果星级（搜索结果里直接显示评分）拿不到，竞品 IMDb/Trakt 详情页均有。
+
+**修复（已部署，Version 72b4403a）**
+- TvDetails/MovieDetails 增加 vote_count；TVSeries/Movie JSON-LD 注入 aggregateRating（TMDB vote_average/vote_count，bestRating 10），无投票时省略。
+
+**证据（线上验证）**
+- Breaking Bad：ratingValue 8.9 / ratingCount 18297；Inception：8.4 / 39752（curl 验证）。
+
+---
+
+## Round 53 — 2026-08-06
+
+**发现（UX+竞品驱动）**
+- [P2] /history 只能看不能改：误标的观看记录无法从历史页撤销，必须回到剧集页找到对应季集再点 undo（电影则要进电影页）——Trakt 历史页每行都有删除。
+
+**修复（已部署，Version c5012a1d）**
+- 历史每行新增「Remove」按钮：TV 行提交 /api/watch（undo=1，带 season/episode），电影行提交 /api/watch-movie（undo=1），redirect=/history；带 aria-label 标明删的是哪一条。
+
+**证据（线上验证）**
+- r10：标记 BB S03E04 → /history 出现该行 → Remove → 该行消失；episode_watches 复核 41 条净零；历史页 42 行均带 Remove 按钮。
+
+---
+
+## Round 54 — 2026-08-06
+
+**发现（UX+竞品驱动）**
+- [P2] 登录首页只有 Next Up（补旧番），完全看不到「本周要播什么」——TV Time 首页的 upcoming 提示是核心粘性来源，我们的用户必须专门点日历才知道。
+- 竞品核查：Bingers 官网仍仅 App Store/Google Play 链接，无 Web 端，无重大动向。
+
+**修复（已部署，Version bcd8ad9d）**
+- /home 底部新增「Airing this week」紧凑列表：复用 upcomingItems，过滤未来 7 天内、最多 6 条（TV 显示 SxxExx，电影显示 Movie release），附「Full calendar →」链接；无内容时整段隐藏。
+
+**证据（线上验证）**
+- r10 暂时 watchlist 一部在播剧后 /home 出现「Airing this week + 该剧 + Full calendar」；无 7 天内内容时该段隐藏；测试后 untrack，r10 复核 3 tracked 净零。
+
+---
+
+## Round 55 — 2026-08-06（QA 回归轮）
+
+**发现（测试驱动，测试代理完整回归 51-54 轮 + 冒烟）**
+- 无 P0/P1/P2。未测项：R51 每日邮件摘要（Cron 无法即时触发，日历+iCal 路径已验证）；R53 电影行 Remove 按钮存在但未点击（Inception 属 r10 受保护基线数据），TV 行删除已完整验证。
+
+**结果（生产 Version bcd8ad9d）**
+- R51 电影上映进日历/iCal：Doomsday watchlist 后「🎬 Movie release · Wed, Dec 16」+ iCal UID wd-m-1003596 通过；
+- R52 aggregateRating JSON-LD：BB 8.9/18297、Inception 8.4/39752，BreadcrumbList 完好；
+- R53 历史 Remove：标记→Today 出现→Remove→消失，episode_watches 复核 41；
+- R54 Airing this week：无 7 天内内容时隐藏（前置验证）；track 在播剧后出现且正确排除 12-16 的电影；
+- 冒烟（搜索角标/Library 计数 3-2-0-1-0/stats/history 日分组）通过；QA 基线 8/4/0 前后一致；r10 净零还原。
+
+**证据**
+- 测试代理报告 test-report-round55-regression.md + 录屏；PR 评论附截图。
+
+---
+
+## Round 56 — 2026-08-06
+
+**发现（竞品+UX 驱动）**
+- 旧 P3 复核：流媒体标识的深链其实已是 title-specific（TMDB providers link 指向该片 watch 页），撤销该 P3。
+- [P2] /stats 只有全量累计，没有任何「今年」维度——TV Time 年度回顾/Trakt yearly stats 是核心粘性与分享素材，我们完全缺席。
+
+**修复（已部署，Version 6297c560）**
+- UserStats 增加 epsThisYear/moviesThisYear（watched_at >= 今年 1 月 1 日的 D1 计数，并入既有 Promise.all）；/stats 与公开分享页统计卡下方新增「So far in 2026: N episodes and N movies watched」摘要行，双零时隐藏。
+
+**证据（线上验证）**
+- r10 /stats 显示「So far in 2026: 39 episodes and 1 movie watched」（41 条中 2 条为 2025-01 历史日期，口径正确）。
+
+---
+
+## Round 57 — 2026-08-06
+
+**发现（无障碍/键盘 UX 驱动）**
+- [P3] 全站无任何键盘快捷键；/search 落地后还要手动点输入框——Trakt/IMDb 等均支持「/」聚焦搜索。
+
+**修复（已部署，Version 9a0e8bfc）**
+- /app.js 新增全局「/」快捷键聚焦搜索框（输入框/textarea/contenteditable 内不劫持，CSP script-src 'self' 下合规）；导航搜索框加 title="Press / to search"；/search 无查询词时输入框 autofocus。
+
+**证据（线上验证）**
+- /app.js 含 keydown handler；/search 无 q 时渲染 autofocus、有 q 时不渲染（curl 验证）。
+
+---
+
+## Round 58 — 2026-08-06
+
+**发现（pSEO/增长驱动）**
+- [P2] sitemap 详情页只覆盖 trending+popular（时效性强、随热度轮换），完全没收录 top-rated 常青经典（肖申克、教父、Breaking Bad 类长尾搜索主力）。
+
+**修复（已部署，Version fc68b759）**
+- tmdb.ts 新增 topRated(type, page)（/tv|movie/top_rated，24h KV 缓存）；sitemap 并入 top_rated TV/电影各 2 页，经既有去重后 URL 从 182 → 254（+72 个常青详情页）。
+
+**证据（线上验证）**
+- sitemap.xml `<loc>` 计数 182 → 254（curl 验证）。
+
+---
+
+## Round 59 — 2026-08-06
+
+**发现（竞品/导入漏斗驱动）**
+- [P1] Netflix ViewingActivity.csv（Title,Date 两列）走通用 CSV 路径时把「Show: Season 4: Episode Name」整串当剧名，TMDB 必然匹配失败——Netflix 是最大的观看历史来源，Trakt 也只能靠第三方工具导。
+
+**修复（已部署，Version d5f2e13d）**
+- importer.ts 新增 isNetflixCsv（header 恰为 title,date）+ parseNetflixCsv：按「: Season/Part/Series/Volume/Chapter N/Limited Series」或 ≥3 段冒号切出剧名去重导入为 followed，独立标题按电影带观看日期导入（Netflix 不导出集号，已在 /import 文案说明）；/api/import/parse 优先走 Netflix 分支。
+- 本地单测 + 线上 r10 实测：6 行样例 → shows [Stranger Things, Wednesday, Beef]、movies [The Gray Man, Glass Onion]，剧名全部干净。
+
+**证据（线上验证）**
+- /api/import/parse 返回上述解析结果（仅 parse 未 apply，r10 数据不变）。
+
+---
+
+## Round 60 — 2026-08-06（QA 回归轮）
+
+**发现（测试代理完整回归 56-59 轮）**
+- [P2] R59 Netflix 导入把 `7/23/2022` 原样写入 watched_at：/history 分组标题渲染「Invalid Date」，且字符串比较使 2022 观影计入「So far in 2026」。
+- 覆盖备注：R56 公开分享页 StatsBody 复用未测（r10 无分享 token，创建会留残留）；/import UI parse 后自动 apply（无确认步），端到端用一次性账号 r60-qa 完成并自删（D1 复核清零）。
+
+**结果（回归目标 Version d5f2e13d）**
+- R56 「So far in 2026: 39 episodes and 1 movie watched」（41 中 2 条 2025 正确排除、单复数正确）通过；
+- R57 「/」聚焦搜索、输入框内不劫持、/search 无 q autofocus / 有 q 不 autofocus 通过；
+- R58 sitemap 恰 254 个 loc，含 /movies/278-the-shawshank-redemption 且页面 200 通过；
+- R59 导入解析/干净剧名/文案通过，日期 P2 见上；
+- 冒烟 + QA 基线 8/4/0 前后一致 + r10 净零通过。
+
+**修复（已部署，Version 923f3395）**
+- importer.ts 新增 netflixDate：M/D/YYYY → YYYY-MM-DD（已是 ISO 则保留，其他格式置 null 交由服务端取当前时间）；线上复验 parse 返回 2022-07-23 / 2022-12-24。
+
+**证据**
+- test-report-round60-regression.md + 录屏；PR #35 回归评论。
+
+---
+
+## Round 61 — 2026-08-06
+
+**发现（R60 回归测试代理反馈的 UX 缺陷）**
+- [P1] /import 上传后 parse 完立即自动写库，无任何确认步——传错文件（如别人的导出、错的 CSV）会直接污染账号数据，也是测试时只能用一次性账号的根因。
+
+**修复（已部署，Version 2ed63a70）**
+- ImportPage 新增「Ready to import」确认卡（找到 N shows / N watched episodes / N movies，"Nothing has been added yet"），Import now / Cancel 两按钮；import.js 在 parse 与 batch 写入之间加 Promise 确认门，Cancel 恢复 dropzone 不写任何数据。
+
+**证据（线上验证）**
+- /import HTML 含 confirm 卡、/import.js 含确认逻辑（curl 验证）；交互路径留待下轮回归代理点击验证。

@@ -5,6 +5,10 @@
   var progressText = document.getElementById("progress-text");
   var progressBar = document.getElementById("progress-bar");
   var progressDetail = document.getElementById("progress-detail");
+  var confirmBox = document.getElementById("confirm");
+  var confirmDetail = document.getElementById("confirm-detail");
+  var confirmBtn = document.getElementById("confirm-btn");
+  var cancelBtn = document.getElementById("cancel-btn");
   var done = document.getElementById("done");
   var doneDetail = document.getElementById("done-detail");
   var unmatchedBox = document.getElementById("unmatched");
@@ -19,6 +23,8 @@
     if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
   });
   input.addEventListener("change", function () { if (input.files.length) handleFile(input.files[0]); });
+
+  function plural(n, word) { return n + " " + word + (n === 1 ? "" : "s"); }
 
   function fail(msg) {
     progressText.textContent = "Import failed";
@@ -41,6 +47,26 @@
 
       var shows = parsed.shows || [];
       var movies = parsed.movies || [];
+      var episodeCount = shows.reduce(function (n, s) { return n + (s.episodes ? s.episodes.length : 0); }, 0);
+
+      progress.classList.add("hidden");
+      confirmBox.classList.remove("hidden");
+      confirmDetail.textContent =
+        "Found " + plural(shows.length, "show") + " (" + plural(episodeCount, "watched episode") + ") and " +
+        plural(movies.length, "movie") + " in this file. Nothing has been added yet.";
+
+      var choice = await new Promise(function (resolve) {
+        confirmBtn.onclick = function () { resolve(true); };
+        cancelBtn.onclick = function () { resolve(false); };
+      });
+      confirmBox.classList.add("hidden");
+      if (!choice) {
+        dropzone.classList.remove("hidden");
+        input.value = "";
+        return;
+      }
+      progress.classList.remove("hidden");
+
       var totalBatches = Math.ceil(shows.length / 20) + Math.ceil(movies.length / 20);
       var doneBatches = 0;
       var totals = { showsImported: 0, episodesImported: 0, moviesImported: 0, unmatched: 0 };
@@ -71,7 +97,6 @@
 
       progress.classList.add("hidden");
       done.classList.remove("hidden");
-      function plural(n, word) { return n + " " + word + (n === 1 ? "" : "s"); }
       doneDetail.textContent =
         plural(totals.showsImported, "show") + ", " + plural(totals.episodesImported, "episode") + " and " +
         plural(totals.moviesImported, "movie") + " imported" +

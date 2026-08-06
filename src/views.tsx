@@ -54,6 +54,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
               name="q"
               placeholder="Search shows & movies…"
               aria-label="Search shows and movies"
+              title="Press / to search"
               class="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
             />
           </form>
@@ -300,7 +301,8 @@ export const HomePage: FC<{
   hasAnything: boolean;
   justWatched?: { tmdbId: number; season: number; episode: number } | null;
   watchlistPreview?: WatchlistPreviewItem[];
-}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview }) => (
+  upcoming?: CalendarItem[];
+}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview, upcoming }) => (
   <div>
     <h1 class="mb-6 text-2xl font-bold">Next up</h1>
     {justWatched && (
@@ -380,6 +382,31 @@ export const HomePage: FC<{
         ))}
       </div>
     )}
+    {(upcoming?.length ?? 0) > 0 && (
+      <section class="mt-10">
+        <h2 class="mb-3 flex items-baseline gap-3 text-lg font-semibold">
+          Airing this week
+          <a href="/calendar" class="text-sm font-normal text-violet-400 hover:underline">Full calendar →</a>
+        </h2>
+        <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
+          {upcoming!.map((it) => (
+            <li class="flex items-center gap-4 bg-slate-900/40 px-4 py-2.5">
+              <span class="w-24 shrink-0 text-sm text-violet-300" title={it.airDate}>
+                {airDateLabel(it.airDate).label}
+              </span>
+              <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 text-sm font-medium hover:text-violet-400">
+                {it.title}
+              </a>
+              <span class="text-sm text-slate-400">
+                {it.mediaType === "tv" && it.season != null && it.episode != null
+                  ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}`
+                  : "🎬 Movie release"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
     {watchlistCount > 0 && (
       <p class="mt-8 text-sm text-slate-400">
         You have {watchlistCount} title{watchlistCount === 1 ? "" : "s"} on your <a href="/library?status=watchlist" class="text-violet-400 hover:underline">watchlist</a>.
@@ -397,6 +424,7 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
           type="search"
           name="q"
           value={q}
+          autofocus={!q}
           placeholder="Search shows & movies…"
           class="w-full max-w-xl rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 placeholder-slate-500 focus:border-violet-500 focus:outline-none"
         />
@@ -946,9 +974,10 @@ export interface CalendarItem {
   tmdbId: number;
   title: string;
   posterPath: string | null;
-  season: number;
-  episode: number;
-  episodeName: string;
+  mediaType: "tv" | "movie";
+  season: number | null;
+  episode: number | null;
+  episodeName: string | null;
   airDate: string;
 }
 
@@ -966,7 +995,7 @@ const airDateLabel = (iso: string): { label: string; today: boolean } => {
 export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEmail: boolean }> = ({ items, feedUrl, remindEmail }) => (
   <div>
     <div class="mb-6 flex flex-wrap items-center gap-3">
-      <h1 class="text-2xl font-bold">Upcoming episodes</h1>
+      <h1 class="text-2xl font-bold">Upcoming episodes &amp; releases</h1>
       <a href={feedUrl} class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-violet-300 hover:border-violet-500">
         📅 Subscribe (iCal)
       </a>
@@ -996,11 +1025,13 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
             <span class={d.today ? "w-24 shrink-0 text-sm font-semibold text-violet-300" : "w-24 shrink-0 text-sm text-violet-300"} title={it.airDate}>{d.label}</span>
             <img src={poster(it.posterPath, "w92")} alt="" class="h-14 w-auto rounded border border-slate-800" />
             <div class="min-w-0">
-              <a href={`/shows/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
+              <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
                 {it.title}
               </a>
               <p class="text-sm text-slate-400">
-                S{String(it.season).padStart(2, "0")}E{String(it.episode).padStart(2, "0")} · {it.episodeName}
+                {it.mediaType === "tv" && it.season != null && it.episode != null
+                  ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` · ${it.episodeName}` : ""}`
+                  : "🎬 Movie release"}
               </p>
             </div>
           </li>
@@ -1178,6 +1209,8 @@ export interface UserStats {
   topShows: { title: string; tmdb_id: number; eps: number }[];
   byMonth: { month: string; eps: number }[];
   topGenres: { name: string; count: number }[];
+  epsThisYear: number;
+  moviesThisYear: number;
 }
 
 const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
@@ -1198,6 +1231,12 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
           </div>
         ))}
       </div>
+      {(stats.epsThisYear > 0 || stats.moviesThisYear > 0) && (
+        <p class="mt-4 text-sm text-slate-400">
+          So far in {new Date().getUTCFullYear()}: <span class="font-semibold text-violet-300">{stats.epsThisYear}</span> episode{stats.epsThisYear === 1 ? "" : "s"} and{" "}
+          <span class="font-semibold text-violet-300">{stats.moviesThisYear}</span> movie{stats.moviesThisYear === 1 ? "" : "s"} watched.
+        </p>
+      )}
       <div class="mt-8 grid gap-6 md:grid-cols-2">
         <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
           <h2 class="mb-4 font-semibold">Most-watched shows</h2>
@@ -1419,6 +1458,23 @@ export const HistoryPage: FC<{ items: HistoryItem[] }> = ({ items }) => (
                             : "Movie"}
                         </p>
                       </div>
+                      <form action={it.mediaType === "tv" ? "/api/watch" : "/api/watch-movie"} method="post" class="shrink-0">
+                        <input type="hidden" name="tmdb_id" value={String(it.tmdbId)} />
+                        {it.mediaType === "tv" && it.season != null && it.episode != null && (
+                          <>
+                            <input type="hidden" name="season" value={String(it.season)} />
+                            <input type="hidden" name="episode" value={String(it.episode)} />
+                          </>
+                        )}
+                        <input type="hidden" name="undo" value="1" />
+                        <input type="hidden" name="redirect" value="/history" />
+                        <button
+                          class="rounded-lg border border-slate-700 px-2.5 py-1 text-xs text-slate-400 hover:border-red-500 hover:text-red-400"
+                          aria-label={`Remove ${it.title}${it.mediaType === "tv" && it.season != null && it.episode != null ? ` S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}` : ""} from history`}
+                        >
+                          Remove
+                        </button>
+                      </form>
                     </li>
                   ))}
                 </ul>
@@ -1482,7 +1538,8 @@ export const ImportPage: FC = () => (
         gdpr.tvtime.com
       </a>
       . We import your tracked episodes, followed shows <strong>and movies</strong> — then take you straight to your next episode. Coming
-      from Trakt or Serializd? A CSV export with a title column works too.
+      from Trakt or Serializd? A CSV export with a title column works too. Netflix's ViewingActivity.csv also works — shows are added to
+      your library and movies marked watched (Netflix doesn't export episode numbers).
     </p>
     <div
       id="dropzone"
@@ -1498,6 +1555,14 @@ export const ImportPage: FC = () => (
         <div id="progress-bar" class="h-full w-0 bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all" />
       </div>
       <p id="progress-detail" class="mt-2 text-sm text-slate-400"></p>
+    </div>
+    <div id="confirm" class="mt-6 hidden rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+      <p class="font-semibold">Ready to import</p>
+      <p id="confirm-detail" class="mt-1 text-sm text-slate-300"></p>
+      <div class="mt-4 flex gap-3">
+        <button id="confirm-btn" class="rounded-lg bg-violet-600 px-4 py-2 font-medium text-white hover:bg-violet-500">Import now</button>
+        <button id="cancel-btn" class="rounded-lg border border-slate-700 px-4 py-2 text-slate-300 hover:border-red-500 hover:text-red-400">Cancel</button>
+      </div>
     </div>
     <div id="done" class="mt-6 hidden rounded-2xl border border-emerald-800 bg-emerald-950/40 p-6">
       <p class="font-semibold text-emerald-300">Import complete 🎉</p>

@@ -50,6 +50,7 @@ export interface TvDetails {
   last_air_date: string;
   status: string;
   vote_average: number;
+  vote_count: number;
   genres: { id: number; name: string }[];
   number_of_seasons: number;
   number_of_episodes: number;
@@ -81,6 +82,7 @@ export interface MovieDetails {
   release_date: string;
   runtime: number | null;
   vote_average: number;
+  vote_count: number;
   genres: { id: number; name: string }[];
   status: string;
 }
@@ -139,6 +141,10 @@ export function discoverByGenre(env: Env, type: "tv" | "movie", genreId: number,
     `/discover/${type}?with_genres=${genreId}&sort_by=popularity.desc&page=${Math.min(Math.max(page, 1), 20)}`,
     24 * 3600
   );
+}
+
+export function topRated(env: Env, type: "tv" | "movie", page = 1) {
+  return tmdb<{ results: SearchResult[] }>(env, `/${type}/top_rated?page=${Math.min(Math.max(page, 1), 20)}`, 24 * 3600);
 }
 
 export function discoverPopular(env: Env, type: "tv" | "movie", page = 1) {

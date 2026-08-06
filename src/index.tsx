@@ -16,6 +16,7 @@ import {
   discoverByNetwork,
   discoverByYear,
   discoverPopular,
+  topRated,
   NETWORKS,
   recommendations,
   watchProviders,
@@ -24,7 +25,7 @@ import {
   topCast,
   type CastMember,
 } from "./tmdb";
-import { parseTvTimeZip, parseGenericCsv, type ParsedImport } from "./importer";
+import { parseTvTimeZip, parseGenericCsv, isNetflixCsv, parseNetflixCsv, type ParsedImport } from "./importer";
 import { sendEmail, welcomeEmail, resetEmail } from "./email";
 import { shareOgImage } from "./og";
 import {
@@ -328,9 +329,13 @@ app.get("/home", async (c) => {
     wParam.length === 3 && wParam.every(Number.isFinite)
       ? { tmdbId: wParam[0], season: wParam[1], episode: wParam[2] }
       : null;
+  const weekAhead = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const upcoming = (await upcomingItems(c.env, user.id).catch(() => [] as CalendarItem[]))
+    .filter((it) => it.airDate <= weekAhead)
+    .slice(0, 6);
   return c.html(
     <Layout user={user} title="Next up">
-      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0 || (wl?.n ?? 0) > 0} justWatched={justWatched} watchlistPreview={watchlistPreview} />
+      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0 || (wl?.n ?? 0) > 0} justWatched={justWatched} watchlistPreview={watchlistPreview} upcoming={upcoming} />
     </Layout>
   );
 });
@@ -381,33 +386,24 @@ app.get("/shows/:idslug", async (c) => {
     return c.notFound();
   }
   const seasonNum = parseInt(c.req.query("season") ?? "1", 10) || 1;
-  let season = null;
-  try {
-    season = await seasonDetails(c.env, id, seasonNum);
-  } catch {}
-  let watched = new Set<string>();
-  let tracked: { status: string; rating: number | null; notes: string | null } | null = null;
-  if (user) {
-    const rows = await c.env.DB.prepare("SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
-      .bind(user.id, id)
-      .all<{ season: number; episode: number }>();
-    watched = new Set(rows.results.map((r) => `${r.season}x${r.episode}`));
-    tracked = await c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
-      .bind(user.id, id)
-      .first<{ status: string; rating: number | null; notes: string | null }>();
-  }
-  let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
-  try {
-    recs = (await recommendations(c.env, "tv", id)).results;
-  } catch {}
-  let providers = null;
-  try {
-    providers = await watchProviders(c.env, "tv", id);
-  } catch {}
-  let cast: CastMember[] = [];
-  try {
-    cast = await topCast(c.env, "tv", id);
-  } catch {}
+  const [season, watchedRows, tracked, recsRes, providers, cast] = await Promise.all([
+    seasonDetails(c.env, id, seasonNum).catch(() => null),
+    user
+      ? c.env.DB.prepare("SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
+          .bind(user.id, id)
+          .all<{ season: number; episode: number }>()
+      : Promise.resolve(null),
+    user
+      ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
+          .bind(user.id, id)
+          .first<{ status: string; rating: number | null; notes: string | null }>()
+      : Promise.resolve(null),
+    recommendations(c.env, "tv", id).catch(() => ({ results: [] as SearchResult[] })),
+    watchProviders(c.env, "tv", id).catch(() => null),
+    topCast(c.env, "tv", id).catch(() => [] as CastMember[]),
+  ]);
+  const watched = new Set((watchedRows?.results ?? []).map((r) => `${r.season}x${r.episode}`));
+  const recs = recsRes.results;
   const showCanonical = `${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`;
   return c.html(
     <Layout
@@ -428,6 +424,9 @@ app.get("/shows/:idslug", async (c) => {
             ...(show.first_air_date ? { datePublished: show.first_air_date } : {}),
             ...(show.number_of_seasons ? { numberOfSeasons: show.number_of_seasons } : {}),
             ...(show.genres?.length ? { genre: show.genres.map((g) => g.name) } : {}),
+            ...(show.vote_average && show.vote_count
+              ? { aggregateRating: { "@type": "AggregateRating", ratingValue: Math.round(show.vote_average * 10) / 10, bestRating: 10, worstRating: 0, ratingCount: show.vote_count } }
+              : {}),
           },
           {
             "@type": "BreadcrumbList",
@@ -455,26 +454,19 @@ app.get("/movies/:idslug", async (c) => {
   } catch {
     return c.notFound();
   }
-  let watched = false;
-  let tracked: { status: string; rating: number | null; notes: string | null } | null = null;
-  if (user) {
-    watched = !!(await c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first());
-    tracked = await c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
-      .bind(user.id, id)
-      .first<{ status: string; rating: number | null; notes: string | null }>();
-  }
-  let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
-  try {
-    recs = (await recommendations(c.env, "movie", id)).results;
-  } catch {}
-  let providers = null;
-  try {
-    providers = await watchProviders(c.env, "movie", id);
-  } catch {}
-  let cast: CastMember[] = [];
-  try {
-    cast = await topCast(c.env, "movie", id);
-  } catch {}
+  const [watchedRow, tracked, recsRes, providers, cast] = await Promise.all([
+    user ? c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first() : Promise.resolve(null),
+    user
+      ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
+          .bind(user.id, id)
+          .first<{ status: string; rating: number | null; notes: string | null }>()
+      : Promise.resolve(null),
+    recommendations(c.env, "movie", id).catch(() => ({ results: [] as SearchResult[] })),
+    watchProviders(c.env, "movie", id).catch(() => null),
+    topCast(c.env, "movie", id).catch(() => [] as CastMember[]),
+  ]);
+  const watched = !!watchedRow;
+  const recs = recsRes.results;
   const movieCanonical = `${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`;
   return c.html(
     <Layout
@@ -494,6 +486,9 @@ app.get("/movies/:idslug", async (c) => {
             ...(movie.poster_path ? { image: `https://image.tmdb.org/t/p/w500${movie.poster_path}` } : {}),
             ...(movie.release_date ? { datePublished: movie.release_date } : {}),
             ...(movie.genres?.length ? { genre: movie.genres.map((g) => g.name) } : {}),
+            ...(movie.vote_average && movie.vote_count
+              ? { aggregateRating: { "@type": "AggregateRating", ratingValue: Math.round(movie.vote_average * 10) / 10, bestRating: 10, worstRating: 0, ratingCount: movie.vote_count } }
+              : {}),
           },
           {
             "@type": "BreadcrumbList",
@@ -548,30 +543,46 @@ app.get("/library", async (c) => {
 
 async function upcomingItems(env: AppContext["Bindings"], userId: number): Promise<CalendarItem[]> {
   const tracked = await env.DB.prepare(
-    "SELECT tmdb_id FROM tracked WHERE user_id = ? AND media_type = 'tv' AND status IN ('watching','watchlist') LIMIT 30"
+    "SELECT tmdb_id, media_type FROM tracked WHERE user_id = ? AND status IN ('watching','watchlist') LIMIT 40"
   )
     .bind(userId)
-    .all<{ tmdb_id: number }>();
-  const perShow = await Promise.all(
+    .all<{ tmdb_id: number; media_type: "tv" | "movie" }>();
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const perItem = await Promise.all(
     tracked.results.map(async (t): Promise<CalendarItem | null> => {
       try {
-        const d = await tvDetails(env, t.tmdb_id);
-        if (!d.next_episode_to_air?.air_date) return null;
+        if (t.media_type === "tv") {
+          const d = await tvDetails(env, t.tmdb_id);
+          if (!d.next_episode_to_air?.air_date) return null;
+          return {
+            tmdbId: d.id,
+            title: d.name,
+            posterPath: d.poster_path,
+            mediaType: "tv",
+            season: d.next_episode_to_air.season_number,
+            episode: d.next_episode_to_air.episode_number,
+            episodeName: d.next_episode_to_air.name,
+            airDate: d.next_episode_to_air.air_date,
+          };
+        }
+        const m = await movieDetails(env, t.tmdb_id);
+        if (!m.release_date || m.release_date < todayIso) return null;
         return {
-          tmdbId: d.id,
-          title: d.name,
-          posterPath: d.poster_path,
-          season: d.next_episode_to_air.season_number,
-          episode: d.next_episode_to_air.episode_number,
-          episodeName: d.next_episode_to_air.name,
-          airDate: d.next_episode_to_air.air_date,
+          tmdbId: m.id,
+          title: m.title,
+          posterPath: m.poster_path,
+          mediaType: "movie",
+          season: null,
+          episode: null,
+          episodeName: null,
+          airDate: m.release_date,
         };
       } catch {
         return null;
       }
     })
   );
-  const items = perShow.filter((i): i is CalendarItem => i !== null);
+  const items = perItem.filter((i): i is CalendarItem => i !== null);
   items.sort((a, b) => a.airDate.localeCompare(b.airDate));
   return items;
 }
@@ -610,12 +621,13 @@ app.get("/feed/:token", async (c) => {
   ];
   for (const it of items) {
     const day = it.airDate.replace(/-/g, "");
+    const isTv = it.mediaType === "tv" && it.season != null && it.episode != null;
     lines.push(
       "BEGIN:VEVENT",
-      `UID:wd-${it.tmdbId}-s${it.season}e${it.episode}@watchdeck.zalize.com`,
+      isTv ? `UID:wd-${it.tmdbId}-s${it.season}e${it.episode}@watchdeck.zalize.com` : `UID:wd-m-${it.tmdbId}@watchdeck.zalize.com`,
       `DTSTART;VALUE=DATE:${day}`,
-      `SUMMARY:${esc(`${it.title} S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}`)}`,
-      `URL:${c.env.SITE_URL}/shows/${it.tmdbId}-${slugify(it.title)}`,
+      `SUMMARY:${esc(isTv ? `${it.title} S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}` : `${it.title} \u2014 movie release`)}`,
+      `URL:${c.env.SITE_URL}/${isTv ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`,
       "END:VEVENT"
     );
   }
@@ -778,7 +790,7 @@ async function hoursWatched(env: Env, userId: number): Promise<number> {
 }
 
 async function userStats(env: Env, userId: number): Promise<UserStats> {
-  const [eps, movies, tracked, completed, topShows, byMonth, hours] = await Promise.all([
+  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(userId).first<{ n: number }>(),
@@ -793,6 +805,8 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
        WHERE user_id = ? AND watched_at >= date('now', '-12 months') GROUP BY month ORDER BY month`
     ).bind(userId).all<{ month: string; eps: number }>(),
     hoursWatched(env, userId),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ? AND watched_at >= strftime('%Y-01-01', 'now')").bind(userId).first<{ n: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND watched_at >= strftime('%Y-01-01', 'now')").bind(userId).first<{ n: number }>(),
   ]);
   const items = await env.DB.prepare(
     "SELECT tmdb_id, media_type FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 40"
@@ -821,6 +835,8 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     topShows: topShows.results,
     byMonth: byMonth.results,
     topGenres,
+    epsThisYear: epsYear?.n ?? 0,
+    moviesThisYear: moviesYear?.n ?? 0,
   };
 }
 
@@ -1293,7 +1309,8 @@ app.post("/api/import/parse", async (c) => {
   if (bytes.length > 30 * 1024 * 1024) return c.json({ error: "File too large (max 30 MB)" }, 413);
   const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
   try {
-    const parsed = isZip ? parseTvTimeZip(bytes) : parseGenericCsv(new TextDecoder().decode(bytes));
+    const text = isZip ? "" : new TextDecoder().decode(bytes);
+    const parsed = isZip ? parseTvTimeZip(bytes) : isNetflixCsv(text) ? parseNetflixCsv(text) : parseGenericCsv(text);
     if (parsed.shows.length === 0 && parsed.movies.length === 0) {
       logFunnel(c, "import-parse-empty");
       return c.json(
@@ -1403,6 +1420,10 @@ app.get("/sitemap.xml", async (c) => {
       discoverPopular(c.env, "tv", 2),
       discoverPopular(c.env, "movie", 1),
       discoverPopular(c.env, "movie", 2),
+      topRated(c.env, "tv", 1),
+      topRated(c.env, "tv", 2),
+      topRated(c.env, "movie", 1),
+      topRated(c.env, "movie", 2),
     ]);
     const seen = new Set<string>();
     const pushTitle = (type: "tv" | "movie", id: number, title: string) => {
@@ -1414,7 +1435,7 @@ app.get("/sitemap.xml", async (c) => {
     for (const s of shows.results) pushTitle("tv", s.id, s.name ?? "");
     for (const m of movies.results) pushTitle("movie", m.id, m.title ?? "");
     for (const [i, p] of popular.entries()) {
-      const type = i < 2 ? "tv" : "movie";
+      const type = i < 2 || (i >= 4 && i < 6) ? "tv" : "movie";
       for (const r of p.results) pushTitle(type, r.id, (type === "tv" ? r.name : r.title) ?? "");
     }
     for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
@@ -1514,16 +1535,40 @@ async function sendAiringDigests(env: Env): Promise<void> {
   for (const u of users.results) {
     const items = (await upcomingItems(env, u.id)).filter((it) => it.airDate === today);
     if (items.length === 0) continue;
-    const lines = items.map(
-      (it) =>
-        `<li style=\"margin:6px 0\"><a href=\"${env.SITE_URL}/shows/${it.tmdbId}-${slugify(it.title)}\" style=\"color:#7c3aed\">${it.title}</a> S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}</li>`
-    );
+    const lines = items.map((it) => {
+      const isTv = it.mediaType === "tv" && it.season != null && it.episode != null;
+      const label = isTv
+        ? ` S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` \u2014 ${it.episodeName}` : ""}`
+        : " \u2014 movie release";
+      return `<li style=\"margin:6px 0\"><a href=\"${env.SITE_URL}/${isTv ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}\" style=\"color:#7c3aed\">${it.title}</a>${label}</li>`;
+    });
     await sendEmail(
       env,
       u.email,
       `Airing today: ${items[0].title}${items.length > 1 ? ` and ${items.length - 1} more` : ""}`,
-      `<p>These shows you track air new episodes today:</p><ul>${lines.join("")}</ul><p style=\"color:#64748b;font-size:13px\">You get this because email reminders are on \u2014 turn them off any time on your <a href=\"${env.SITE_URL}/calendar\">calendar page</a>.</p>`
+      `<p>These titles you track air or release today:</p><ul>${lines.join("")}</ul><p style=\"color:#64748b;font-size:13px\">You get this because email reminders are on \u2014 turn them off any time on your <a href=\"${env.SITE_URL}/calendar\">calendar page</a>.</p>`
     );
+  }
+}
+
+async function submitSitemapToIndexNow(env: Env): Promise<void> {
+  if (!env.INDEXNOW_KEY) return;
+  const res = await fetch(`${env.SITE_URL}/sitemap.xml`);
+  if (!res.ok) return;
+  const xml = await res.text();
+  const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
+  const host = new URL(env.SITE_URL).host;
+  for (let i = 0; i < urls.length; i += 100) {
+    await fetch("https://api.indexnow.org/indexnow", {
+      method: "POST",
+      headers: { "content-type": "application/json; charset=utf-8" },
+      body: JSON.stringify({
+        host,
+        key: env.INDEXNOW_KEY,
+        keyLocation: `${env.SITE_URL}/${env.INDEXNOW_KEY}.txt`,
+        urlList: urls.slice(i, i + 100),
+      }),
+    });
   }
 }
 
@@ -1531,5 +1576,6 @@ export default {
   fetch: app.fetch,
   scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(sendAiringDigests(env));
+    if (new Date().getUTCDay() === 1) ctx.waitUntil(submitSitemapToIndexNow(env).catch(() => {}));
   },
 };
