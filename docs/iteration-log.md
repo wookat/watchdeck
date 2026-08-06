@@ -1322,3 +1322,18 @@
 
 **证据**
 - Version 00c358d8；线上验证：r10 登录搜「the pitt」出现 + Watchlist 按钮，匿名同查询无按钮。写库正向路径留给测试代理用 throwaway 账号回归。
+
+---
+
+## Round 95 — 2026-08-06（回归轮）
+
+**驱动：①测试（QA 回归 R91-R94）**
+
+**回归结果（生产 Version 00c358d8）**
+- R92 端到端：合成 TV Time ZIP（tracking + user-rating CSV）导入 → D1: The Wire ★5 + 2 集流水、Heat ★4 + 电影流水、source='tvtime'；用 2/1 分重导未覆盖（COALESCE）。
+- R94：搜索卡「+ Watchlist」→ 回落原 URL（&type=tv 保留），角标翻转 ✓ In library，D1 status='watchlist'；匿名页面零按钮（curl 复核）。
+- R91：/settings CSV 导出表头与逐行内容与 D1 精确一致；r10 只读导出 46 行（41 集、Severance 19、评分列空）。
+- R93：「MiXeD CaSe R95」入库为小写；/privacy 90 天保留声明可见（Cron 清理正向路径无法即时触发，待观察项）。
+- 冒烟全过；基线（8/Sev 4/Friends 0/Mandalorian ★4）不变；r10 净零；throwaway r95-qa-* 已删除并 D1 复核。
+
+**结论**：R91-R94 无 P0/P1/P2/P3 遗留。证据评论见 PR #38。
