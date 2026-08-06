@@ -359,23 +359,29 @@ app.get("/library", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
   const status = c.req.query("status") ?? "all";
+  const q = (c.req.query("q") ?? "").trim();
   const cols =
     "tmdb_id, media_type, title, poster_path, status, rating, (SELECT COUNT(*) FROM episode_watches w WHERE w.user_id = tracked.user_id AND w.tmdb_id = tracked.tmdb_id) AS eps_watched";
-  const rows =
-    status === "all"
-      ? await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 200`)
-          .bind(user.id)
-          .all<LibraryRow>()
-      : await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE user_id = ? AND status = ? ORDER BY updated_at DESC LIMIT 200`)
-          .bind(user.id, status)
-          .all<LibraryRow>();
+  const conds = ["user_id = ?"];
+  const binds: (string | number)[] = [user.id];
+  if (status !== "all") {
+    conds.push("status = ?");
+    binds.push(status);
+  }
+  if (q) {
+    conds.push("title LIKE ? COLLATE NOCASE");
+    binds.push(`%${q}%`);
+  }
+  const rows = await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE ${conds.join(" AND ")} ORDER BY updated_at DESC LIMIT 200`)
+    .bind(...binds)
+    .all<LibraryRow>();
   const sort = ["recent", "title", "progress"].includes(c.req.query("sort") ?? "") ? c.req.query("sort")! : "recent";
   const sorted = [...rows.results];
   if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
   else if (sort === "progress") sorted.sort((a, b) => b.eps_watched - a.eps_watched);
   return c.html(
     <Layout user={user} title="Library">
-      <LibraryPage rows={sorted} status={status} sort={sort} />
+      <LibraryPage rows={sorted} status={status} sort={sort} q={q} />
     </Layout>
   );
 });
@@ -492,6 +498,15 @@ app.get("/browse/:type/:genreslug", async (c) => {
     </Layout>
   );
 });
+
+function logFunnel(c: { env: Env; executionCtx: { waitUntil(promise: Promise<unknown>): void } }, event: string): void {
+  c.executionCtx.waitUntil(
+    c.env.DB.prepare("INSERT INTO analytics_events (path, referrer, country, ua_class) VALUES (?, NULL, NULL, 'funnel')")
+      .bind(`/funnel/${event}`)
+      .run()
+      .catch(() => {})
+  );
+}
 
 function invalidateHours(c: { env: Env; executionCtx: { waitUntil(promise: Promise<unknown>): void } }, userId: number): void {
   c.executionCtx.waitUntil(c.env.CACHE.delete(`hours:${userId}`).catch(() => {}));
@@ -797,13 +812,16 @@ app.post("/api/import/parse", async (c) => {
   try {
     const parsed = isZip ? parseTvTimeZip(bytes) : parseGenericCsv(new TextDecoder().decode(bytes));
     if (parsed.shows.length === 0 && parsed.movies.length === 0) {
+      logFunnel(c, "import-parse-empty");
       return c.json(
         { error: isZip ? "No TV Time data found in this ZIP. Make sure it's the GDPR export." : "No shows or movies found in this CSV \u2014 it needs a title column." },
         422
       );
     }
+    logFunnel(c, "import-parse-ok");
     return c.json(parsed);
   } catch {
+    logFunnel(c, "import-parse-fail");
     return c.json({ error: isZip ? "Could not read that ZIP file." : "Could not read that file. Upload a TV Time ZIP or a CSV export." }, 422);
   }
 });
@@ -881,6 +899,7 @@ app.post("/api/import/batch", async (c) => {
     .run();
 
   invalidateHours(c, user.id);
+  logFunnel(c, "import-batch-done");
   return c.json({ showsImported, episodesImported, moviesImported, unmatched: unmatchedNames.length, unmatchedNames });
 });
 
@@ -918,21 +937,24 @@ app.get("/:key{[a-f0-9]{32}\\.txt}", (c) => {
 app.get("/api/stats", async (c) => {
   const user = c.get("user");
   if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
-  const [daily, countries, topPaths, searches, signups, waitlist] = await Promise.all([
+  const [daily, countries, topPaths, searches, signups, waitlist, funnel] = await Promise.all([
     c.env.DB.prepare(
-      "SELECT date(ts) AS day, COUNT(*) AS views FROM analytics_events WHERE ua_class != 'bot' GROUP BY day ORDER BY day DESC LIMIT 30"
+      "SELECT date(ts) AS day, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel') GROUP BY day ORDER BY day DESC LIMIT 30"
     ).all(),
     c.env.DB.prepare(
-      "SELECT country, COUNT(*) AS views FROM analytics_events WHERE ua_class != 'bot' AND ts >= datetime('now', '-30 days') GROUP BY country ORDER BY views DESC LIMIT 15"
+      "SELECT country, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel') AND ts >= datetime('now', '-30 days') GROUP BY country ORDER BY views DESC LIMIT 15"
     ).all(),
     c.env.DB.prepare(
-      "SELECT path, COUNT(*) AS views FROM analytics_events WHERE ua_class != 'bot' AND ts >= datetime('now', '-30 days') GROUP BY path ORDER BY views DESC LIMIT 20"
+      "SELECT path, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel') AND ts >= datetime('now', '-30 days') GROUP BY path ORDER BY views DESC LIMIT 20"
     ).all(),
     c.env.DB.prepare(
       "SELECT q, COUNT(*) AS n, MAX(results) AS results FROM search_queries WHERE ts >= datetime('now', '-30 days') GROUP BY q ORDER BY n DESC LIMIT 20"
     ).all(),
     c.env.DB.prepare("SELECT COUNT(*) AS n FROM users").first<{ n: number }>(),
     c.env.DB.prepare("SELECT COUNT(*) AS n FROM email_signups").first<{ n: number }>(),
+    c.env.DB.prepare(
+      "SELECT path, COUNT(*) AS n FROM analytics_events WHERE ua_class = 'funnel' AND ts >= datetime('now', '-30 days') GROUP BY path ORDER BY n DESC"
+    ).all(),
   ]);
   return c.json({
     daily: daily.results,
@@ -941,6 +963,7 @@ app.get("/api/stats", async (c) => {
     topSearches: searches.results,
     users: signups?.n ?? 0,
     waitlist: waitlist?.n ?? 0,
+    funnel: funnel.results,
   });
 });
 

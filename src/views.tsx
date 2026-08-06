@@ -640,9 +640,21 @@ export interface LibraryRow {
   rating: number | null;
 }
 
-export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string }> = ({ rows, status, sort }) => (
+export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string; q?: string }> = ({ rows, status, sort, q }) => (
   <div>
     <h1 class="mb-4 text-2xl font-bold">Library</h1>
+    <form action="/library" method="get" class="mb-3 max-w-xs">
+      {status !== "all" && <input type="hidden" name="status" value={status} />}
+      <input type="hidden" name="sort" value={sort} />
+      <input
+        type="search"
+        name="q"
+        value={q ?? ""}
+        placeholder="Filter your library…"
+        aria-label="Filter your library by title"
+        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+      />
+    </form>
     <div class="mb-3 flex flex-wrap gap-2">
       {["all", "watching", "watchlist", "completed", "dropped"].map((s) => (
         <a
@@ -675,10 +687,16 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string 
       ))}
     </div>
     {rows.length === 0 ? (
+      q ? (
+        <p class="text-slate-400">
+          Nothing in your library matches “{q}”. <a href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}`} class="text-violet-400 hover:underline">Clear filter</a>
+        </p>
+      ) : (
       <p class="text-slate-400">
         Nothing here yet. <a href="/import" class="text-violet-400 hover:underline">Import from TV Time</a> or{" "}
         <a href="/search" class="text-violet-400 hover:underline">search</a>.
       </p>
+      )
     ) : (
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {rows.map((r) => (
