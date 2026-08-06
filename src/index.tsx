@@ -412,14 +412,26 @@ app.get("/shows/:idslug", async (c) => {
       ogImage={show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : undefined}
       jsonLd={{
         "@context": "https://schema.org",
-        "@type": "TVSeries",
-        name: show.name,
-        url: showCanonical,
-        ...(show.overview ? { description: show.overview } : {}),
-        ...(show.poster_path ? { image: `https://image.tmdb.org/t/p/w500${show.poster_path}` } : {}),
-        ...(show.first_air_date ? { datePublished: show.first_air_date } : {}),
-        ...(show.number_of_seasons ? { numberOfSeasons: show.number_of_seasons } : {}),
-        ...(show.genres?.length ? { genre: show.genres.map((g) => g.name) } : {}),
+        "@graph": [
+          {
+            "@type": "TVSeries",
+            name: show.name,
+            url: showCanonical,
+            ...(show.overview ? { description: show.overview } : {}),
+            ...(show.poster_path ? { image: `https://image.tmdb.org/t/p/w500${show.poster_path}` } : {}),
+            ...(show.first_air_date ? { datePublished: show.first_air_date } : {}),
+            ...(show.number_of_seasons ? { numberOfSeasons: show.number_of_seasons } : {}),
+            ...(show.genres?.length ? { genre: show.genres.map((g) => g.name) } : {}),
+          },
+          {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "WatchDeck", item: c.env.SITE_URL + "/" },
+              { "@type": "ListItem", position: 2, name: "Browse", item: c.env.SITE_URL + "/browse" },
+              { "@type": "ListItem", position: 3, name: show.name, item: showCanonical },
+            ],
+          },
+        ],
       }}
     >
       <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} />
@@ -463,13 +475,25 @@ app.get("/movies/:idslug", async (c) => {
       ogImage={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined}
       jsonLd={{
         "@context": "https://schema.org",
-        "@type": "Movie",
-        name: movie.title,
-        url: movieCanonical,
-        ...(movie.overview ? { description: movie.overview } : {}),
-        ...(movie.poster_path ? { image: `https://image.tmdb.org/t/p/w500${movie.poster_path}` } : {}),
-        ...(movie.release_date ? { datePublished: movie.release_date } : {}),
-        ...(movie.genres?.length ? { genre: movie.genres.map((g) => g.name) } : {}),
+        "@graph": [
+          {
+            "@type": "Movie",
+            name: movie.title,
+            url: movieCanonical,
+            ...(movie.overview ? { description: movie.overview } : {}),
+            ...(movie.poster_path ? { image: `https://image.tmdb.org/t/p/w500${movie.poster_path}` } : {}),
+            ...(movie.release_date ? { datePublished: movie.release_date } : {}),
+            ...(movie.genres?.length ? { genre: movie.genres.map((g) => g.name) } : {}),
+          },
+          {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "WatchDeck", item: c.env.SITE_URL + "/" },
+              { "@type": "ListItem", position: 2, name: "Browse", item: c.env.SITE_URL + "/browse" },
+              { "@type": "ListItem", position: 3, name: movie.title, item: movieCanonical },
+            ],
+          },
+        ],
       }}
     >
       <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} />

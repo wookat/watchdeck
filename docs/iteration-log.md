@@ -659,3 +659,16 @@
 
 **证据**
 - 测试代理报告 test-report-round45-regression.md + 录屏；PR #34 评论附截图。
+
+---
+
+## Round 46 — 2026-08-06
+
+**发现（pSEO/竞品驱动）**
+- [P2] 剧集/电影详情页 JSON-LD 只有 TVSeries/Movie 单实体，缺 BreadcrumbList——搜索结果无法展示面包屑富结果（IMDb/TMDb 详情页均有）。
+
+**修复（已部署，Version 650d41b9）**
+- 详情页 JSON-LD 改为 @graph：TVSeries/Movie + BreadcrumbList（WatchDeck → Browse → 标题）。
+
+**证据（线上验证）**
+- /shows/95396-severance 与 /movies/27205-inception 的 ld+json 均含两个实体（TVSeries|Movie + BreadcrumbList）。
