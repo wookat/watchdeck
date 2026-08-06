@@ -711,3 +711,16 @@
 
 **证据**
 - tsc 通过、已部署；下次周一 Cron 自动首跑（正向路径依赖 Cron 触发，无法即时线上验证；接口与 key 文件路由此前已验证 403/200）。
+
+---
+
+## Round 50 — 2026-08-06（QA 回归轮）
+
+**发现（测试驱动，测试代理完整回归 46-49 轮 + 冒烟）**
+- 无 P0/P1/P2。R49 周一 IndexNow Cron 正向路径按设计未实测（无法即时触发）。
+
+**结果（生产 Version 4ab81336）**
+- R46 详情页 @graph JSON-LD（TVSeries|Movie + BreadcrumbList）通过；R47 Top cast（BB aggregate_credits / Inception credits / Ariel 无照片占位图回退）通过；R48 并行化后登录态详情页全区块（状态/星级/笔记/看过勾选/流媒体/演员/推荐）无回归、TTFB 0.10-0.42s 通过；冒烟（搜索角标/标记撤销/Library 计数 3-2-0-1-0/stats/日历/history 日分组）通过；QA 基线 8/4/0 前后一致；r10 净零还原。
+
+**证据**
+- 测试代理报告 test-report-round50-regression.md + 录屏；PR #35 评论附截图。
