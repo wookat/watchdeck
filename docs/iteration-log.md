@@ -133,3 +133,19 @@
 **证据（线上验证）**
 - `/library?q=sever` 只列 Severance；`?q=zzzz` 显示「Nothing in your library matches … Clear filter」。
 - 上传 CSV 后 D1 出现 `('/funnel/import-parse-ok', 1)`。
+
+---
+
+## Round 8 — 2026-08-05
+
+**发现**
+- [竞品/SEO / P2] Trakt、Serializd 的剧集/电影详情页都有 schema.org 结构化数据（TVSeries/Movie JSON-LD），Google 富结果依赖它；我们的 pSEO 页面（数千 TMDB 详情页 + 题材页）没有任何结构化数据。
+- [竞品/分享 / P3] 剧集/电影页分享到社交平台时无 og:image（只有分享统计页有 OG 卡），链接预览是纯文字。
+
+**修复（已部署，Version e6a03126）**
+- Layout 支持 `jsonLd` 注入 `<script type="application/ld+json">`。
+- 剧集页输出 TVSeries JSON-LD（name/url/description/image/datePublished/numberOfSeasons/genre），电影页输出 Movie JSON-LD。
+- 剧集/电影页 og:image 使用 TMDB w500 海报 + twitter:card summary_large_image。
+
+**证据（线上验证）**
+- `/shows/95396-severance` 含 `"@type":"TVSeries"`；`/movies/27205-inception` 含 `"@type":"Movie"` 与 og:image。

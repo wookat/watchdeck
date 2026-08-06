@@ -2,13 +2,14 @@ import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
 import { poster, slugify, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails } from "./tmdb";
 
-export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string }>> = ({
+export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; jsonLd?: object }>> = ({
   children,
   user,
   title,
   description,
   canonical,
   ogImage,
+  jsonLd,
 }) => (
   <html lang="en" class="dark">
     <head>
@@ -25,6 +26,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       {canonical && <meta property="og:url" content={canonical} />}
       {ogImage && <meta property="og:image" content={ogImage} />}
       {ogImage && <meta name="twitter:card" content="summary_large_image" />}
+      {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <link rel="stylesheet" href="/styles.css" />
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     </head>
