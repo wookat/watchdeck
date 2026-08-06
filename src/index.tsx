@@ -15,6 +15,7 @@ import {
   discoverByGenre,
   discoverByNetwork,
   discoverByYear,
+  discoverPopular,
   NETWORKS,
   recommendations,
   watchProviders,
@@ -1311,14 +1312,29 @@ app.get("/robots.txt", (c) =>
 app.get("/sitemap.xml", async (c) => {
   const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`, `${c.env.SITE_URL}/privacy`, `${c.env.SITE_URL}/terms`];
   try {
-    const [shows, movies, tvGenres, movieGenres] = await Promise.all([
+    const [shows, movies, tvGenres, movieGenres, ...popular] = await Promise.all([
       trendingTv(c.env),
       trendingMovies(c.env),
       genreList(c.env, "tv"),
       genreList(c.env, "movie"),
+      discoverPopular(c.env, "tv", 1),
+      discoverPopular(c.env, "tv", 2),
+      discoverPopular(c.env, "movie", 1),
+      discoverPopular(c.env, "movie", 2),
     ]);
-    for (const s of shows.results) urls.push(`${c.env.SITE_URL}/shows/${s.id}-${slugify(s.name ?? "")}`);
-    for (const m of movies.results) urls.push(`${c.env.SITE_URL}/movies/${m.id}-${slugify(m.title ?? "")}`);
+    const seen = new Set<string>();
+    const pushTitle = (type: "tv" | "movie", id: number, title: string) => {
+      const key = `${type}:${id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      urls.push(`${c.env.SITE_URL}/${type === "tv" ? "shows" : "movies"}/${id}-${slugify(title)}`);
+    };
+    for (const s of shows.results) pushTitle("tv", s.id, s.name ?? "");
+    for (const m of movies.results) pushTitle("movie", m.id, m.title ?? "");
+    for (const [i, p] of popular.entries()) {
+      const type = i < 2 ? "tv" : "movie";
+      for (const r of p.results) pushTitle(type, r.id, (type === "tv" ? r.name : r.title) ?? "");
+    }
     for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
     for (const g of movieGenres.genres) urls.push(`${c.env.SITE_URL}/browse/movie/${g.id}-${slugify(g.name)}`);
     for (const n of NETWORKS) urls.push(`${c.env.SITE_URL}/browse/network/${n.id}-${slugify(n.name)}`);

@@ -536,3 +536,16 @@
 
 **证据（线上验证）**
 - r10 账号 /stats 显示 Top genres：Drama/Mystery/Sci-Fi & Fantasy/Action/Science Fiction/Adventure，与其 3 个 tracked 条目的 TMDB 题材一致。
+
+---
+
+## Round 37 — 2026-08-06
+
+**发现（pSEO/数据驱动）**
+- [P1] sitemap 的详情页 URL 只来自本周 trending（约 40 条且随周轮换），最大的 pSEO 面（剧集/电影详情页）覆盖不足。
+
+**修复（已部署，Version 5f03421d）**
+- 新增 discoverPopular（TMDB discover 按 popularity 排序，24h 缓存）；sitemap 并行拉取 TV/电影各前 2 页热门并与 trending 去重合并。
+
+**证据（线上验证）**
+- sitemap.xml <loc> 总数 182，其中详情页 URL 98 条（此前约 40）。

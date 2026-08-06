@@ -141,6 +141,14 @@ export function discoverByGenre(env: Env, type: "tv" | "movie", genreId: number,
   );
 }
 
+export function discoverPopular(env: Env, type: "tv" | "movie", page = 1) {
+  return tmdb<{ results: SearchResult[]; total_pages: number }>(
+    env,
+    `/discover/${type}?sort_by=popularity.desc&page=${Math.min(Math.max(page, 1), 20)}`,
+    24 * 3600
+  );
+}
+
 export interface WatchProviders {
   link: string;
   flatrate?: { provider_id: number; provider_name: string; logo_path: string }[];
