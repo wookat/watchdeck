@@ -789,7 +789,7 @@ async function hoursWatched(env: Env, userId: number): Promise<number> {
 }
 
 async function userStats(env: Env, userId: number): Promise<UserStats> {
-  const [eps, movies, tracked, completed, topShows, byMonth, hours] = await Promise.all([
+  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(userId).first<{ n: number }>(),
@@ -804,6 +804,8 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
        WHERE user_id = ? AND watched_at >= date('now', '-12 months') GROUP BY month ORDER BY month`
     ).bind(userId).all<{ month: string; eps: number }>(),
     hoursWatched(env, userId),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ? AND watched_at >= strftime('%Y-01-01', 'now')").bind(userId).first<{ n: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND watched_at >= strftime('%Y-01-01', 'now')").bind(userId).first<{ n: number }>(),
   ]);
   const items = await env.DB.prepare(
     "SELECT tmdb_id, media_type FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 40"
@@ -832,6 +834,8 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     topShows: topShows.results,
     byMonth: byMonth.results,
     topGenres,
+    epsThisYear: epsYear?.n ?? 0,
+    moviesThisYear: moviesYear?.n ?? 0,
   };
 }
 

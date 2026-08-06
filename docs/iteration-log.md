@@ -795,3 +795,17 @@
 
 **证据**
 - 测试代理报告 test-report-round55-regression.md + 录屏；PR 评论附截图。
+
+---
+
+## Round 56 — 2026-08-06
+
+**发现（竞品+UX 驱动）**
+- 旧 P3 复核：流媒体标识的深链其实已是 title-specific（TMDB providers link 指向该片 watch 页），撤销该 P3。
+- [P2] /stats 只有全量累计，没有任何「今年」维度——TV Time 年度回顾/Trakt yearly stats 是核心粘性与分享素材，我们完全缺席。
+
+**修复（已部署，Version 6297c560）**
+- UserStats 增加 epsThisYear/moviesThisYear（watched_at >= 今年 1 月 1 日的 D1 计数，并入既有 Promise.all）；/stats 与公开分享页统计卡下方新增「So far in 2026: N episodes and N movies watched」摘要行，双零时隐藏。
+
+**证据（线上验证）**
+- r10 /stats 显示「So far in 2026: 39 episodes and 1 movie watched」（41 条中 2 条为 2025-01 历史日期，口径正确）。

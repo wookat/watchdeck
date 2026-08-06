@@ -1207,6 +1207,8 @@ export interface UserStats {
   topShows: { title: string; tmdb_id: number; eps: number }[];
   byMonth: { month: string; eps: number }[];
   topGenres: { name: string; count: number }[];
+  epsThisYear: number;
+  moviesThisYear: number;
 }
 
 const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
@@ -1227,6 +1229,12 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
           </div>
         ))}
       </div>
+      {(stats.epsThisYear > 0 || stats.moviesThisYear > 0) && (
+        <p class="mt-4 text-sm text-slate-400">
+          So far in {new Date().getUTCFullYear()}: <span class="font-semibold text-violet-300">{stats.epsThisYear}</span> episode{stats.epsThisYear === 1 ? "" : "s"} and{" "}
+          <span class="font-semibold text-violet-300">{stats.moviesThisYear}</span> movie{stats.moviesThisYear === 1 ? "" : "s"} watched.
+        </p>
+      )}
       <div class="mt-8 grid gap-6 md:grid-cols-2">
         <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
           <h2 class="mb-4 font-semibold">Most-watched shows</h2>
