@@ -106,6 +106,12 @@ export function isNetflixCsv(text: string): boolean {
   return header === "title,date";
 }
 
+function netflixDate(raw: string): string | null {
+  const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (m) return `${m[3]}-${m[1].padStart(2, "0")}-${m[2].padStart(2, "0")}`;
+  return /^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw : null;
+}
+
 export function parseNetflixCsv(text: string): ParsedImport {
   const records = parseCsv(text);
   const showMap = new Map<string, ParsedShow>();
@@ -114,7 +120,7 @@ export function parseNetflixCsv(text: string): ParsedImport {
   for (const rec of records) {
     const title = rec["title"];
     if (!title) continue;
-    const watchedAt = rec["date"] || null;
+    const watchedAt = rec["date"] ? netflixDate(rec["date"]) : null;
     const m = title.match(seasonRe);
     if (m || title.split(": ").length >= 3) {
       const name = (m ? title.slice(0, m.index) : title.split(": ")[0]).trim();

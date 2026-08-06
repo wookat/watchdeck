@@ -849,3 +849,24 @@
 
 **证据（线上验证）**
 - /api/import/parse 返回上述解析结果（仅 parse 未 apply，r10 数据不变）。
+
+---
+
+## Round 60 — 2026-08-06（QA 回归轮）
+
+**发现（测试代理完整回归 56-59 轮）**
+- [P2] R59 Netflix 导入把 `7/23/2022` 原样写入 watched_at：/history 分组标题渲染「Invalid Date」，且字符串比较使 2022 观影计入「So far in 2026」。
+- 覆盖备注：R56 公开分享页 StatsBody 复用未测（r10 无分享 token，创建会留残留）；/import UI parse 后自动 apply（无确认步），端到端用一次性账号 r60-qa 完成并自删（D1 复核清零）。
+
+**结果（回归目标 Version d5f2e13d）**
+- R56 「So far in 2026: 39 episodes and 1 movie watched」（41 中 2 条 2025 正确排除、单复数正确）通过；
+- R57 「/」聚焦搜索、输入框内不劫持、/search 无 q autofocus / 有 q 不 autofocus 通过；
+- R58 sitemap 恰 254 个 loc，含 /movies/278-the-shawshank-redemption 且页面 200 通过；
+- R59 导入解析/干净剧名/文案通过，日期 P2 见上；
+- 冒烟 + QA 基线 8/4/0 前后一致 + r10 净零通过。
+
+**修复（已部署，Version 923f3395）**
+- importer.ts 新增 netflixDate：M/D/YYYY → YYYY-MM-DD（已是 ISO 则保留，其他格式置 null 交由服务端取当前时间）；线上复验 parse 返回 2022-07-23 / 2022-12-24。
+
+**证据**
+- test-report-round60-regression.md + 录屏；PR #35 回归评论。
