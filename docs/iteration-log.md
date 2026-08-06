@@ -1087,3 +1087,16 @@
 
 **证据**
 - Version 444aa948；线上验证：/manifest.webmanifest 200 application/manifest+json，三个 PNG 200 image/png，首页 head 含 manifest/apple-touch-icon/theme-color。
+
+---
+
+## Round 77 — 2026-08-06
+
+**驱动：①QA 新用例（/history 大历史边界，同 R73 思路）**
+- /history 各取剧集/电影 100 条再内存合并截断：大导入用户（数千条流水）第 101 条起不可见且无翻页；两表各取 100 合并排序也可能错序。
+
+**修复（P1）**
+- 改为 UNION ALL 子查询全局按 watched_at DESC 排序 + LIMIT/OFFSET 分页（每页 100），COUNT 合计计算总页数并钳制 page；底部 Previous/Page x of y/Next 分页条（仅多页时显示）；Remove 行的 redirect 保留当前页码。
+
+**证据**
+- Version 146e2552；线上验证（r10 只读登录）：42 条流水单页全显（41 集 + 1 电影），不足一页无分页条，?page=99 被钳制正常渲染。

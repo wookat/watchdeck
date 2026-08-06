@@ -899,49 +899,41 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
 app.get("/history", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
-  const [eps, movies] = await Promise.all([
-    c.env.DB.prepare(
-      `SELECT w.tmdb_id, w.season, w.episode, w.watched_at, t.title, t.poster_path
+  const perPage = 100;
+  const total = await c.env.DB.prepare(
+    "SELECT (SELECT COUNT(*) FROM episode_watches WHERE user_id = ?1) + (SELECT COUNT(*) FROM movie_watches WHERE user_id = ?1) AS n"
+  )
+    .bind(user.id)
+    .first<{ n: number }>();
+  const lastPage = Math.max(1, Math.ceil((total?.n ?? 0) / perPage));
+  const page = Math.min(lastPage, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const rows = await c.env.DB.prepare(
+    `SELECT * FROM (
+       SELECT 'tv' AS kind, w.tmdb_id, w.season, w.episode, w.watched_at, t.title, t.poster_path
        FROM episode_watches w
        LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
-       WHERE w.user_id = ? ORDER BY w.watched_at DESC LIMIT 100`
-    )
-      .bind(user.id)
-      .all<{ tmdb_id: number; season: number; episode: number; watched_at: string; title: string | null; poster_path: string | null }>(),
-    c.env.DB.prepare(
-      `SELECT w.tmdb_id, w.watched_at, t.title, t.poster_path
+       WHERE w.user_id = ?1
+       UNION ALL
+       SELECT 'movie' AS kind, w.tmdb_id, NULL AS season, NULL AS episode, w.watched_at, t.title, t.poster_path
        FROM movie_watches w
        LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'movie'
-       WHERE w.user_id = ? ORDER BY w.watched_at DESC LIMIT 100`
-    )
-      .bind(user.id)
-      .all<{ tmdb_id: number; watched_at: string; title: string | null; poster_path: string | null }>(),
-  ]);
-  const items: HistoryItem[] = [
-    ...eps.results.map((e) => ({
-      tmdbId: e.tmdb_id,
-      mediaType: "tv" as const,
-      title: e.title ?? `Show #${e.tmdb_id}`,
-      posterPath: e.poster_path,
-      season: e.season,
-      episode: e.episode,
-      watchedAt: e.watched_at,
-    })),
-    ...movies.results.map((m) => ({
-      tmdbId: m.tmdb_id,
-      mediaType: "movie" as const,
-      title: m.title ?? `Movie #${m.tmdb_id}`,
-      posterPath: m.poster_path,
-      season: null,
-      episode: null,
-      watchedAt: m.watched_at,
-    })),
-  ]
-    .sort((a, b) => (a.watchedAt < b.watchedAt ? 1 : -1))
-    .slice(0, 100);
+       WHERE w.user_id = ?1
+     ) ORDER BY watched_at DESC LIMIT ${perPage} OFFSET ${(page - 1) * perPage}`
+  )
+    .bind(user.id)
+    .all<{ kind: "tv" | "movie"; tmdb_id: number; season: number | null; episode: number | null; watched_at: string; title: string | null; poster_path: string | null }>();
+  const items: HistoryItem[] = rows.results.map((r) => ({
+    tmdbId: r.tmdb_id,
+    mediaType: r.kind,
+    title: r.title ?? (r.kind === "tv" ? `Show #${r.tmdb_id}` : `Movie #${r.tmdb_id}`),
+    posterPath: r.poster_path,
+    season: r.season,
+    episode: r.episode,
+    watchedAt: r.watched_at,
+  }));
   return c.html(
     <Layout user={user} title="History">
-      <HistoryPage items={items} />
+      <HistoryPage items={items} page={page} lastPage={lastPage} />
     </Layout>
   );
 });

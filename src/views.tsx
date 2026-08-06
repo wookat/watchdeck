@@ -1529,7 +1529,7 @@ export interface HistoryItem {
   watchedAt: string;
 }
 
-export const HistoryPage: FC<{ items: HistoryItem[] }> = ({ items }) => (
+export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: number }> = ({ items, page = 1, lastPage = 1 }) => (
   <div>
     <h1 class="mb-6 text-2xl font-bold">History</h1>
     {items.length === 0 ? (
@@ -1581,7 +1581,7 @@ export const HistoryPage: FC<{ items: HistoryItem[] }> = ({ items }) => (
                           </>
                         )}
                         <input type="hidden" name="undo" value="1" />
-                        <input type="hidden" name="redirect" value="/history" />
+                        <input type="hidden" name="redirect" value={`/history${page > 1 ? `?page=${page}` : ""}`} />
                         <button
                           class="rounded-lg border border-slate-700 px-2.5 py-1 text-xs text-slate-400 hover:border-red-500 hover:text-red-400"
                           aria-label={`Remove ${it.title}${it.mediaType === "tv" && it.season != null && it.episode != null ? ` S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}` : ""} from history`}
@@ -1597,6 +1597,21 @@ export const HistoryPage: FC<{ items: HistoryItem[] }> = ({ items }) => (
           </div>
         );
       })()
+    )}
+    {lastPage > 1 && (
+      <nav class="mt-8 flex items-center justify-center gap-4 text-sm" aria-label="History pages">
+        {page > 1 ? (
+          <a href={`/history?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>
+        ) : (
+          <span class="rounded-lg border border-slate-800 px-3 py-1.5 text-slate-600">← Previous</span>
+        )}
+        <span class="text-slate-400">Page {page} of {lastPage}</span>
+        {page < lastPage ? (
+          <a href={`/history?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>
+        ) : (
+          <span class="rounded-lg border border-slate-800 px-3 py-1.5 text-slate-600">Next →</span>
+        )}
+      </nav>
     )}
   </div>
 );
