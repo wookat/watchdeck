@@ -950,3 +950,16 @@
 
 **证据**
 - Version 2e551fd9；线上验证：/show/95396→301、/tv/95396→301、/movies/27205→301 /movies/27205-inception、/shows/95396-wrong-slug?season=2→301 …-severance?season=2、规范 URL 仍 200。
+
+---
+
+## Round 67 — 2026-08-06
+
+**驱动：②UX 走查（搜索空结果死胡同）**
+- 无结果搜索只显示一行「Nothing found.」，没有任何出路——对以搜索为核心入口的产品是转化死胡同。
+
+**修复（P2）**
+- /search 无媒体结果时展示 Trending 剧集/电影海报网格作为建议出路，文案改为「Nothing found — check the spelling, or browse what's trending below.」（type 过滤下仍提示 try All）。
+
+**证据**
+- Version c66de13e；线上验证：/search?q=zzzqqqxx 显示新文案 + Trending 区块；正常搜索（severance）结果不受影响。

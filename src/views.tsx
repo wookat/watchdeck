@@ -472,7 +472,11 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
           <MediaCard item={r} type={r.media_type as "tv" | "movie"} inLibrary={libraryIds?.has(`${r.media_type}:${r.id}`)} />
         ))}
       </div>
-      {q && filtered.length === 0 && <p class="text-slate-400">Nothing found{type !== "all" ? ` in ${type === "tv" ? "TV shows" : "movies"} — try All` : ""}.</p>}
+      {q && filtered.length === 0 && (
+        <p class="text-slate-400">
+          Nothing found{type !== "all" ? ` in ${type === "tv" ? "TV shows" : "movies"} — try All` : " — check the spelling, or browse what's trending below"}.
+        </p>
+      )}
     </div>
   );
 };
