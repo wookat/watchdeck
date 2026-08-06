@@ -309,8 +309,10 @@ app.get("/home", async (c) => {
         const seen = new Set(watched.results.map((w) => `${w.season}x${w.episode}`));
         let first: NextUpItem | null = null;
         let left = 0;
-        for (const s of details.seasons.filter((s) => s.season_number > 0)) {
-          const season = await seasonDetails(c.env, t.tmdb_id, s.season_number);
+        const seasons = await Promise.all(
+          details.seasons.filter((s) => s.season_number > 0).map((s) => seasonDetails(c.env, t.tmdb_id, s.season_number))
+        );
+        for (const season of seasons) {
           for (const ep of season.episodes) {
             if (ep.air_date && ep.air_date <= today && !seen.has(`${ep.season_number}x${ep.episode_number}`)) {
               left++;
