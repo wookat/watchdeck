@@ -176,3 +176,7 @@
 
 **证据（线上验证）**
 - QA 账号整季标记 Chernobyl（Ended，5 集）→ tracked.status='completed'（eps=5）；整季 unmark → status='watching'、集数归零。测试数据已清理。
+
+**回归发现（测试代理，Rounds 6-10 全项通过后追加修复）**
+- P2：`hasAnything` 只统计 watching 状态的 TV，movie-only watchlist 用户看到的是 onboarding 空态而非 watchlist 网格。已改为 `tracked(watching TV) > 0 || watchlist > 0`，重新部署。
+- P3（记录待议）：场记板占位图在海报尺寸下略像日历图标。

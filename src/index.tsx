@@ -259,7 +259,7 @@ app.get("/home", async (c) => {
       : null;
   return c.html(
     <Layout user={user} title="Next up">
-      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0} justWatched={justWatched} watchlistPreview={watchlistPreview} />
+      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0 || (wl?.n ?? 0) > 0} justWatched={justWatched} watchlistPreview={watchlistPreview} />
     </Layout>
   );
 });
