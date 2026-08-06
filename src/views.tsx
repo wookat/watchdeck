@@ -300,7 +300,8 @@ export const HomePage: FC<{
   hasAnything: boolean;
   justWatched?: { tmdbId: number; season: number; episode: number } | null;
   watchlistPreview?: WatchlistPreviewItem[];
-}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview }) => (
+  upcoming?: CalendarItem[];
+}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview, upcoming }) => (
   <div>
     <h1 class="mb-6 text-2xl font-bold">Next up</h1>
     {justWatched && (
@@ -379,6 +380,31 @@ export const HomePage: FC<{
           </div>
         ))}
       </div>
+    )}
+    {(upcoming?.length ?? 0) > 0 && (
+      <section class="mt-10">
+        <h2 class="mb-3 flex items-baseline gap-3 text-lg font-semibold">
+          Airing this week
+          <a href="/calendar" class="text-sm font-normal text-violet-400 hover:underline">Full calendar →</a>
+        </h2>
+        <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
+          {upcoming!.map((it) => (
+            <li class="flex items-center gap-4 bg-slate-900/40 px-4 py-2.5">
+              <span class="w-24 shrink-0 text-sm text-violet-300" title={it.airDate}>
+                {airDateLabel(it.airDate).label}
+              </span>
+              <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 text-sm font-medium hover:text-violet-400">
+                {it.title}
+              </a>
+              <span class="text-sm text-slate-400">
+                {it.mediaType === "tv" && it.season != null && it.episode != null
+                  ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}`
+                  : "🎬 Movie release"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </section>
     )}
     {watchlistCount > 0 && (
       <p class="mt-8 text-sm text-slate-400">

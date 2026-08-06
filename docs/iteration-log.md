@@ -764,3 +764,17 @@
 
 **证据（线上验证）**
 - r10：标记 BB S03E04 → /history 出现该行 → Remove → 该行消失；episode_watches 复核 41 条净零；历史页 42 行均带 Remove 按钮。
+
+---
+
+## Round 54 — 2026-08-06
+
+**发现（UX+竞品驱动）**
+- [P2] 登录首页只有 Next Up（补旧番），完全看不到「本周要播什么」——TV Time 首页的 upcoming 提示是核心粘性来源，我们的用户必须专门点日历才知道。
+- 竞品核查：Bingers 官网仍仅 App Store/Google Play 链接，无 Web 端，无重大动向。
+
+**修复（已部署，Version bcd8ad9d）**
+- /home 底部新增「Airing this week」紧凑列表：复用 upcomingItems，过滤未来 7 天内、最多 6 条（TV 显示 SxxExx，电影显示 Movie release），附「Full calendar →」链接；无内容时整段隐藏。
+
+**证据（线上验证）**
+- r10 暂时 watchlist 一部在播剧后 /home 出现「Airing this week + 该剧 + Full calendar」；无 7 天内内容时该段隐藏；测试后 untrack，r10 复核 3 tracked 净零。

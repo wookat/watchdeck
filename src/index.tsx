@@ -328,9 +328,13 @@ app.get("/home", async (c) => {
     wParam.length === 3 && wParam.every(Number.isFinite)
       ? { tmdbId: wParam[0], season: wParam[1], episode: wParam[2] }
       : null;
+  const weekAhead = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+  const upcoming = (await upcomingItems(c.env, user.id).catch(() => [] as CalendarItem[]))
+    .filter((it) => it.airDate <= weekAhead)
+    .slice(0, 6);
   return c.html(
     <Layout user={user} title="Next up">
-      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0 || (wl?.n ?? 0) > 0} justWatched={justWatched} watchlistPreview={watchlistPreview} />
+      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0 || (wl?.n ?? 0) > 0} justWatched={justWatched} watchlistPreview={watchlistPreview} upcoming={upcoming} />
     </Layout>
   );
 });
