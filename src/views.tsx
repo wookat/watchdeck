@@ -1133,6 +1133,11 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
       <a href={feedUrl} class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-violet-300 hover:border-violet-500">
         📅 Subscribe (iCal)
       </a>
+      <form action="/api/feed/rotate" method="post">
+        <button class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-400 hover:border-violet-500 hover:text-violet-300" title="Invalidate the current iCal URL and generate a new one">
+          ↻ Reset feed URL
+        </button>
+      </form>
       <form action="/api/reminders" method="post">
         <input type="hidden" name="enabled" value={remindEmail ? "" : "1"} />
         <button

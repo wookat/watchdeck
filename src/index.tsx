@@ -679,6 +679,19 @@ app.get("/calendar", async (c) => {
   );
 });
 
+app.post("/api/feed/rotate", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM feed_tokens WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("INSERT INTO feed_tokens (token, user_id) VALUES (?, ?)").bind(token, user.id),
+  ]);
+  return c.redirect("/calendar");
+});
+
 app.get("/feed/:token", async (c) => {
   const token = c.req.param("token").replace(/\.ics$/, "");
   if (!/^[0-9a-f]{32}$/.test(token)) return c.notFound();

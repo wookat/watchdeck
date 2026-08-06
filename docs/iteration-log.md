@@ -1374,3 +1374,15 @@
 
 **证据**
 - Version b8c25b54；线上验证：匿名 403、非管理员（r10）403；管理员正向路径需老板凭据（与既有 /api/indexnow 同为待观察项）。
+
+---
+
+## Round 99 — 2026-08-06
+
+**驱动：⑤安全/②UX（分享统计 token 可一键失效，但 iCal 订阅 token 一旦泄露无法撤销——安全能力不对称）**
+
+**修复（P2）**
+- 日历页新增「↻ Reset feed URL」：POST /api/feed/rotate 删除旧 feed token 并生成新 32 位 hex token，旧 .ics URL 立即 404；与分享页 token 失效能力对齐。
+
+**证据**
+- Version b9163eb1；/calendar 匿名 302 正常；旧 token 失效 + 新 token 可订阅的端到端验证留给 R100 回归（throwaway 账号）。
