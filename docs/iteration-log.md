@@ -209,3 +209,17 @@
 
 **证据（线上验证）**
 - 375px 截图：导航单行、无横向滚动条、Next Up 不折行；新 SVG 渲染核对为场记板。
+
+---
+
+## Round 13 — 2026-08-05
+
+**发现**
+- [竞品 / P2] Trakt 的核心页面之一是 watch history（按时间倒序的观看流水）；我们记录了 watched_at 但没有任何界面可看，用户无法回答「我上周看了什么」。
+
+**修复（已部署，Version 0f36ac59）**
+- 新增 `/history`：合并 episode_watches 与 movie_watches（各取最近 100，合并后按 watched_at 倒序截 100），列表显示海报、标题、SxxExx/Movie、观看日期，点击跳详情页；空态引导去标记。
+- 导航新增 History 链接（移动端导航已可横向滚动，可容纳）。
+
+**证据（线上验证）**
+- throwaway 账号 `/history` 200，按倒序列出 Breaking Bad S02E10…S02E02 等观看记录。
