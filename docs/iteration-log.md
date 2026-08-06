@@ -1058,3 +1058,19 @@
 
 **证据**
 - Version b8038c9c；线上验证（r10 登录，仅 parse 未写库）：Netflix 风格 CSV parse 返回 "source":"netflix"。
+
+---
+
+## Round 75 — 2026-08-06（QA 回归轮）
+
+**发现与结果（测试代理完整回归 71-74 轮，目标 Version b8038c9c）**
+- 无 P0/P1/P2/P3。
+- R70 遗留 P3 复验已修复：/show/95396?season=2 别名 301 保留完整查询串。
+- R71 By year：r10 /stats 2026=39 eps·1 movie（最宽条）、2025=2 eps，倒序正确。
+- R72 next 返回路径：CTA→/signup?next=…→注册后回落 Severance 详情页且已登录；?next=https://evil.com 与 //evil.com 均不输出 hidden 字段。
+- R73：title 排序 Breaking Bad→Inception→Severance，3 条无分页条，?page=99 被钳制仍正常渲染。
+- R74：Netflix 头 CSV 端到端导入，imports.source 与 5 条 tracked.source 均为 'netflix'。
+- 冒烟全过；QA 基线 8/4/0 前后一致（本轮未登录基线）；r10 净零（3/0/41，Severance 19）；一次性账号 r75 已自删（D1 复核 0 行）。
+
+**证据**
+- test-report-round75-regression.md + 录屏；PR #36 回归评论。
