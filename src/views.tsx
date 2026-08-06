@@ -247,12 +247,17 @@ export const ResetForm: FC<{ token: string; error?: string }> = ({ token, error 
   </div>
 );
 
-export const MediaCard: FC<{ item: SearchResult; type: "tv" | "movie" }> = ({ item, type }) => {
+export const MediaCard: FC<{ item: SearchResult; type: "tv" | "movie"; inLibrary?: boolean }> = ({ item, type, inLibrary }) => {
   const title = item.name ?? item.title ?? "Untitled";
   const year = (item.first_air_date ?? item.release_date ?? "").slice(0, 4);
   const href = type === "tv" ? `/shows/${item.id}-${slugify(title)}` : `/movies/${item.id}-${slugify(title)}`;
   return (
-    <a href={href} class="group">
+    <a href={href} class="group relative">
+      {inLibrary && (
+        <span class="absolute right-1.5 top-1.5 z-10 rounded-full bg-emerald-700/90 px-2 py-0.5 text-xs font-medium text-white" title="Already in your library">
+          ✓ In library
+        </span>
+      )}
       <img
         src={poster(item.poster_path)}
         alt={title}
@@ -378,7 +383,7 @@ export const HomePage: FC<{
   </div>
 );
 
-export const SearchPage: FC<{ q: string; results: SearchResult[] }> = ({ q, results }) => (
+export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: Set<string> }> = ({ q, results, libraryIds }) => (
   <div>
     <form action="/search" method="get" class="mb-6">
       <input
@@ -394,7 +399,7 @@ export const SearchPage: FC<{ q: string; results: SearchResult[] }> = ({ q, resu
       {results
         .filter((r) => r.media_type === "tv" || r.media_type === "movie")
         .map((r) => (
-          <MediaCard item={r} type={r.media_type as "tv" | "movie"} />
+          <MediaCard item={r} type={r.media_type as "tv" | "movie"} inLibrary={libraryIds?.has(`${r.media_type}:${r.id}`)} />
         ))}
     </div>
     {q && results.length === 0 && <p class="text-slate-400">Nothing found.</p>}

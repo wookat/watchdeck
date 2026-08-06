@@ -290,3 +290,16 @@
 
 **证据（线上验证）**
 - /privacy、/terms 均 200，首页页脚含链接。
+
+---
+
+## Round 19 — 2026-08-05
+
+**发现**
+- [UX/竞品 / P2] 搜索结果不显示「已在库中」状态（Trakt/TV Time 均有已追标识），老用户搜索时容易重复添加或困惑。
+
+**修复（已部署，Version 545cbc1c）**
+- MediaCard 增加 inLibrary 角标（✓ In library，emerald 圆角标签叠加在海报右上）；/search 登录态下查询 tracked 生成 `media_type:tmdb_id` Set 传入 SearchPage；未登录不查询、不显示。
+
+**证据（线上验证）**
+- r10 账号搜索 breaking bad：badge 出现（grep=1）；未登录同一搜索 grep=0。
