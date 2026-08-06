@@ -290,3 +290,31 @@
 
 **证据（线上验证）**
 - /privacy、/terms 均 200，首页页脚含链接。
+
+---
+
+## Round 19 — 2026-08-05
+
+**发现**
+- [UX/竞品 / P2] 搜索结果不显示「已在库中」状态（Trakt/TV Time 均有已追标识），老用户搜索时容易重复添加或困惑。
+
+**修复（已部署，Version 545cbc1c）**
+- MediaCard 增加 inLibrary 角标（✓ In library，emerald 圆角标签叠加在海报右上）；/search 登录态下查询 tracked 生成 `media_type:tmdb_id` Set 传入 SearchPage；未登录不查询、不显示。
+
+**证据（线上验证）**
+- r10 账号搜索 breaking bad：badge 出现（grep=1）；未登录同一搜索 grep=0。
+
+---
+
+## Round 20 — 2026-08-06
+
+**发现（QA 回归驱动，测试代理完整回归 16-19 轮）**
+- 16-19 轮全部通过，无 P0/P1/P2。唯一 P3：搜索结果「✓ In library」角标渲染在海报左上而非右上——根因是部署时 public/styles.css 缺少 right-1.5 工具类（CSS 未随最后一次视图改动重新生成），absolute 退化为文档流位置。
+- 数据：human PV 467（desktop 412 / mobile 55），搜索词 severance 7、breaking bad 2；仍以内部 QA 流量为主。
+- r15 throwaway 账号已在 Round 17 线上验证中经 /api/settings/delete 自删（预期行为，非异常）。
+
+**修复（已部署，Version 7b0dfd31）**
+- 重新生成 Tailwind CSS 并部署；线上 styles.css 现包含 .right-1\.5，角标回到海报右上。
+
+**证据（线上验证）**
+- curl 线上 styles.css grep right-1\.5 = 1；测试代理报告 /home/ubuntu/test-report-rounds16-19-regression.md + 录屏。

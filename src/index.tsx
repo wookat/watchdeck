@@ -282,6 +282,13 @@ app.get("/search", async (c) => {
     );
   }
   const res = await searchMulti(c.env, q);
+  let libraryIds: Set<string> | undefined;
+  if (user) {
+    const rows = await c.env.DB.prepare("SELECT tmdb_id, media_type FROM tracked WHERE user_id = ?")
+      .bind(user.id)
+      .all<{ tmdb_id: number; media_type: string }>();
+    libraryIds = new Set(rows.results.map((r) => `${r.media_type}:${r.tmdb_id}`));
+  }
   c.executionCtx.waitUntil(
     c.env.DB.prepare("INSERT INTO search_queries (q, results) VALUES (?, ?)")
       .bind(q.slice(0, 200), res.results.length)
@@ -290,7 +297,7 @@ app.get("/search", async (c) => {
   );
   return c.html(
     <Layout user={user} title={`Search: ${q}`}>
-      <SearchPage q={q} results={res.results} />
+      <SearchPage q={q} results={res.results} libraryIds={libraryIds} />
     </Layout>
   );
 });
