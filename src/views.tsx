@@ -34,6 +34,9 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <link rel="stylesheet" href="/styles.css" />
       <script src="/app.js" defer></script>
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+      <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      <link rel="manifest" href="/manifest.webmanifest" />
+      <meta name="theme-color" content="#020617" />
     </head>
     <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
       <a

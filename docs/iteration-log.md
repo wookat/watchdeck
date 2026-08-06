@@ -1074,3 +1074,16 @@
 
 **证据**
 - test-report-round75-regression.md + 录屏；PR #36 回归评论。
+
+---
+
+## Round 76 — 2026-08-06
+
+**驱动：④竞品（Bingers 仅移动 App；我们 web 优先但缺「可安装」能力）+ ③视觉/移动端**
+- 站点无 Web App Manifest、无 apple-touch-icon、无 theme-color——移动用户无法「添加到主屏幕」获得类 App 体验，iOS 收藏图标为截图缩略。
+
+**修复（P1）**
+- 新增 manifest.webmanifest（standalone、start_url=/home、深色主题、192/512 + maskable 图标）、icon-192/512.png、apple-touch-icon.png（由 favicon.svg 生成）、<meta theme-color>，Layout head 注入三个链接。
+
+**证据**
+- Version 444aa948；线上验证：/manifest.webmanifest 200 application/manifest+json，三个 PNG 200 image/png，首页 head 含 manifest/apple-touch-icon/theme-color。
