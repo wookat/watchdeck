@@ -883,3 +883,194 @@
 
 **证据（线上验证）**
 - /import HTML 含 confirm 卡、/import.js 含确认逻辑（curl 验证）；交互路径留待下轮回归代理点击验证。
+
+---
+
+## Round 62 — 2026-08-06
+
+**发现（pSEO/前端走查驱动）**
+- [P2] 详情页 meta description 用 `overview.slice(0,155)` 生硬截断（如 Breaking Bad 结尾是 "filled wi"），SERP 摘要观感差、无省略号。
+
+**修复（已部署，Version 9ba358a4）**
+- tmdb.ts 新增 metaDescription(text, max=155)：≤155 原样；超长回退到最后一个词边界（>80 时）去尾标点加 "…"；剧集/电影详情页统一改用。
+
+**证据（线上验证）**
+- Breaking Bad meta description 现以 "…He becomes filled…" 词边界+省略号收尾（curl 验证）。
+
+---
+
+## Round 63 — 2026-08-06
+
+**发现（转化/竞品驱动）**
+- [P1] 254 个 sitemap 详情页是主要 SEO 落地页，但匿名访客只看到一行小字文本链接「Join free to track this show」——无按钮级 CTA、无 TV Time 导入钩子，自然流量到达后无转化路径。竞品核查：Bingers 官网仍只有 App Store/Play 链接，无 Web 端（无重大动向）。
+
+**修复（已部署，Version f9570e88）**
+- 剧集/电影详情页匿名态改为按钮 CTA「Track this show/movie — join free」+「Coming from TV Time? Import your export →」双链接。
+
+**证据（线上验证）**
+- Breaking Bad / Inception 匿名页均渲染新 CTA（curl 验证）。
+
+---
+
+## Round 64 — 2026-08-06
+
+**发现（无障碍/表单 UX 驱动）**
+- [P2] 全部认证表单（signup/login/forgot/reset/settings 改密/删号）只有 placeholder 无可见 label（WCAG 3.3.2/占位符消失问题），且无 autocomplete 提示——密码管理器无法正确识别生成/填充密码。
+
+**修复（已部署，Version f184c52f）**
+- signup/login/forgot/reset 加可见 `<label for>`；全站密码/邮箱输入补 autocomplete：email、new-password（注册/重置/新密码）、current-password（登录/改密/删号确认）。
+
+**证据（线上验证）**
+- /signup 渲染 label + autocomplete=email/new-password；/login current-password（curl 验证）。
+
+---
+
+## Round 65 — 2026-08-06（QA 回归轮）
+
+**发现与结果（测试代理完整回归 61-64 轮，目标 Version f184c52f）**
+- 无 P0/P1/P2；R60 的两项遗留（导入自动写库、Netflix 原始日期）均确认修复并线上端到端复验。
+- R61 确认卡：Cancel 不写库（D1 0 行）、Import now 正常导入 3 剧 2 电影；R60 日期修复端到端：watched_at 为 ISO、/history 正常日期标题、/stats 不再把 2022 观影计入 2026。
+- R62 词边界 meta description、R63 匿名 CTA、R64 表单 label/autocomplete 全过。
+- 覆盖备注：/reset/:token 表单的 autocomplete 仅源码核验（无法凭空铸造有效 token）。
+- 冒烟 + QA 基线 8/4/0 前后一致 + r10 净零 + 一次性账号自删（D1 复核）。
+
+**证据**
+- test-report-round65-regression.md + 录屏；PR #36 回归评论。
+
+---
+
+## Round 66 — 2026-08-06
+
+**驱动：⑤数据分析（analytics_events 路径审计）**
+- 发现真实流量打到不存在的 URL 变体：`/show/95396`（9 次 404）、`/movies/27205` 无 slug（10 次，200 但产生重复内容 URL）；错 slug URL 也直接 200。
+
+**修复（P2）**
+- 新增单数别名 301：`/show/:idslug`、`/movie/:idslug`、`/tv/:idslug` → 复数路由。
+- 详情页 slug 不匹配（缺失/错误）时 301 到规范 slug URL，shows 保留 ?season 查询串。
+
+**证据**
+- Version 2e551fd9；线上验证：/show/95396→301、/tv/95396→301、/movies/27205→301 /movies/27205-inception、/shows/95396-wrong-slug?season=2→301 …-severance?season=2、规范 URL 仍 200。
+
+---
+
+## Round 67 — 2026-08-06
+
+**驱动：②UX 走查（搜索空结果死胡同）**
+- 无结果搜索只显示一行「Nothing found.」，没有任何出路——对以搜索为核心入口的产品是转化死胡同。
+
+**修复（P2）**
+- /search 无媒体结果时展示 Trending 剧集/电影海报网格作为建议出路，文案改为「Nothing found — check the spelling, or browse what's trending below.」（type 过滤下仍提示 try All）。
+
+**证据**
+- Version c66de13e；线上验证：/search?q=zzzqqqxx 显示新文案 + Trending 区块；正常搜索（severance）结果不受影响。
+
+---
+
+## Round 68 — 2026-08-06
+
+**驱动：④竞品/SEO（TV Time 难民搜索意图）**
+- 落地页缺少针对「how to import TV Time data / is it free / can I export」等高意图长尾问题的内容与 FAQ 富结果资格。
+
+**修复（P2）**
+- 落地页新增 6 题 FAQ 区（`<details>` 折叠：TV Time 导入方法、免费、电影支持、Trakt/Serializd/Netflix 导入、数据可导出、无需装 App）。
+- 首页 JSON-LD 改为 @graph：WebSite+SearchAction 之外注入 FAQPage（6 个 Question/Answer，与页面文案一致）。
+
+**证据**
+- Version 3a2847ce；线上验证：落地页渲染 6 个 FAQ 折叠项，JSON-LD 含 FAQPage + 6 Question。
+
+---
+
+## Round 69 — 2026-08-06
+
+**驱动：③前端视觉（Core Web Vitals / CLS）**
+- 详情页主海报、Next Up 卡片海报、Airing this week 缩略图未声明宽高比，图片加载时下方内容会跳动（CLS）。
+
+**修复（P2）**
+- 4 处 `<img>` 补 `aspect-[2/3]`（+object-cover）：show/movie 详情主海报、Next Up 卡海报、本周播出缩略图——布局在图片加载前即固定。
+
+**证据**
+- Version 9220d69b；线上验证详情页海报类名含 aspect-[2/3]。
+
+---
+
+## Round 70 — 2026-08-06（QA 回归轮）
+
+**发现与结果（测试代理完整回归 66-69 轮，目标 Version 9220d69b）**
+- 无 P0/P1/P2；1 个 P3：单数别名 301（/show、/movie、/tv）丢弃查询串（slug 纠正 301 会保留 ?season）。
+- R66 重定向链全过（/show/95396→/shows/95396→/shows/95396-severance 200，错 slug 保留 ?season=2 且浏览器落在 S2）；R67 空搜索文案+Trending 建议全过；R68 FAQ 6 项折叠可用、JSON-LD @graph [WebSite, FAQPage(6 Question)] 解析通过；R69 海报 2:3 无变形。
+- 冒烟 + QA 基线 8/4/0 前后一致 + r10 净零；本轮未创建账号。
+
+**P3 修复**
+- 三个单数别名 301 现附带原查询串（/show/95396?season=2 → /shows/95396?season=2），线上验证通过（Version 1b551df4）。
+
+**证据**
+- test-report-round70-regression.md + 录屏；PR #36 回归评论。
+
+---
+
+## Round 71 — 2026-08-06
+
+**驱动：④竞品（TV Time 年度回顾/Trakt 年度统计均为招牌功能）**
+- /stats 只有「今年至今」一行与近 12 个月柱状图，没有跨年份全史维度。
+
+**修复（P1）**
+- /stats（及公开分享页共用的 StatsBody）新增「By year」条形图：每年 episodes+movies 合计条 + 明细文案，SQL 用 episode_watches/movie_watches 按 strftime('%Y') UNION 聚合（最多 15 年，倒序）。
+
+**证据**
+- Version 1e319ca0；线上验证（r10 只读登录）：By year 显示 2026=39 eps·1 movie（100%）、2025=2 eps（5%）。
+
+---
+
+## Round 72 — 2026-08-06
+
+**驱动：②UX 走查（R63 CTA 转化漏斗断点）**
+- 详情页「Track this show/movie — join free」注册成功后落到 /import，丢失用户「想追这部剧」的原始意图。
+
+**修复（P1）**
+- 注册支持 next 返回路径：CTA 链接带 ?next=<详情页>，/signup GET 注入 hidden next，POST 成功后跳回 next（safeNext 校验仅接受站内相对路径，拒绝 //、\\ 开放重定向）；校验失败/重复邮箱的错误重渲染也保留 next。默认仍 /import。
+
+**证据**
+- Version 9251b087；线上验证：详情页 CTA href 含 ?next=%2Fshows%2F95396-severance，/signup 页面渲染 hidden next。
+
+---
+
+## Round 73 — 2026-08-06
+
+**驱动：①QA 新用例（大库导入边界）**
+- /library 静默 LIMIT 200：TV Time 大库难民（数百部剧）第 201 条起完全不可见且无任何提示；排序还在 JS 内存中做，只对当前 200 条生效。
+
+**修复（P1）**
+- 排序下推 SQL（recent=updated_at DESC / title=COLLATE NOCASE / progress=eps_watched DESC），全库全局排序。
+- 新增分页：每页 120，COUNT 计算总页数并钳制 page，底部 Previous/Page x of y/Next 分页条（保留 status/sort/q 参数），仅多页时显示。
+
+**证据**
+- Version 02a57b25；线上验证（r10 只读登录）：title 排序 SQL 生效（Breaking Bad→Inception→Severance），3 条不足一页时无分页条，?page 越界被钳制。
+
+---
+
+## Round 74 — 2026-08-06
+
+**驱动：⑤数据分析（imports 表复盘）**
+- imports/tracked 的 source 一律硬编码 'tvtime'——Netflix/Trakt/Serializd CSV 导入全被误标，导入漏斗无法按来源分析。
+
+**修复（P2）**
+- /api/import/parse 返回检测到的 source（tvtime/netflix/csv）；import.js 随每个 batch 回传；/api/import/batch 白名单校验后写入 imports 与 tracked.source。
+
+**证据**
+- Version b8038c9c；线上验证（r10 登录，仅 parse 未写库）：Netflix 风格 CSV parse 返回 "source":"netflix"。
+
+---
+
+## Round 75 — 2026-08-06（QA 回归轮）
+
+**发现与结果（测试代理完整回归 71-74 轮，目标 Version b8038c9c）**
+- 无 P0/P1/P2/P3。
+- R70 遗留 P3 复验已修复：/show/95396?season=2 别名 301 保留完整查询串。
+- R71 By year：r10 /stats 2026=39 eps·1 movie（最宽条）、2025=2 eps，倒序正确。
+- R72 next 返回路径：CTA→/signup?next=…→注册后回落 Severance 详情页且已登录；?next=https://evil.com 与 //evil.com 均不输出 hidden 字段。
+- R73：title 排序 Breaking Bad→Inception→Severance，3 条无分页条，?page=99 被钳制仍正常渲染。
+- R74：Netflix 头 CSV 端到端导入，imports.source 与 5 条 tracked.source 均为 'netflix'。
+- 冒烟全过；QA 基线 8/4/0 前后一致（本轮未登录基线）；r10 净零（3/0/41，Severance 19）；一次性账号 r75 已自删（D1 复核 0 行）。
+
+**证据**
+- test-report-round75-regression.md + 录屏；PR #36 回归评论。

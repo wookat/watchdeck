@@ -170,29 +170,77 @@ export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
         <button class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Notify me</button>
       </form>
     </section>
+    <section class="py-12">
+      <h2 class="mb-6 text-center text-2xl font-bold">Frequently asked questions</h2>
+      <div class="mx-auto max-w-2xl space-y-3">
+        {landingFaqs.map(([q, a]) => (
+          <details class="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
+            <summary class="cursor-pointer font-medium">{q}</summary>
+            <p class="mt-2 text-sm text-slate-400">{a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
   </div>
 );
 
-export const AuthForm: FC<{ mode: "login" | "signup"; error?: string }> = ({ mode, error }) => (
+export const landingFaqs: [string, string][] = [
+  [
+    "How do I import my TV Time data?",
+    "Request your GDPR data export from TV Time (or use the ZIP you already downloaded before the shutdown), then upload it as-is on the Import page. WatchDeck matches your shows, watched episodes and movies automatically — no unpacking or reformatting needed.",
+  ],
+  [
+    "Is WatchDeck really free?",
+    "Yes. Tracking, importing, statistics, the calendar, iCal feeds and email reminders are all free. There is no paywall on core features.",
+  ],
+  [
+    "Does WatchDeck track movies as well as TV shows?",
+    "Yes — both. Your library, watch history, calendar and statistics cover TV shows and movies together, and TV Time exports import both.",
+  ],
+  [
+    "Can I import from Trakt, Serializd or Netflix?",
+    "Yes. Any CSV export with a title column works (Trakt- and Serializd-style exports), and Netflix's ViewingActivity.csv is supported too — shows are added to your library and movies marked watched.",
+  ],
+  [
+    "Can I get my data back out?",
+    "Always. You can download your complete data (library, episodes, movies, ratings, notes) as JSON from Settings at any time, and delete your account whenever you want.",
+  ],
+  [
+    "Do I need to install an app?",
+    "No. WatchDeck runs entirely in your browser and works on phones, tablets and desktops.",
+  ],
+];
+
+export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: string }> = ({ mode, error, next }) => (
   <div class="mx-auto max-w-sm py-10">
     <h1 class="mb-6 text-2xl font-bold">{mode === "login" ? "Log in" : "Create your free account"}</h1>
     {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
     <form action={`/${mode}`} method="post" class="space-y-4">
-      <input
-        type="email"
-        name="email"
-        required
-        placeholder="Email"
-        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
-      />
-      <input
-        type="password"
-        name="password"
-        required
-        minlength={8}
-        placeholder="Password (8+ characters)"
-        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
-      />
+      {next && <input type="hidden" name="next" value={next} />}
+      <div>
+        <label for="auth-email" class="mb-1 block text-sm text-slate-400">Email</label>
+        <input
+          id="auth-email"
+          type="email"
+          name="email"
+          required
+          autocomplete="email"
+          placeholder="you@example.com"
+          class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
+        />
+      </div>
+      <div>
+        <label for="auth-password" class="mb-1 block text-sm text-slate-400">Password{mode === "signup" ? " (8+ characters)" : ""}</label>
+        <input
+          id="auth-password"
+          type="password"
+          name="password"
+          required
+          minlength={8}
+          autocomplete={mode === "signup" ? "new-password" : "current-password"}
+          class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
+        />
+      </div>
       <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">
         {mode === "login" ? "Log in" : "Sign up"}
       </button>
@@ -218,13 +266,18 @@ export const ForgotForm: FC<{ sent?: boolean; error?: string }> = ({ sent, error
       <>
         {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
         <form action="/forgot" method="post" class="space-y-4">
-          <input
-            type="email"
-            name="email"
-            required
-            placeholder="Email"
-            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
-          />
+          <div>
+            <label for="forgot-email" class="mb-1 block text-sm text-slate-400">Email</label>
+            <input
+              id="forgot-email"
+              type="email"
+              name="email"
+              required
+              autocomplete="email"
+              placeholder="you@example.com"
+              class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
+            />
+          </div>
           <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">Send reset link</button>
         </form>
       </>
@@ -240,14 +293,18 @@ export const ResetForm: FC<{ token: string; error?: string }> = ({ token, error 
     <h1 class="mb-6 text-2xl font-bold">Choose a new password</h1>
     {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
     <form action={`/reset/${token}`} method="post" class="space-y-4">
-      <input
-        type="password"
-        name="password"
-        required
-        minlength={8}
-        placeholder="New password (8+ characters)"
-        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
-      />
+      <div>
+        <label for="reset-password" class="mb-1 block text-sm text-slate-400">New password (8+ characters)</label>
+        <input
+          id="reset-password"
+          type="password"
+          name="password"
+          required
+          minlength={8}
+          autocomplete="new-password"
+          class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
+        />
+      </div>
       <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">Set new password</button>
     </form>
   </div>
@@ -359,7 +416,7 @@ export const HomePage: FC<{
         {nextUp.map((n) => (
           <div class="flex gap-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
             <a href={`/shows/${n.tmdbId}-${slugify(n.title)}`}>
-              <img src={poster(n.posterPath, "w154")} alt={n.title} class="h-28 w-auto rounded-lg border border-slate-800 object-cover" />
+              <img src={poster(n.posterPath, "w154")} alt={n.title} class="aspect-[2/3] h-28 w-auto rounded-lg border border-slate-800 object-cover" />
             </a>
             <div class="min-w-0">
               <a href={`/shows/${n.tmdbId}-${slugify(n.title)}`} class="line-clamp-1 font-semibold hover:text-violet-400">{n.title}</a>
@@ -454,7 +511,11 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
           <MediaCard item={r} type={r.media_type as "tv" | "movie"} inLibrary={libraryIds?.has(`${r.media_type}:${r.id}`)} />
         ))}
       </div>
-      {q && filtered.length === 0 && <p class="text-slate-400">Nothing found{type !== "all" ? ` in ${type === "tv" ? "TV shows" : "movies"} — try All` : ""}.</p>}
+      {q && filtered.length === 0 && (
+        <p class="text-slate-400">
+          Nothing found{type !== "all" ? ` in ${type === "tv" ? "TV shows" : "movies"} — try All` : " — check the spelling, or browse what's trending below"}.
+        </p>
+      )}
     </div>
   );
 };
@@ -604,7 +665,7 @@ export const ShowPage: FC<{
   return (
     <div>
       <div class="flex flex-col gap-6 sm:flex-row">
-        <img src={poster(show.poster_path)} alt={show.name} class="w-40 self-start rounded-xl border border-slate-800 sm:w-52" />
+        <img src={poster(show.poster_path)} alt={show.name} class="aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover sm:w-52" />
         <div class="min-w-0 flex-1">
           <h1 class="text-3xl font-bold">{show.name}</h1>
           <p class="mt-1 text-sm text-slate-400">
@@ -653,9 +714,10 @@ export const ShowPage: FC<{
               )}
             </div>
           ) : (
-            <p class="mt-5 text-sm text-slate-400">
-              <a href="/signup" class="text-violet-400 hover:underline">Join free</a> to track this show.
-            </p>
+            <div class="mt-5 flex flex-wrap items-center gap-3">
+              <a href={`/signup?next=${encodeURIComponent(showUrl)}`} class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this show — join free</a>
+              <a href="/signup" class="text-sm text-violet-400 hover:underline">Coming from TV Time? Import your export →</a>
+            </div>
           )}
           {user && (
             <RatingStars tmdbId={show.id} mediaType="tv" title={show.name} posterPath={show.poster_path} rating={tracked?.rating ?? null} redirect={showUrl} />
@@ -782,7 +844,7 @@ export const MoviePage: FC<{
   return (
     <div>
     <div class="flex flex-col gap-6 sm:flex-row">
-      <img src={poster(movie.poster_path)} alt={movie.title} class="w-40 self-start rounded-xl border border-slate-800 sm:w-52" />
+      <img src={poster(movie.poster_path)} alt={movie.title} class="aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover sm:w-52" />
       <div class="min-w-0 flex-1">
         <h1 class="text-3xl font-bold">{movie.title}</h1>
         <p class="mt-1 text-sm text-slate-400">
@@ -834,9 +896,10 @@ export const MoviePage: FC<{
             )}
           </div>
         ) : (
-          <p class="mt-5 text-sm text-slate-400">
-            <a href="/signup" class="text-violet-400 hover:underline">Join free</a> to track this movie.
-          </p>
+          <div class="mt-5 flex flex-wrap items-center gap-3">
+            <a href={`/signup?next=${encodeURIComponent(movieUrl)}`} class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this movie — join free</a>
+            <a href="/signup" class="text-sm text-violet-400 hover:underline">Coming from TV Time? Import your export →</a>
+          </div>
         )}
         {user && (
           <RatingStars tmdbId={movie.id} mediaType="movie" title={movie.title} posterPath={movie.poster_path} rating={tracked?.rating ?? null} redirect={movieUrl} />
@@ -860,7 +923,7 @@ export interface LibraryRow {
   rating: number | null;
 }
 
-export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string; q?: string; counts?: Record<string, number> }> = ({ rows, status, sort, q, counts }) => (
+export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string; q?: string; counts?: Record<string, number>; page?: number; lastPage?: number }> = ({ rows, status, sort, q, counts, page = 1, lastPage = 1 }) => (
   <div>
     <h1 class="mb-4 text-2xl font-bold">Library</h1>
     <form action="/library" method="get" class="mb-3 max-w-xs">
@@ -967,6 +1030,33 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
         ))}
       </div>
     )}
+    {lastPage > 1 && (
+      <nav class="mt-8 flex items-center justify-center gap-4 text-sm" aria-label="Library pages">
+        {page > 1 ? (
+          <a
+            href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}${q ? `&q=${encodeURIComponent(q)}` : ""}&page=${page - 1}`}
+            class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500"
+          >
+            ← Previous
+          </a>
+        ) : (
+          <span class="rounded-lg border border-slate-800 px-3 py-1.5 text-slate-600">← Previous</span>
+        )}
+        <span class="text-slate-400">
+          Page {page} of {lastPage}
+        </span>
+        {page < lastPage ? (
+          <a
+            href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}${q ? `&q=${encodeURIComponent(q)}` : ""}&page=${page + 1}`}
+            class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500"
+          >
+            Next →
+          </a>
+        ) : (
+          <span class="rounded-lg border border-slate-800 px-3 py-1.5 text-slate-600">Next →</span>
+        )}
+      </nav>
+    )}
   </div>
 );
 
@@ -1023,7 +1113,7 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
           return (
           <li class={d.today ? "flex items-center gap-4 bg-violet-950/40 px-4 py-3" : "flex items-center gap-4 bg-slate-900/40 px-4 py-3"}>
             <span class={d.today ? "w-24 shrink-0 text-sm font-semibold text-violet-300" : "w-24 shrink-0 text-sm text-violet-300"} title={it.airDate}>{d.label}</span>
-            <img src={poster(it.posterPath, "w92")} alt="" class="h-14 w-auto rounded border border-slate-800" />
+            <img src={poster(it.posterPath, "w92")} alt="" class="aspect-[2/3] h-14 w-auto rounded border border-slate-800 object-cover" />
             <div class="min-w-0">
               <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
                 {it.title}
@@ -1208,6 +1298,7 @@ export interface UserStats {
   completedShows: number;
   topShows: { title: string; tmdb_id: number; eps: number }[];
   byMonth: { month: string; eps: number }[];
+  byYear: { year: string; eps: number; movies: number }[];
   topGenres: { name: string; count: number }[];
   epsThisYear: number;
   moviesThisYear: number;
@@ -1274,6 +1365,26 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
           )}
         </div>
       </div>
+      {stats.byYear.length > 0 && (
+        <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h2 class="mb-4 font-semibold">By year</h2>
+          <ul class="space-y-1.5">
+            {stats.byYear.map((y) => {
+              const total = y.eps + y.movies;
+              const maxYear = Math.max(1, ...stats.byYear.map((r) => r.eps + r.movies));
+              return (
+                <li class="flex items-center gap-2 text-xs">
+                  <span class="w-16 shrink-0 text-slate-400">{y.year}</span>
+                  <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((total / maxYear) * 100))}%`} />
+                  <span class="whitespace-nowrap text-slate-400">
+                    {y.eps} ep{y.eps === 1 ? "" : "s"}{y.movies > 0 ? ` · ${y.movies} movie${y.movies === 1 ? "" : "s"}` : ""}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
       {stats.topGenres.length > 0 && (
         <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
           <h2 class="mb-4 font-semibold">Top genres</h2>
@@ -1378,8 +1489,8 @@ export const SettingsPage: FC<{ user: User; saved?: string; error?: string }> = 
     <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
       <h2 class="font-semibold">Change password</h2>
       <form action="/api/settings/password" method="post" class="mt-4 space-y-3">
-        <input type="password" name="current" required placeholder="Current password" aria-label="Current password" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none" />
-        <input type="password" name="next" required minlength={8} placeholder="New password (min 8 characters)" aria-label="New password" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none" />
+        <input type="password" name="current" required autocomplete="current-password" placeholder="Current password" aria-label="Current password" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none" />
+        <input type="password" name="next" required minlength={8} autocomplete="new-password" placeholder="New password (min 8 characters)" aria-label="New password" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none" />
         <button class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Update password</button>
       </form>
     </section>
@@ -1398,7 +1509,7 @@ export const SettingsPage: FC<{ user: User; saved?: string; error?: string }> = 
         Permanently deletes your account and all data — library, watch history, ratings, share page and calendar feed. This cannot be undone.
       </p>
       <form action="/api/settings/delete" method="post" class="mt-4 flex gap-2" data-confirm="Delete your account and all data permanently?">
-        <input type="password" name="password" required placeholder="Confirm with your password" aria-label="Confirm password to delete account" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-red-500 focus:outline-none" />
+        <input type="password" name="password" required autocomplete="current-password" placeholder="Confirm with your password" aria-label="Confirm password to delete account" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-red-500 focus:outline-none" />
         <button class="shrink-0 rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-600">Delete</button>
       </form>
     </section>

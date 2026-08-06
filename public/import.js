@@ -45,6 +45,7 @@
       var parsed = await parseRes.json();
       if (!parseRes.ok) return fail(parsed.error || "Could not parse the file.");
 
+      var source = parsed.source || "tvtime";
       var shows = parsed.shows || [];
       var movies = parsed.movies || [];
       var episodeCount = shows.reduce(function (n, s) { return n + (s.episodes ? s.episodes.length : 0); }, 0);
@@ -92,8 +93,8 @@
         progressBar.style.width = Math.round((doneBatches / Math.max(totalBatches, 1)) * 100) + "%";
       }
 
-      for (var i = 0; i < shows.length; i += 20) await send({ shows: shows.slice(i, i + 20), movies: [] });
-      for (var j = 0; j < movies.length; j += 20) await send({ shows: [], movies: movies.slice(j, j + 20) });
+      for (var i = 0; i < shows.length; i += 20) await send({ shows: shows.slice(i, i + 20), movies: [], source: source });
+      for (var j = 0; j < movies.length; j += 20) await send({ shows: [], movies: movies.slice(j, j + 20), source: source });
 
       progress.classList.add("hidden");
       done.classList.remove("hidden");

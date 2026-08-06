@@ -21,6 +21,7 @@ import {
   recommendations,
   watchProviders,
   slugify,
+  metaDescription,
   type SearchResult,
   topCast,
   type CastMember,
@@ -31,6 +32,7 @@ import { shareOgImage } from "./og";
 import {
   Layout,
   Landing,
+  landingFaqs,
   AuthForm,
   ForgotForm,
   ResetForm,
@@ -143,14 +145,26 @@ app.get("/", async (c) => {
       canonical={c.env.SITE_URL + "/"}
       jsonLd={{
         "@context": "https://schema.org",
-        "@type": "WebSite",
-        name: "WatchDeck",
-        url: c.env.SITE_URL + "/",
-        potentialAction: {
-          "@type": "SearchAction",
-          target: { "@type": "EntryPoint", urlTemplate: `${c.env.SITE_URL}/search?q={search_term_string}` },
-          "query-input": "required name=search_term_string",
-        },
+        "@graph": [
+          {
+            "@type": "WebSite",
+            name: "WatchDeck",
+            url: c.env.SITE_URL + "/",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: { "@type": "EntryPoint", urlTemplate: `${c.env.SITE_URL}/search?q={search_term_string}` },
+              "query-input": "required name=search_term_string",
+            },
+          },
+          {
+            "@type": "FAQPage",
+            mainEntity: landingFaqs.map(([q, a]) => ({
+              "@type": "Question",
+              name: q,
+              acceptedAnswer: { "@type": "Answer", text: a },
+            })),
+          },
+        ],
       }}
     >
       <div>
@@ -162,7 +176,12 @@ app.get("/", async (c) => {
 });
 
 // ---------- auth ----------
-app.get("/signup", (c) => c.html(<Layout user={c.get("user")} title="Sign up"><AuthForm mode="signup" /></Layout>));
+function safeNext(raw: unknown): string | undefined {
+  const s = typeof raw === "string" ? raw : "";
+  return s.startsWith("/") && !s.startsWith("//") && !s.includes("\\") ? s : undefined;
+}
+
+app.get("/signup", (c) => c.html(<Layout user={c.get("user")} title="Sign up"><AuthForm mode="signup" next={safeNext(c.req.query("next"))} /></Layout>));
 app.get("/login", (c) => c.html(<Layout user={c.get("user")} title="Log in"><AuthForm mode="login" /></Layout>));
 
 app.post("/signup", async (c) => {
@@ -173,7 +192,7 @@ app.post("/signup", async (c) => {
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || password.length < 8) {
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Enter a valid email and a password of 8+ characters." /></Layout>, 400);
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Enter a valid email and a password of 8+ characters." next={safeNext(form.next)} /></Layout>, 400);
   }
   const { hash, salt } = await hashPassword(password);
   try {
@@ -182,9 +201,9 @@ app.post("/signup", async (c) => {
       .first<{ id: number }>();
     await createSession(c, res!.id);
     c.executionCtx.waitUntil(sendEmail(c.env, email, ...welcomeEmail(c.env.SITE_URL)));
-    return c.redirect("/import");
+    return c.redirect(safeNext(form.next) ?? "/import");
   } catch {
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." /></Layout>, 400);
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." next={safeNext(form.next)} /></Layout>, 400);
   }
 });
 
@@ -368,12 +387,26 @@ app.get("/search", async (c) => {
   );
   const typeQ = c.req.query("type");
   const type = typeQ === "tv" || typeQ === "movie" ? typeQ : "all";
+  const hasMedia = res.results.some((r) => r.media_type === "tv" || r.media_type === "movie");
+  if (!hasMedia) {
+    const [shows, movies] = await Promise.all([trendingTv(c.env), trendingMovies(c.env)]);
+    return c.html(
+      <Layout user={user} title={`Search: ${q}`}>
+        <SearchPage q={q} results={[]} type={type} />
+        <TrendingSection shows={shows.results} movies={movies.results} />
+      </Layout>
+    );
+  }
   return c.html(
     <Layout user={user} title={`Search: ${q}`}>
       <SearchPage q={q} results={res.results} libraryIds={libraryIds} type={type} />
     </Layout>
   );
 });
+
+app.get("/show/:idslug", (c) => c.redirect(`/shows/${c.req.param("idslug")}${new URL(c.req.url).search}`, 301));
+app.get("/movie/:idslug", (c) => c.redirect(`/movies/${c.req.param("idslug")}${new URL(c.req.url).search}`, 301));
+app.get("/tv/:idslug", (c) => c.redirect(`/shows/${c.req.param("idslug")}${new URL(c.req.url).search}`, 301));
 
 app.get("/shows/:idslug", async (c) => {
   const user = c.get("user");
@@ -384,6 +417,11 @@ app.get("/shows/:idslug", async (c) => {
     show = await tvDetails(c.env, id);
   } catch {
     return c.notFound();
+  }
+  const showSlug = `${show.id}-${slugify(show.name)}`;
+  if (c.req.param("idslug") !== showSlug) {
+    const qs = new URL(c.req.url).search;
+    return c.redirect(`/shows/${showSlug}${qs}`, 301);
   }
   const seasonNum = parseInt(c.req.query("season") ?? "1", 10) || 1;
   const [season, watchedRows, tracked, recsRes, providers, cast] = await Promise.all([
@@ -409,7 +447,7 @@ app.get("/shows/:idslug", async (c) => {
     <Layout
       user={user}
       title={show.name}
-      description={show.overview?.slice(0, 155)}
+      description={metaDescription(show.overview)}
       canonical={showCanonical}
       ogImage={show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : undefined}
       jsonLd={{
@@ -454,6 +492,8 @@ app.get("/movies/:idslug", async (c) => {
   } catch {
     return c.notFound();
   }
+  const movieSlug = `${movie.id}-${slugify(movie.title)}`;
+  if (c.req.param("idslug") !== movieSlug) return c.redirect(`/movies/${movieSlug}`, 301);
   const [watchedRow, tracked, recsRes, providers, cast] = await Promise.all([
     user ? c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first() : Promise.resolve(null),
     user
@@ -472,7 +512,7 @@ app.get("/movies/:idslug", async (c) => {
     <Layout
       user={user}
       title={movie.title}
-      description={movie.overview?.slice(0, 155)}
+      description={metaDescription(movie.overview)}
       canonical={movieCanonical}
       ogImage={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined}
       jsonLd={{
@@ -523,20 +563,28 @@ app.get("/library", async (c) => {
     conds.push("title LIKE ? COLLATE NOCASE");
     binds.push(`%${q}%`);
   }
-  const rows = await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE ${conds.join(" AND ")} ORDER BY updated_at DESC LIMIT 200`)
+  const sort = ["recent", "title", "progress"].includes(c.req.query("sort") ?? "") ? c.req.query("sort")! : "recent";
+  const orderBy =
+    sort === "title" ? "title COLLATE NOCASE ASC" : sort === "progress" ? "eps_watched DESC, updated_at DESC" : "updated_at DESC";
+  const perPage = 120;
+  const [filteredTotal, countRows] = await Promise.all([
+    c.env.DB.prepare(`SELECT COUNT(*) AS n FROM tracked WHERE ${conds.join(" AND ")}`).bind(...binds).first<{ n: number }>(),
+    c.env.DB.prepare("SELECT status, COUNT(*) AS n FROM tracked WHERE user_id = ? GROUP BY status")
+      .bind(user.id)
+      .all<{ status: string; n: number }>(),
+  ]);
+  const total = filteredTotal?.n ?? 0;
+  const lastPage = Math.max(1, Math.ceil(total / perPage));
+  const page = Math.min(lastPage, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const rows = await c.env.DB.prepare(
+    `SELECT ${cols} FROM tracked WHERE ${conds.join(" AND ")} ORDER BY ${orderBy} LIMIT ${perPage} OFFSET ${(page - 1) * perPage}`
+  )
     .bind(...binds)
     .all<LibraryRow>();
-  const sort = ["recent", "title", "progress"].includes(c.req.query("sort") ?? "") ? c.req.query("sort")! : "recent";
-  const sorted = [...rows.results];
-  if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
-  else if (sort === "progress") sorted.sort((a, b) => b.eps_watched - a.eps_watched);
-  const countRows = await c.env.DB.prepare("SELECT status, COUNT(*) AS n FROM tracked WHERE user_id = ? GROUP BY status")
-    .bind(user.id)
-    .all<{ status: string; n: number }>();
   const counts = Object.fromEntries(countRows.results.map((r) => [r.status, r.n]));
   return c.html(
     <Layout user={user} title="Library">
-      <LibraryPage rows={sorted} status={status} sort={sort} q={q} counts={counts} />
+      <LibraryPage rows={rows.results} status={status} sort={sort} q={q} counts={counts} page={page} lastPage={lastPage} />
     </Layout>
   );
 });
@@ -790,7 +838,7 @@ async function hoursWatched(env: Env, userId: number): Promise<number> {
 }
 
 async function userStats(env: Env, userId: number): Promise<UserStats> {
-  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear] = await Promise.all([
+  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear, byYear] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(userId).first<{ n: number }>(),
@@ -807,6 +855,13 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     hoursWatched(env, userId),
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ? AND watched_at >= strftime('%Y-01-01', 'now')").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND watched_at >= strftime('%Y-01-01', 'now')").bind(userId).first<{ n: number }>(),
+    env.DB.prepare(
+      `SELECT y AS year, SUM(eps) AS eps, SUM(movies) AS movies FROM (
+         SELECT strftime('%Y', watched_at) AS y, COUNT(*) AS eps, 0 AS movies FROM episode_watches WHERE user_id = ?1 GROUP BY y
+         UNION ALL
+         SELECT strftime('%Y', watched_at) AS y, 0 AS eps, COUNT(*) AS movies FROM movie_watches WHERE user_id = ?1 GROUP BY y
+       ) WHERE y IS NOT NULL GROUP BY y ORDER BY y DESC LIMIT 15`
+    ).bind(userId).all<{ year: string; eps: number; movies: number }>(),
   ]);
   const items = await env.DB.prepare(
     "SELECT tmdb_id, media_type FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 40"
@@ -834,6 +889,7 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     completedShows: completed?.n ?? 0,
     topShows: topShows.results,
     byMonth: byMonth.results,
+    byYear: byYear.results,
     topGenres,
     epsThisYear: epsYear?.n ?? 0,
     moviesThisYear: moviesYear?.n ?? 0,
@@ -1310,7 +1366,8 @@ app.post("/api/import/parse", async (c) => {
   const isZip = bytes[0] === 0x50 && bytes[1] === 0x4b;
   try {
     const text = isZip ? "" : new TextDecoder().decode(bytes);
-    const parsed = isZip ? parseTvTimeZip(bytes) : isNetflixCsv(text) ? parseNetflixCsv(text) : parseGenericCsv(text);
+    const source = isZip ? "tvtime" : isNetflixCsv(text) ? "netflix" : "csv";
+    const parsed = isZip ? parseTvTimeZip(bytes) : source === "netflix" ? parseNetflixCsv(text) : parseGenericCsv(text);
     if (parsed.shows.length === 0 && parsed.movies.length === 0) {
       logFunnel(c, "import-parse-empty");
       return c.json(
@@ -1319,7 +1376,7 @@ app.post("/api/import/parse", async (c) => {
       );
     }
     logFunnel(c, "import-parse-ok");
-    return c.json(parsed);
+    return c.json({ ...parsed, source });
   } catch {
     logFunnel(c, "import-parse-fail");
     return c.json({ error: isZip ? "Could not read that ZIP file." : "Could not read that file. Upload a TV Time ZIP or a CSV export." }, 422);
@@ -1330,7 +1387,8 @@ app.post("/api/import/parse", async (c) => {
 app.post("/api/import/batch", async (c) => {
   const user = c.get("user");
   if (!user) return c.json({ error: "auth" }, 401);
-  const batch = (await c.req.json()) as ParsedImport;
+  const batch = (await c.req.json()) as ParsedImport & { source?: string };
+  const source = batch.source === "netflix" || batch.source === "csv" ? batch.source : "tvtime";
   let showsImported = 0;
   let episodesImported = 0;
   let moviesImported = 0;
@@ -1348,10 +1406,10 @@ app.post("/api/import/batch", async (c) => {
       const allWatched = show.episodes.length > 0;
       await c.env.DB.prepare(
         `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, source)
-         VALUES (?, ?, 'tv', ?, ?, ?, 'tvtime')
+         VALUES (?, ?, 'tv', ?, ?, ?, ?)
          ON CONFLICT(user_id, tmdb_id, media_type) DO NOTHING`
       )
-        .bind(user.id, match.id, title, match.poster_path, allWatched ? "watching" : "watchlist")
+        .bind(user.id, match.id, title, match.poster_path, allWatched ? "watching" : "watchlist", source)
         .run();
       showsImported++;
       const stmts = show.episodes.slice(0, 400).map((e) =>
@@ -1379,9 +1437,9 @@ app.post("/api/import/batch", async (c) => {
       await c.env.DB.batch([
         c.env.DB.prepare(
           `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, source)
-           VALUES (?, ?, 'movie', ?, ?, 'completed', 'tvtime')
+           VALUES (?, ?, 'movie', ?, ?, 'completed', ?)
            ON CONFLICT(user_id, tmdb_id, media_type) DO NOTHING`
-        ).bind(user.id, match.id, match.title ?? movie.name, match.poster_path),
+        ).bind(user.id, match.id, match.title ?? movie.name, match.poster_path, source),
         c.env.DB.prepare(
           "INSERT OR IGNORE INTO movie_watches (user_id, tmdb_id, watched_at) VALUES (?, ?, COALESCE(?, datetime('now')))"
         ).bind(user.id, match.id, movie.watchedAt),
@@ -1393,9 +1451,9 @@ app.post("/api/import/batch", async (c) => {
   }
 
   await c.env.DB.prepare(
-    "INSERT INTO imports (user_id, source, shows_imported, episodes_imported, movies_imported, unmatched) VALUES (?, 'tvtime', ?, ?, ?, ?)"
+    "INSERT INTO imports (user_id, source, shows_imported, episodes_imported, movies_imported, unmatched) VALUES (?, ?, ?, ?, ?, ?)"
   )
-    .bind(user.id, showsImported, episodesImported, moviesImported, unmatchedNames.length)
+    .bind(user.id, source, showsImported, episodesImported, moviesImported, unmatchedNames.length)
     .run();
 
   invalidateHours(c, user.id);
