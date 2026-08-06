@@ -782,20 +782,45 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
     ) : (
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {rows.map((r) => (
-          <a href={`/${r.media_type === "tv" ? "shows" : "movies"}/${r.tmdb_id}-${slugify(r.title)}`} class="group">
-            <img
-              src={poster(r.poster_path)}
-              alt={r.title}
-              loading="lazy"
-              class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
-            />
-            <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{r.title}</p>
-            <p class="text-xs text-slate-400">
-              {r.status}
-              {r.media_type === "tv" && r.eps_watched > 0 ? ` · ${r.eps_watched} ep${r.eps_watched === 1 ? "" : "s"} watched` : ""}
-              {r.rating ? <span class="text-amber-400"> · ★ {r.rating}</span> : ""}
-            </p>
-          </a>
+          <div>
+            <a href={`/${r.media_type === "tv" ? "shows" : "movies"}/${r.tmdb_id}-${slugify(r.title)}`} class="group block">
+              <img
+                src={poster(r.poster_path)}
+                alt={r.title}
+                loading="lazy"
+                class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
+              />
+              <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{r.title}</p>
+              <p class="text-xs text-slate-400">
+                {r.media_type === "tv" && r.eps_watched > 0 ? `${r.eps_watched} ep${r.eps_watched === 1 ? "" : "s"} watched` : ""}
+                {r.rating ? <span class="text-amber-400">{r.media_type === "tv" && r.eps_watched > 0 ? " · " : ""}★ {r.rating}</span> : ""}
+              </p>
+            </a>
+            <form action="/api/track" method="post" class="mt-1">
+              <input type="hidden" name="tmdb_id" value={String(r.tmdb_id)} />
+              <input type="hidden" name="media_type" value={r.media_type} />
+              <input
+                type="hidden"
+                name="redirect"
+                value={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}${q ? `&q=${encodeURIComponent(q)}` : ""}`}
+              />
+              <select
+                name="status"
+                aria-label={`Status for ${r.title}`}
+                onchange="this.form.submit()"
+                class="w-full rounded-md border border-slate-800 bg-slate-900 px-1.5 py-1 text-xs text-slate-300 focus:border-violet-500 focus:outline-none"
+              >
+                {(["watching", "watchlist", "completed", "dropped"] as const).map((s) => (
+                  <option value={s} selected={r.status === s}>
+                    {s[0].toUpperCase() + s.slice(1)}
+                  </option>
+                ))}
+              </select>
+              <noscript>
+                <button class="mt-1 rounded-md border border-slate-700 px-2 py-1 text-xs">Save</button>
+              </noscript>
+            </form>
+          </div>
         ))}
       </div>
     )}
