@@ -1258,3 +1258,147 @@
 
 **证据**
 - Version 0448d376；线上验证（r10 只读浏览后登出）：/library?sort=rating 渲染 Top rated 选中态，零评分账号回落按更新时间排序。
+
+---
+
+## Round 90 — 2026-08-06（回归轮）
+
+**驱动：①测试（QA 回归 R86-R89）**
+
+**回归结果（生产 Version 0448d376，分支 tip 610f513）**
+- R86 落后集数徽章：r10 的 Breaking Bad 卡显示「aired 2010-04-04 · 40 eps left」= 62 已播 − 22 已看（对抗性核算精确匹配）；仅差 1 集的 Chernobyl（4/5）正确不显示徽章。
+- R87 性能：/home 双账号正常快速渲染（并行化按设计无行为差异；登录态精确 TTFB 未仪表化，属可选项）。
+- R88 预告片：Inception「▶ Trailer」新标签打开 watch?v=JE9z-gy4De4（rel=noopener 线上 HTML 复核）；Severance 链接存在；Breaking Bad 正确无链接。
+- R89 Top rated 排序：★5 → ★4 → 未评分最后（未评分项恰为最近更新，可区分于 recency 序）；与 Completed 筛选组合正常；r10 零评分回落 recency 无错误。
+- 冒烟全过；基线（8/Sev 4/Friends 0/Mandalorian ★4）D1 只读核验不变；r10 净零；throwaway r90-qa-* 已删除并 D1 复核。
+
+**结论**：R86-R89 无 P0/P1/P2/P3 遗留。证据评论见 PR #37。
+
+---
+
+## Round 91 — 2026-08-06
+
+**驱动：④竞品（Trakt 数据导出为 VIP 功能；TV Time 锁数据是难民痛点根源）+ ②UX（R29 JSON 导出对表格/其他工具不友好）**
+
+**修复（P2）**
+- /settings 新增 CSV 导出（/api/export.csv）：type,title,season,episode,watched_at,rating,status 扁平结构，含库条目/逐集流水/电影流水，标题带引号转义；与我们自己的 CSV 导入格式兼容（数据可携带权闭环）。
+
+**证据**
+- Version 881ad0bd；线上验证（r10 登录后登出）：CSV 首行表头正确，show/movie/episode 行齐全（Breaking Bad S01E01/E02 等）。
+
+---
+
+## Round 92 — 2026-08-06
+
+**驱动：①测试（R82 只覆盖通用 CSV，TV Time ZIP 的评分被丢弃）+ ④竞品（TV Time 难民迁移时评分是核心资产）**
+
+**修复（P2）**
+- TV Time ZIP 导入解析评分：tracking 记录的 rating/user_rating/score 列 + 独立 *rating* CSV（tv_show_name/movie_name + rating），1-10 折半归一到 1-5，剧取首个有效评分；电影补齐 watchedAt 合并逻辑。写库仍走既有 COALESCE 不覆盖路径。
+
+**证据**
+- Version 438328db；线上验证（r10 只读解析，未写库）：合成 TV Time ZIP（tracking + user-rating CSV）→ The Wire rating:5（9/10 折半）+ 2 集流水、Heat rating:4，source:"tvtime"。
+
+---
+
+## Round 93 — 2026-08-06
+
+**驱动：③视觉（375px 移动端走查：落地页/browse/详情页/404/落地页底部均正常，粘性导航半透明模糊为设计预期，无缺陷）+ ⑤数据（搜索词表存在大小写重复计数「Inception/inception」）+ 合规（隐私页未声明分析数据保留期）**
+
+**修复（P2/P3）**
+- 搜索词统计入库前 trim+小写归一（消除大小写重复计数）。
+- 每日 Cron 自动清理 90 天前的 analytics_events 与 search_queries（数据最小化），隐私页同步声明「分析数据 90 天后自动删除」。
+
+**证据**
+- Version 0f65c823；线上验证：搜索「TeSt CaSe R93」入库为「test case r93」；/privacy 已含 90 天保留声明；移动端截图走查无缺陷。
+
+---
+
+## Round 94 — 2026-08-06
+
+**驱动：④竞品（Trakt 搜索结果可直接快捷添加，我们必须进详情页才能加）+ ②UX（搜索→加 watchlist 需 3 步）**
+
+**修复（P2）**
+- 登录用户搜索结果卡片下方新增「+ Watchlist」一键加入按钮（已在库条目不显示，仍显示 ✓ In library 角标）；POST /api/track status=watchlist，redirect 经 safeNext 回落原搜索页（含 type 过滤参数）。匿名用户不显示。
+
+**证据**
+- Version 00c358d8；线上验证：r10 登录搜「the pitt」出现 + Watchlist 按钮，匿名同查询无按钮。写库正向路径留给测试代理用 throwaway 账号回归。
+
+---
+
+## Round 95 — 2026-08-06（回归轮）
+
+**驱动：①测试（QA 回归 R91-R94）**
+
+**回归结果（生产 Version 00c358d8）**
+- R92 端到端：合成 TV Time ZIP（tracking + user-rating CSV）导入 → D1: The Wire ★5 + 2 集流水、Heat ★4 + 电影流水、source='tvtime'；用 2/1 分重导未覆盖（COALESCE）。
+- R94：搜索卡「+ Watchlist」→ 回落原 URL（&type=tv 保留），角标翻转 ✓ In library，D1 status='watchlist'；匿名页面零按钮（curl 复核）。
+- R91：/settings CSV 导出表头与逐行内容与 D1 精确一致；r10 只读导出 46 行（41 集、Severance 19、评分列空）。
+- R93：「MiXeD CaSe R95」入库为小写；/privacy 90 天保留声明可见（Cron 清理正向路径无法即时触发，待观察项）。
+- 冒烟全过；基线（8/Sev 4/Friends 0/Mandalorian ★4）不变；r10 净零；throwaway r95-qa-* 已删除并 D1 复核。
+
+**结论**：R91-R94 无 P0/P1/P2/P3 遗留。证据评论见 PR #38。
+
+---
+
+## Round 96 — 2026-08-06
+
+**驱动：④竞品/SEO 技术审计（robots.txt 缺私密路由；私密页与分享页无 noindex 信号，token 分享页可能被搜索引擎收录泄露个人统计）**
+
+**修复（P1/P2）**
+- robots.txt 补齐 Disallow: /stats /history /settings /forgot /reset /u/。
+- 中间件对 /home /library /calendar /import /stats /history /settings /forgot /reset /u/* 统一输出 X-Robots-Tag: noindex（robots Disallow 只阻爬不阻收录，header 才是权威 noindex 信号；分享页为 secret-link 语义，照 Google Docs 惯例不收录）。公开页（/、/browse、详情页）无该 header，已验证。
+
+**证据**
+- Version 9ce69b66；线上验证：robots.txt 新 6 行生效；/stats(302)、/forgot(200)、/history、/settings、/u/abc 均返回 x-robots-tag: noindex；/、/browse、剧集详情页无此 header。
+
+---
+
+## Round 97 — 2026-08-06
+
+**驱动：③前端性能（静态资产全部 max-age=0 must-revalidate，每次页面加载都要 304 往返；重复访客体验受损）**
+
+**修复（P2）**
+- 新增 public/_headers（Workers 静态资产原生支持）：styles.css/app.js/import.js → max-age=3600 + stale-while-revalidate=86400（部署后 1 小时内自愈，SWR 不阻塞渲染）；图标/占位图 → 7 天；og-default.png/manifest → 1 天。过期后仍走既有 ETag 协商。
+
+**证据**
+- Version a2d46315；线上验证：5 类资产 cache-control 逐一符合预期；/_headers 本身 404（不对外暴露）。
+
+---
+
+## Round 98 — 2026-08-06
+
+**驱动：①测试/运维（R49 IndexNow 周任务、R51 每日摘要、R93 90 天清理三个 Cron 正向路径均「无法即时触发」，回归长期存在盲区）**
+
+**修复（P2）**
+- 新增管理员专用 POST /api/admin/cron（job=prune|digest|indexnow），复用 pruneAnalytics/sendAiringDigests/submitSitemapToIndexNow，使 Cron 任务可按需触发验证；非法 job 400。权限模型与 /api/stats、/api/indexnow 一致（ADMIN_EMAIL）。
+
+**证据**
+- Version b8c25b54；线上验证：匿名 403、非管理员（r10）403；管理员正向路径需老板凭据（与既有 /api/indexnow 同为待观察项）。
+
+---
+
+## Round 99 — 2026-08-06
+
+**驱动：⑤安全/②UX（分享统计 token 可一键失效，但 iCal 订阅 token 一旦泄露无法撤销——安全能力不对称）**
+
+**修复（P2）**
+- 日历页新增「↻ Reset feed URL」：POST /api/feed/rotate 删除旧 feed token 并生成新 32 位 hex token，旧 .ics URL 立即 404；与分享页 token 失效能力对齐。
+
+**证据**
+- Version b9163eb1；/calendar 匿名 302 正常；旧 token 失效 + 新 token 可订阅的端到端验证留给 R100 回归（throwaway 账号）。
+
+---
+
+## Round 100 — 2026-08-06（收官回归轮）
+
+**驱动：①测试（QA 回归 R96-R99 + 全站收官冒烟）**
+
+**回归结果（生产 Version b9163eb1）**
+- R99 端到端：throwaway 旧 .ics 200（含真实 VEVENT）→「↻ Reset feed URL」→ 旧 URL 404、D1 feed_tokens 恰 1 行新 token、新 .ics 200。
+- R96：/home /stats /settings /history（302 上）与 /u/<share> 均带 x-robots-tag: noindex；/、/browse、详情页、/login 无；robots.txt 6 条新 Disallow 生效。
+- R97：styles.css/app.js max-age=3600+SWR、图标 7 天、manifest 1 天、/_headers 404。
+- R98：匿名/非管理员 403（正向路径需 ADMIN_EMAIL 凭据，永久待观察项，同 R93 Cron 清理——现可用 /api/admin/cron job=prune 由管理员触发）。
+- 收官全站冒烟：落地页/注册/搜索+快捷添加/详情（预告片、流媒体）/⇥ up to here → Next Up「S01E03 · 17 eps left」（=19−2）/Library 排序/历史/统计/日历+iCal/导入确认卡 Cancel 不写库/JSON+CSV 导出/隐私条款//u/ 分享页/404 出路——全过。
+- 完整性：throwaway 删除后 users/feed_tokens/share_tokens 级联清零；基线与 r10 与既档一致。
+
+**结论**：R96-R99 无 P0/P1/P2/P3。100 轮持续迭代程序至此收官：100 轮全部完成并逐轮上线回归，未遗留任何 P0/P1/P2 缺陷；仅存两个凭据性待观察项（管理员 Cron 正向路径、90 天清理首跑）。

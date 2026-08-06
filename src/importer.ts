@@ -158,7 +158,7 @@ export function parseTvTimeZip(zipBytes: Uint8Array): ParsedImport {
 
 export function parseTvTimeCsvs(csvs: Record<string, string>): ParsedImport {
   const showMap = new Map<string, ParsedShow>();
-  const movies = new Map<string, { name: string; watchedAt: string | null }>();
+  const movies = new Map<string, { name: string; watchedAt: string | null; rating?: number | null }>();
 
   const getShow = (name: string): ParsedShow => {
     const key = name.toLowerCase();
@@ -178,18 +178,44 @@ export function parseTvTimeCsvs(csvs: Record<string, string>): ParsedImport {
         const movieName = pick(rec, "movie_name", "movie_title");
         const showName = pick(rec, "tv_show_name", "series_name", "show_name", "series_title");
         const watchedAt = pick(rec, "watched_at", "created_at", "date") || null;
+        const rating = parseRating(pick(rec, "rating", "user_rating", "score"));
         if (movieName || type.includes("movie")) {
           const name = movieName || showName;
-          if (name && !movies.has(name.toLowerCase())) movies.set(name.toLowerCase(), { name, watchedAt });
+          if (name) {
+            const key = name.toLowerCase();
+            const existing = movies.get(key);
+            if (!existing) movies.set(key, { name, watchedAt, rating });
+            else {
+              if (rating && !existing.rating) existing.rating = rating;
+              if (watchedAt && !existing.watchedAt) existing.watchedAt = watchedAt;
+            }
+          }
           continue;
         }
         if (!showName) continue;
         const season = parseInt(pick(rec, "episode_season_number", "season_number", "season"), 10);
         const episode = parseInt(pick(rec, "episode_number", "episode"), 10);
         const show = getShow(showName);
+        if (rating && !show.rating) show.rating = rating;
         if (Number.isFinite(season) && Number.isFinite(episode)) {
           show.followedOnly = false;
           show.episodes.push({ season, episode, watchedAt });
+        }
+      }
+    } else if (fname.includes("rating")) {
+      for (const rec of records) {
+        const rating = parseRating(pick(rec, "rating", "user_rating", "score", "value"));
+        if (!rating) continue;
+        const movieName = pick(rec, "movie_name", "movie_title");
+        const showName = pick(rec, "tv_show_name", "series_name", "show_name", "series_title", "name", "title");
+        if (movieName) {
+          const key = movieName.toLowerCase();
+          const existing = movies.get(key);
+          if (!existing) movies.set(key, { name: movieName, watchedAt: null, rating });
+          else if (!existing.rating) existing.rating = rating;
+        } else if (showName) {
+          const show = getShow(showName);
+          if (!show.rating) show.rating = rating;
         }
       }
     } else if (fname.includes("followed")) {

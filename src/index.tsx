@@ -77,6 +77,10 @@ app.use("*", async (c, next) => {
   h.set("x-frame-options", "DENY");
   h.set("referrer-policy", "strict-origin-when-cross-origin");
   h.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  const path = new URL(c.req.url).pathname;
+  if (/^\/(home|library|calendar|import|stats|history|settings|forgot|reset|u)(\/|$)/.test(path)) {
+    h.set("x-robots-tag", "noindex");
+  }
   if (c.res.headers.get("content-type")?.includes("text/html")) {
     h.set(
       "content-security-policy",
@@ -394,7 +398,7 @@ app.get("/search", async (c) => {
   }
   c.executionCtx.waitUntil(
     c.env.DB.prepare("INSERT INTO search_queries (q, results) VALUES (?, ?)")
-      .bind(q.slice(0, 200), res.results.length)
+      .bind(q.trim().toLowerCase().slice(0, 200), res.results.length)
       .run()
       .catch(() => {})
   );
@@ -412,7 +416,7 @@ app.get("/search", async (c) => {
   }
   return c.html(
     <Layout user={user} title={`Search: ${q}`}>
-      <SearchPage q={q} results={res.results} libraryIds={libraryIds} type={type} />
+      <SearchPage q={q} results={res.results} libraryIds={libraryIds} type={type} loggedIn={!!user} />
     </Layout>
   );
 });
@@ -673,6 +677,19 @@ app.get("/calendar", async (c) => {
       <CalendarPage items={items} feedUrl={`/feed/${feed.token}.ics`} remindEmail={user.remind_email === 1} />
     </Layout>
   );
+});
+
+app.post("/api/feed/rotate", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const bytes = new Uint8Array(16);
+  crypto.getRandomValues(bytes);
+  const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM feed_tokens WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("INSERT INTO feed_tokens (token, user_id) VALUES (?, ?)").bind(token, user.id),
+  ]);
+  return c.redirect("/calendar");
 });
 
 app.get("/feed/:token", async (c) => {
@@ -1011,6 +1028,43 @@ app.get("/api/export", async (c) => {
   return c.body(JSON.stringify(payload, null, 2), 200, {
     "content-type": "application/json; charset=utf-8",
     "content-disposition": `attachment; filename="watchdeck-export-${new Date().toISOString().slice(0, 10)}.json"`,
+    "cache-control": "no-store",
+  });
+});
+
+app.get("/api/export.csv", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const [tracked, episodes, movies] = await c.env.DB.batch([
+    c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
+    c.env.DB.prepare(
+      `SELECT w.season, w.episode, w.watched_at, t.title FROM episode_watches w
+       LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
+       WHERE w.user_id = ? ORDER BY t.title, w.season, w.episode`
+    ).bind(user.id),
+    c.env.DB.prepare(
+      `SELECT w.watched_at, t.title FROM movie_watches w
+       LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'movie'
+       WHERE w.user_id = ? ORDER BY t.title`
+    ).bind(user.id),
+  ]);
+  const esc = (v: unknown) => {
+    const s = v == null ? "" : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = ["type,title,season,episode,watched_at,rating,status"];
+  for (const t of tracked.results as { media_type: string; title: string; status: string; rating: number | null }[]) {
+    lines.push([t.media_type === "tv" ? "show" : "movie", esc(t.title), "", "", "", t.rating ?? "", t.status].join(","));
+  }
+  for (const e of episodes.results as { season: number; episode: number; watched_at: string; title: string | null }[]) {
+    lines.push(["episode", esc(e.title), e.season, e.episode, e.watched_at, "", ""].join(","));
+  }
+  for (const m of movies.results as { watched_at: string; title: string | null }[]) {
+    lines.push(["movie_watch", esc(m.title), "", "", m.watched_at, "", ""].join(","));
+  }
+  return c.body(lines.join("\n") + "\n", 200, {
+    "content-type": "text/csv; charset=utf-8",
+    "content-disposition": `attachment; filename="watchdeck-export-${new Date().toISOString().slice(0, 10)}.csv"`,
     "cache-control": "no-store",
   });
 });
@@ -1483,7 +1537,9 @@ app.post("/api/import/batch", async (c) => {
 
 // ---------- seo ----------
 app.get("/robots.txt", (c) =>
-  c.text(`User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /calendar\nDisallow: /import\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`)
+  c.text(
+    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /calendar\nDisallow: /import\nDisallow: /stats\nDisallow: /history\nDisallow: /settings\nDisallow: /forgot\nDisallow: /reset\nDisallow: /u/\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`
+  )
 );
 
 app.get("/sitemap.xml", async (c) => {
@@ -1557,6 +1613,26 @@ app.post("/api/indexnow", async (c) => {
     }),
   });
   return c.json({ submitted: paths.length, status: res.status });
+});
+
+app.post("/api/admin/cron", async (c) => {
+  const user = c.get("user");
+  if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
+  const form = await c.req.parseBody();
+  const job = String(form.job ?? "");
+  if (job === "prune") {
+    await pruneAnalytics(c.env);
+    return c.json({ ok: true, job });
+  }
+  if (job === "digest") {
+    await sendAiringDigests(c.env);
+    return c.json({ ok: true, job });
+  }
+  if (job === "indexnow") {
+    await submitSitemapToIndexNow(c.env);
+    return c.json({ ok: true, job });
+  }
+  return c.json({ error: "job must be prune, digest or indexnow" }, 400);
 });
 
 app.get("/api/stats", async (c) => {
@@ -1661,10 +1737,18 @@ async function submitSitemapToIndexNow(env: Env): Promise<void> {
   }
 }
 
+async function pruneAnalytics(env: Env): Promise<void> {
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM analytics_events WHERE ts < datetime('now', '-90 days')"),
+    env.DB.prepare("DELETE FROM search_queries WHERE ts < datetime('now', '-90 days')"),
+  ]);
+}
+
 export default {
   fetch: app.fetch,
   scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(sendAiringDigests(env));
+    ctx.waitUntil(pruneAnalytics(env).catch(() => {}));
     if (new Date().getUTCDay() === 1) ctx.waitUntil(submitSitemapToIndexNow(env).catch(() => {}));
   },
 };
