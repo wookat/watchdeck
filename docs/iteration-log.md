@@ -1350,3 +1350,15 @@
 
 **证据**
 - Version 9ce69b66；线上验证：robots.txt 新 6 行生效；/stats(302)、/forgot(200)、/history、/settings、/u/abc 均返回 x-robots-tag: noindex；/、/browse、剧集详情页无此 header。
+
+---
+
+## Round 97 — 2026-08-06
+
+**驱动：③前端性能（静态资产全部 max-age=0 must-revalidate，每次页面加载都要 304 往返；重复访客体验受损）**
+
+**修复（P2）**
+- 新增 public/_headers（Workers 静态资产原生支持）：styles.css/app.js/import.js → max-age=3600 + stale-while-revalidate=86400（部署后 1 小时内自愈，SWR 不阻塞渲染）；图标/占位图 → 7 天；og-default.png/manifest → 1 天。过期后仍走既有 ETag 协商。
+
+**证据**
+- Version a2d46315；线上验证：5 类资产 cache-control 逐一符合预期；/_headers 本身 404（不对外暴露）。
