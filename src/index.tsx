@@ -39,6 +39,7 @@ import {
   BrowseGenre,
   type UserStats,
   type NextUpItem,
+  type WatchlistPreviewItem,
   type LibraryRow,
   type CalendarItem,
 } from "./views";
@@ -241,6 +242,16 @@ app.get("/home", async (c) => {
   const wl = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND status = 'watchlist'")
     .bind(user.id)
     .first<{ n: number }>();
+  const watchlistPreview =
+    nextUp.length === 0 && (wl?.n ?? 0) > 0
+      ? (
+          await c.env.DB.prepare(
+            "SELECT tmdb_id, media_type, title, poster_path FROM tracked WHERE user_id = ? AND status = 'watchlist' ORDER BY updated_at DESC LIMIT 6"
+          )
+            .bind(user.id)
+            .all<WatchlistPreviewItem>()
+        ).results
+      : [];
   const wParam = (c.req.query("w") ?? "").split(".").map((x) => parseInt(x, 10));
   const justWatched =
     wParam.length === 3 && wParam.every(Number.isFinite)
@@ -248,7 +259,7 @@ app.get("/home", async (c) => {
       : null;
   return c.html(
     <Layout user={user} title="Next up">
-      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0} justWatched={justWatched} />
+      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0 || (wl?.n ?? 0) > 0} justWatched={justWatched} watchlistPreview={watchlistPreview} />
     </Layout>
   );
 });
@@ -309,12 +320,25 @@ app.get("/shows/:idslug", async (c) => {
   try {
     recs = (await recommendations(c.env, "tv", id)).results;
   } catch {}
+  const showCanonical = `${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`;
   return c.html(
     <Layout
       user={user}
       title={show.name}
       description={show.overview?.slice(0, 155)}
-      canonical={`${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`}
+      canonical={showCanonical}
+      ogImage={show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : undefined}
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "TVSeries",
+        name: show.name,
+        url: showCanonical,
+        ...(show.overview ? { description: show.overview } : {}),
+        ...(show.poster_path ? { image: `https://image.tmdb.org/t/p/w500${show.poster_path}` } : {}),
+        ...(show.first_air_date ? { datePublished: show.first_air_date } : {}),
+        ...(show.number_of_seasons ? { numberOfSeasons: show.number_of_seasons } : {}),
+        ...(show.genres?.length ? { genre: show.genres.map((g) => g.name) } : {}),
+      }}
     >
       <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} />
     </Layout>
@@ -343,12 +367,24 @@ app.get("/movies/:idslug", async (c) => {
   try {
     recs = (await recommendations(c.env, "movie", id)).results;
   } catch {}
+  const movieCanonical = `${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`;
   return c.html(
     <Layout
       user={user}
       title={movie.title}
       description={movie.overview?.slice(0, 155)}
-      canonical={`${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`}
+      canonical={movieCanonical}
+      ogImage={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined}
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "Movie",
+        name: movie.title,
+        url: movieCanonical,
+        ...(movie.overview ? { description: movie.overview } : {}),
+        ...(movie.poster_path ? { image: `https://image.tmdb.org/t/p/w500${movie.poster_path}` } : {}),
+        ...(movie.release_date ? { datePublished: movie.release_date } : {}),
+        ...(movie.genres?.length ? { genre: movie.genres.map((g) => g.name) } : {}),
+      }}
     >
       <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} />
     </Layout>
@@ -359,23 +395,29 @@ app.get("/library", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
   const status = c.req.query("status") ?? "all";
+  const q = (c.req.query("q") ?? "").trim();
   const cols =
     "tmdb_id, media_type, title, poster_path, status, rating, (SELECT COUNT(*) FROM episode_watches w WHERE w.user_id = tracked.user_id AND w.tmdb_id = tracked.tmdb_id) AS eps_watched";
-  const rows =
-    status === "all"
-      ? await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 200`)
-          .bind(user.id)
-          .all<LibraryRow>()
-      : await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE user_id = ? AND status = ? ORDER BY updated_at DESC LIMIT 200`)
-          .bind(user.id, status)
-          .all<LibraryRow>();
+  const conds = ["user_id = ?"];
+  const binds: (string | number)[] = [user.id];
+  if (status !== "all") {
+    conds.push("status = ?");
+    binds.push(status);
+  }
+  if (q) {
+    conds.push("title LIKE ? COLLATE NOCASE");
+    binds.push(`%${q}%`);
+  }
+  const rows = await c.env.DB.prepare(`SELECT ${cols} FROM tracked WHERE ${conds.join(" AND ")} ORDER BY updated_at DESC LIMIT 200`)
+    .bind(...binds)
+    .all<LibraryRow>();
   const sort = ["recent", "title", "progress"].includes(c.req.query("sort") ?? "") ? c.req.query("sort")! : "recent";
   const sorted = [...rows.results];
   if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
   else if (sort === "progress") sorted.sort((a, b) => b.eps_watched - a.eps_watched);
   return c.html(
     <Layout user={user} title="Library">
-      <LibraryPage rows={sorted} status={status} sort={sort} />
+      <LibraryPage rows={sorted} status={status} sort={sort} q={q} />
     </Layout>
   );
 });
@@ -493,8 +535,70 @@ app.get("/browse/:type/:genreslug", async (c) => {
   );
 });
 
+function logFunnel(c: { env: Env; executionCtx: { waitUntil(promise: Promise<unknown>): void } }, event: string): void {
+  c.executionCtx.waitUntil(
+    c.env.DB.prepare("INSERT INTO analytics_events (path, referrer, country, ua_class) VALUES (?, NULL, NULL, 'funnel')")
+      .bind(`/funnel/${event}`)
+      .run()
+      .catch(() => {})
+  );
+}
+
+async function maybeAutoComplete(env: Env, userId: number, tmdbId: number, details: { status: string; number_of_episodes: number }): Promise<void> {
+  if (!(details.status === "Ended" || details.status === "Canceled")) return;
+  const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
+    .bind(userId, tmdbId)
+    .first<{ n: number }>();
+  if ((n?.n ?? 0) >= details.number_of_episodes && details.number_of_episodes > 0) {
+    await env.DB.prepare("UPDATE tracked SET status = 'completed' WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv' AND status = 'watching'")
+      .bind(userId, tmdbId)
+      .run();
+  }
+}
+
+function invalidateHours(c: { env: Env; executionCtx: { waitUntil(promise: Promise<unknown>): void } }, userId: number): void {
+  c.executionCtx.waitUntil(c.env.CACHE.delete(`hours:${userId}`).catch(() => {}));
+}
+
+async function hoursWatched(env: Env, userId: number): Promise<number> {
+  const cacheKey = `hours:${userId}`;
+  const cached = await env.CACHE.get(cacheKey);
+  if (cached !== null) return parseInt(cached, 10);
+  const [showEps, movieIds] = await Promise.all([
+    env.DB.prepare("SELECT tmdb_id, COUNT(*) AS n FROM episode_watches WHERE user_id = ? GROUP BY tmdb_id")
+      .bind(userId)
+      .all<{ tmdb_id: number; n: number }>(),
+    env.DB.prepare("SELECT tmdb_id FROM movie_watches WHERE user_id = ?").bind(userId).all<{ tmdb_id: number }>(),
+  ]);
+  let minutes = 0;
+  const showMinutes = await Promise.all(
+    showEps.results.map(async (s) => {
+      try {
+        const d = await tvDetails(env, s.tmdb_id);
+        const runtime = d.last_episode_to_air?.runtime || d.episode_run_time?.[0] || 40;
+        return s.n * runtime;
+      } catch {
+        return s.n * 40;
+      }
+    })
+  );
+  const movieMinutes = await Promise.all(
+    movieIds.results.map(async (m) => {
+      try {
+        return (await movieDetails(env, m.tmdb_id)).runtime || 110;
+      } catch {
+        return 110;
+      }
+    })
+  );
+  minutes = [...showMinutes, ...movieMinutes].reduce((a, b) => a + b, 0);
+  const hours = Math.round(minutes / 60);
+  await env.CACHE.put(cacheKey, String(hours), { expirationTtl: 3600 });
+  return hours;
+}
+
 async function userStats(env: Env, userId: number): Promise<UserStats> {
-  const [eps, movies, tracked, completed, topShows, byMonth] = await Promise.all([
+  const [eps, movies, tracked, completed, topShows, byMonth, hours] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(userId).first<{ n: number }>(),
@@ -508,8 +612,10 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
       `SELECT strftime('%Y-%m', watched_at) AS month, COUNT(*) AS eps FROM episode_watches
        WHERE user_id = ? AND watched_at >= date('now', '-12 months') GROUP BY month ORDER BY month`
     ).bind(userId).all<{ month: string; eps: number }>(),
+    hoursWatched(env, userId),
   ]);
   return {
+    hoursWatched: hours,
     epsWatched: eps?.n ?? 0,
     moviesWatched: movies?.n ?? 0,
     showsTracked: tracked?.n ?? 0,
@@ -565,7 +671,7 @@ app.get("/u/:token", async (c) => {
     <Layout
       user={c.get("user")}
       title={`${profile.name}'s watch stats`}
-      description={`${profile.stats.epsWatched} episodes and ${profile.stats.moviesWatched} movies watched \u2014 tracked free on WatchDeck.`}
+      description={`${profile.stats.hoursWatched} hours of TV & movies \u2014 ${profile.stats.epsWatched} episodes and ${profile.stats.moviesWatched} movies tracked free on WatchDeck.`}
       canonical={`${c.env.SITE_URL}/u/${token}`}
       ogImage={`${c.env.SITE_URL}/u/${token}/og.png`}
     >
@@ -655,6 +761,9 @@ app.post("/api/watch", async (c) => {
     await c.env.DB.prepare("DELETE FROM episode_watches WHERE user_id = ? AND tmdb_id = ? AND season = ? AND episode = ?")
       .bind(user.id, tmdbId, season, episode)
       .run();
+    await c.env.DB.prepare("UPDATE tracked SET status = 'watching' WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv' AND status = 'completed'")
+      .bind(user.id, tmdbId)
+      .run();
   } else {
     await c.env.DB.prepare("INSERT OR IGNORE INTO episode_watches (user_id, tmdb_id, season, episode) VALUES (?, ?, ?, ?)")
       .bind(user.id, tmdbId, season, episode)
@@ -667,7 +776,9 @@ app.post("/api/watch", async (c) => {
     )
       .bind(user.id, tmdbId, details.name, details.poster_path)
       .run();
+    await maybeAutoComplete(c.env, user.id, tmdbId, details);
   }
+  invalidateHours(c, user.id);
   return c.redirect(String(form.redirect ?? "/home"));
 });
 
@@ -690,6 +801,10 @@ app.post("/api/watch-season", async (c) => {
     await c.env.DB.prepare("DELETE FROM episode_watches WHERE user_id = ? AND tmdb_id = ? AND season = ?")
       .bind(user.id, tmdbId, seasonNum)
       .run();
+    await c.env.DB.prepare("UPDATE tracked SET status = 'watching' WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv' AND status = 'completed'")
+      .bind(user.id, tmdbId)
+      .run();
+    invalidateHours(c, user.id);
     return c.redirect(String(form.redirect ?? "/home"));
   }
   const details = await tvDetails(c.env, tmdbId);
@@ -712,6 +827,8 @@ app.post("/api/watch-season", async (c) => {
   )
     .bind(user.id, tmdbId, details.name, details.poster_path)
     .run();
+  await maybeAutoComplete(c.env, user.id, tmdbId, details);
+  invalidateHours(c, user.id);
   return c.redirect(String(form.redirect ?? "/home"));
 });
 
@@ -738,6 +855,7 @@ app.post("/api/watch-movie", async (c) => {
       .bind(user.id, tmdbId, details.title, details.poster_path)
       .run();
   }
+  invalidateHours(c, user.id);
   return c.redirect(String(form.redirect ?? "/home"));
 });
 
@@ -751,13 +869,16 @@ app.post("/api/import/parse", async (c) => {
   try {
     const parsed = isZip ? parseTvTimeZip(bytes) : parseGenericCsv(new TextDecoder().decode(bytes));
     if (parsed.shows.length === 0 && parsed.movies.length === 0) {
+      logFunnel(c, "import-parse-empty");
       return c.json(
         { error: isZip ? "No TV Time data found in this ZIP. Make sure it's the GDPR export." : "No shows or movies found in this CSV \u2014 it needs a title column." },
         422
       );
     }
+    logFunnel(c, "import-parse-ok");
     return c.json(parsed);
   } catch {
+    logFunnel(c, "import-parse-fail");
     return c.json({ error: isZip ? "Could not read that ZIP file." : "Could not read that file. Upload a TV Time ZIP or a CSV export." }, 422);
   }
 });
@@ -834,6 +955,8 @@ app.post("/api/import/batch", async (c) => {
     .bind(user.id, showsImported, episodesImported, moviesImported, unmatchedNames.length)
     .run();
 
+  invalidateHours(c, user.id);
+  logFunnel(c, "import-batch-done");
   return c.json({ showsImported, episodesImported, moviesImported, unmatched: unmatchedNames.length, unmatchedNames });
 });
 
@@ -871,21 +994,24 @@ app.get("/:key{[a-f0-9]{32}\\.txt}", (c) => {
 app.get("/api/stats", async (c) => {
   const user = c.get("user");
   if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
-  const [daily, countries, topPaths, searches, signups, waitlist] = await Promise.all([
+  const [daily, countries, topPaths, searches, signups, waitlist, funnel] = await Promise.all([
     c.env.DB.prepare(
-      "SELECT date(ts) AS day, COUNT(*) AS views FROM analytics_events WHERE ua_class != 'bot' GROUP BY day ORDER BY day DESC LIMIT 30"
+      "SELECT date(ts) AS day, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel') GROUP BY day ORDER BY day DESC LIMIT 30"
     ).all(),
     c.env.DB.prepare(
-      "SELECT country, COUNT(*) AS views FROM analytics_events WHERE ua_class != 'bot' AND ts >= datetime('now', '-30 days') GROUP BY country ORDER BY views DESC LIMIT 15"
+      "SELECT country, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel') AND ts >= datetime('now', '-30 days') GROUP BY country ORDER BY views DESC LIMIT 15"
     ).all(),
     c.env.DB.prepare(
-      "SELECT path, COUNT(*) AS views FROM analytics_events WHERE ua_class != 'bot' AND ts >= datetime('now', '-30 days') GROUP BY path ORDER BY views DESC LIMIT 20"
+      "SELECT path, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel') AND ts >= datetime('now', '-30 days') GROUP BY path ORDER BY views DESC LIMIT 20"
     ).all(),
     c.env.DB.prepare(
       "SELECT q, COUNT(*) AS n, MAX(results) AS results FROM search_queries WHERE ts >= datetime('now', '-30 days') GROUP BY q ORDER BY n DESC LIMIT 20"
     ).all(),
     c.env.DB.prepare("SELECT COUNT(*) AS n FROM users").first<{ n: number }>(),
     c.env.DB.prepare("SELECT COUNT(*) AS n FROM email_signups").first<{ n: number }>(),
+    c.env.DB.prepare(
+      "SELECT path, COUNT(*) AS n FROM analytics_events WHERE ua_class = 'funnel' AND ts >= datetime('now', '-30 days') GROUP BY path ORDER BY n DESC"
+    ).all(),
   ]);
   return c.json({
     daily: daily.results,
@@ -894,6 +1020,7 @@ app.get("/api/stats", async (c) => {
     topSearches: searches.results,
     users: signups?.n ?? 0,
     waitlist: waitlist?.n ?? 0,
+    funnel: funnel.results,
   });
 });
 

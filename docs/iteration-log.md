@@ -44,8 +44,6 @@
 
 ## Round 3 — 2026-08-05
 
-（Round 2 记录见 PR #10 分支；本轮基于 main 独立分支。）
-
 **发现**（来自测试代理对全站的真实线上 UX/视觉走查，无 P0/P1）
 - [UX / P2] 整季按钮在全部看完后仍显示「Mark season watched」，点了无变化（静默 no-op），且无法整季取消。
 - [UX / P2] 日历空态文案把「你追的剧都已完结/无排期」归咎为用户加的剧不够，误导。
@@ -64,3 +62,121 @@
 - 82856 S1 bulk → 按钮变「unmark all」→ undo → 恢复「Mark season 1 watched」。
 - `/home?w=95396.1.2` 显示撤销横幅；日历空态新文案 + Browse 链接在线可见；`2022 · TV` 正常、无悬空分隔符。
 - 走查录屏与报告：test-report-round3-discovery.md（无 P0/P1）。
+
+---
+
+## Round 4 — 2026-08-05
+
+**发现**
+- [竞品调研 / P1] TV Time 的招牌统计是「你花了多少小时看剧」，这是迁移用户情感黏性最强的数字；Trakt 也在 VIP 档提供 watch-time 统计。WatchDeck 统计页只有集数/部数，缺这一情感核心指标。
+
+**修复（已部署，Version 7e12bcc1）**
+- 新增 hours watched 统计：按剧集实际时长（TMDB `last_episode_to_air.runtime`/`episode_run_time`，缺省 40min）与电影 `runtime`（缺省 110min）计算总观看小时数，KV 缓存 1 小时/用户。
+- `/stats` 与公开分享页新增第一张「hours watched」卡片；分享页 OG 卡片与 meta description 同步加入 hours。
+
+**证据（线上验证）**
+- QA 账号看 3 集 Severance → stats 显示「4 hours watched」（3×~55min＋TMDB 实际时长，四舍五入）。
+- OG PNG 重新渲染 200 / 1200×630，首格为 hours watched。
+
+**已知限制（P3，下轮候选）**
+- hours 缓存 1 小时，导入大量数据后统计页最长 1 小时才刷新该卡片。
+
+---
+
+## Round 5 — 2026-08-05
+
+**发现**
+- [测试 / P1] 部署链问题：Round 3/4 分支基于 main（不含未合并的 PR #10），线上部署一度回退了 Round 2 的 Next Up 并行与富管理统计。本轮已将 iteration-2 分支合并进来重新部署，线上恢复全量代码。
+- [QA / P2] Round 4 已知限制：hours watched 缓存 1 小时，标记/导入后统计不即时。
+- [数据分析] 第一方数据周览：人类 PV 326（11 国）、注册 5、waitlist 2、搜索词 3 条——仍以内部 QA 为主，无自然流量，获客是最大瓶颈（社区投放待老板口径）。
+
+**修复（已部署，Version 7a484274）**
+- 合并 iteration-2 分支：恢复 /home 并行 Next Up、富 /api/stats、reset 页导航修复。
+- `invalidateHours()`：/api/watch、/api/watch-season、/api/watch-movie、/api/import/batch 四处变更后台删除 `hours:<userId>` KV 键，统计即时刷新。
+
+**证据（线上验证）**
+- 标记 Severance S01E04 后 stats 立即 4→5 hours（无需等缓存过期）。
+- /home 200 / 0.41s（并行恢复）。
+
+**回归发现（测试代理，P0）**
+- iteration-5 分支漏合 iteration-3（Round 3 四项修复未在线上）。已合并 iteration-3 重新部署并复验。
+
+---
+
+## Round 6 — 2026-08-05
+
+**发现**
+- [前端视觉/无障碍 / P2] 无 skip-to-content 链接、导航搜索框无可访问名称、评分星按钮无 aria-label/aria-pressed、键盘 focus 无统一可见轮廓——键盘与读屏用户体验差（WCAG 2.4.1/4.1.2/2.4.7）。
+- [视觉 / P3] round-3 遗留：placeholder 海报是播放三角，易被误解为可播放视频。
+
+**修复（已部署，Version d4591d19）**
+- Layout 加「Skip to content」链接（聚焦时可见）＋ `<main id="main">`。
+- 导航搜索框 `aria-label`；评分星按钮加 `aria-label`（Rate n stars / Clear rating）与 `aria-pressed`。
+- 全局 `:focus-visible` 紫色 2px 轮廓。
+- placeholder 海报改为场记板图标，消除「可播放」歧义。
+
+**证据（线上验证）**
+- 首页 HTML 含「Skip to content」；styles.css 含 `:focus-visible` 规则；`/placeholder-poster.svg` 已更新为场记板。
+
+---
+
+## Round 7 — 2026-08-05
+
+**发现**
+- [UX 走查 / P2] Library 无标题筛选：TV Time 导入用户常有上百条目，只靠状态页签+排序找单部剧很费劲（Trakt/Serializd 均有列表内搜索）。
+- [数据分析 / P2] 导入是产品核心转化路径，但第一方统计只有页面 PV，无法看「上传→解析成功/失败→入库完成」漏斗，无法定位导入流失。
+
+**修复（已部署，Version eb5c830b）**
+- Library 新增标题筛选框（服务端 `LIKE COLLATE NOCASE`，保留状态/排序参数），无结果时给「Clear filter」空态。
+- 导入漏斗事件：`/funnel/import-parse-ok|import-parse-empty|import-parse-fail|import-batch-done` 记入 analytics_events（ua_class='funnel'，不记用户/IP）；`/api/stats` 新增 funnel 汇总，PV 类查询排除 funnel 事件。
+
+**证据（线上验证）**
+- `/library?q=sever` 只列 Severance；`?q=zzzz` 显示「Nothing in your library matches … Clear filter」。
+- 上传 CSV 后 D1 出现 `('/funnel/import-parse-ok', 1)`。
+
+---
+
+## Round 8 — 2026-08-05
+
+**发现**
+- [竞品/SEO / P2] Trakt、Serializd 的剧集/电影详情页都有 schema.org 结构化数据（TVSeries/Movie JSON-LD），Google 富结果依赖它；我们的 pSEO 页面（数千 TMDB 详情页 + 题材页）没有任何结构化数据。
+- [竞品/分享 / P3] 剧集/电影页分享到社交平台时无 og:image（只有分享统计页有 OG 卡），链接预览是纯文字。
+
+**修复（已部署，Version e6a03126）**
+- Layout 支持 `jsonLd` 注入 `<script type="application/ld+json">`。
+- 剧集页输出 TVSeries JSON-LD（name/url/description/image/datePublished/numberOfSeasons/genre），电影页输出 Movie JSON-LD。
+- 剧集/电影页 og:image 使用 TMDB w500 海报 + twitter:card summary_large_image。
+
+**证据（线上验证）**
+- `/shows/95396-severance` 含 `"@type":"TVSeries"`；`/movies/27205-inception` 含 `"@type":"Movie"` 与 og:image。
+
+---
+
+## Round 9 — 2026-08-05
+
+**发现**
+- [UX 走查 / P2] Next Up 全部追平时只显示一句「You're all caught up」+ 日历链接，是个死胡同：watchlist 里明明有想看的剧/电影，却只有页脚一行小字提示数量（TV Time/Trakt 在此场景直接推荐 watchlist 内容）。
+
+**修复（已部署，Version a07c1eb1）**
+- `/home` 在 Next Up 为空且 watchlist 非空时查询最近 6 条 watchlist 条目，caught-up 空态下方渲染「Start something from your watchlist」海报网格（移动端 3 列 / 桌面 6 列），点击直达详情页。
+
+**证据**
+- 部署后 `/home` 线上 200；该分支逻辑（nextUp 空 && watchlist>0）待下次 5 轮回归中用全新账号覆盖验证。
+
+---
+
+## Round 10 — 2026-08-05
+
+**发现**
+- [竞品/产品逻辑 / P2] TV Time 会在看完最后一集时自动把剧标为 completed；我们看完已完结剧的全部集数后状态仍停留在 watching，Library「Completed」页签与 Stats「shows completed」长期偏低，需要用户手动改状态（我们 UI 甚至没有改状态入口）。
+
+**修复（已部署，Version e1d5fed6）**
+- `maybeAutoComplete`：单集标记或整季标记后，若剧集 TMDB status 为 Ended/Canceled 且已看集数 ≥ number_of_episodes，自动将 tracked.status 从 watching 置为 completed（不覆盖 watchlist/dropped 等手动状态）。
+- 单集 undo 与整季 unmark 时，若状态为 completed 自动回退为 watching；整季 unmark 顺带补上此前遗漏的 invalidateHours。
+
+**证据（线上验证）**
+- QA 账号整季标记 Chernobyl（Ended，5 集）→ tracked.status='completed'（eps=5）；整季 unmark → status='watching'、集数归零。测试数据已清理。
+
+**回归发现（测试代理，Rounds 6-10 全项通过后追加修复）**
+- P2：`hasAnything` 只统计 watching 状态的 TV，movie-only watchlist 用户看到的是 onboarding 空态而非 watchlist 网格。已改为 `tracked(watching TV) > 0 || watchlist > 0`，重新部署。
+- P3（记录待议）：场记板占位图在海报尺寸下略像日历图标。

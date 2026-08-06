@@ -2,13 +2,14 @@ import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
 import { poster, slugify, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails } from "./tmdb";
 
-export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string }>> = ({
+export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; jsonLd?: object }>> = ({
   children,
   user,
   title,
   description,
   canonical,
   ogImage,
+  jsonLd,
 }) => (
   <html lang="en" class="dark">
     <head>
@@ -25,10 +26,17 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       {canonical && <meta property="og:url" content={canonical} />}
       {ogImage && <meta property="og:image" content={ogImage} />}
       {ogImage && <meta name="twitter:card" content="summary_large_image" />}
+      {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <link rel="stylesheet" href="/styles.css" />
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     </head>
     <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
+      <a
+        href="#main"
+        class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-violet-600 focus:px-4 focus:py-2 focus:text-white"
+      >
+        Skip to content
+      </a>
       <nav class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
         <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-3">
           <a href={user ? "/home" : "/"} class="flex items-center gap-2 text-lg font-bold tracking-tight">
@@ -40,6 +48,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
               type="search"
               name="q"
               placeholder="Search shows & movies…"
+              aria-label="Search shows and movies"
               class="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
             />
           </form>
@@ -68,7 +77,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
           </div>
         </div>
       </nav>
-      <main class="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <main id="main" class="mx-auto max-w-6xl px-4 py-6">{children}</main>
       <footer class="mt-16 border-t border-slate-800 py-8 text-sm text-slate-400">
         <div class="mx-auto max-w-6xl space-y-3 px-4">
           <p>
@@ -263,7 +272,20 @@ export interface NextUpItem {
   airDate: string | null;
 }
 
-export const HomePage: FC<{ nextUp: NextUpItem[]; watchlistCount: number; hasAnything: boolean; justWatched?: { tmdbId: number; season: number; episode: number } | null }> = ({ nextUp, watchlistCount, hasAnything, justWatched }) => (
+export interface WatchlistPreviewItem {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string;
+  poster_path: string | null;
+}
+
+export const HomePage: FC<{
+  nextUp: NextUpItem[];
+  watchlistCount: number;
+  hasAnything: boolean;
+  justWatched?: { tmdbId: number; season: number; episode: number } | null;
+  watchlistPreview?: WatchlistPreviewItem[];
+}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview }) => (
   <div>
     <h1 class="mb-6 text-2xl font-bold">Next up</h1>
     {justWatched && (
@@ -284,7 +306,27 @@ export const HomePage: FC<{ nextUp: NextUpItem[]; watchlistCount: number; hasAny
     {nextUp.length === 0 ? (
       <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-10 text-center">
         {hasAnything ? (
-          <p class="text-slate-400">You're all caught up! 🎉 Check the <a href="/calendar" class="text-violet-400 hover:underline">calendar</a> for what's coming.</p>
+          <>
+            <p class="text-slate-400">You're all caught up! 🎉 Check the <a href="/calendar" class="text-violet-400 hover:underline">calendar</a> for what's coming.</p>
+            {(watchlistPreview?.length ?? 0) > 0 && (
+              <div class="mt-8 text-left">
+                <p class="mb-3 font-semibold">Start something from your watchlist</p>
+                <div class="grid grid-cols-3 gap-4 sm:grid-cols-6">
+                  {watchlistPreview!.map((w) => (
+                    <a href={`/${w.media_type === "tv" ? "shows" : "movies"}/${w.tmdb_id}-${slugify(w.title)}`} class="group">
+                      <img
+                        src={poster(w.poster_path)}
+                        alt={w.title}
+                        loading="lazy"
+                        class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
+                      />
+                      <p class="mt-2 line-clamp-1 text-sm group-hover:text-violet-400">{w.title}</p>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <>
             <p class="text-lg font-semibold">Let's get your shows in here</p>
@@ -408,6 +450,8 @@ export const RatingStars: FC<{ tmdbId: number; mediaType: "tv" | "movie"; title:
         <button
           class={(rating ?? 0) >= n ? "text-xl text-amber-400 transition-colors hover:scale-110" : "text-xl text-slate-600 transition-colors hover:text-amber-300"}
           title={rating === n ? "Clear rating" : `Rate ${n} star${n === 1 ? "" : "s"}`}
+          aria-label={rating === n ? "Clear rating" : `Rate ${n} star${n === 1 ? "" : "s"}`}
+          aria-pressed={(rating ?? 0) >= n ? "true" : "false"}
         >
           ★
         </button>
@@ -631,9 +675,21 @@ export interface LibraryRow {
   rating: number | null;
 }
 
-export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string }> = ({ rows, status, sort }) => (
+export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string; q?: string }> = ({ rows, status, sort, q }) => (
   <div>
     <h1 class="mb-4 text-2xl font-bold">Library</h1>
+    <form action="/library" method="get" class="mb-3 max-w-xs">
+      {status !== "all" && <input type="hidden" name="status" value={status} />}
+      <input type="hidden" name="sort" value={sort} />
+      <input
+        type="search"
+        name="q"
+        value={q ?? ""}
+        placeholder="Filter your library…"
+        aria-label="Filter your library by title"
+        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+      />
+    </form>
     <div class="mb-3 flex flex-wrap gap-2">
       {["all", "watching", "watchlist", "completed", "dropped"].map((s) => (
         <a
@@ -666,10 +722,16 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string 
       ))}
     </div>
     {rows.length === 0 ? (
+      q ? (
+        <p class="text-slate-400">
+          Nothing in your library matches “{q}”. <a href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}`} class="text-violet-400 hover:underline">Clear filter</a>
+        </p>
+      ) : (
       <p class="text-slate-400">
         Nothing here yet. <a href="/import" class="text-violet-400 hover:underline">Import from TV Time</a> or{" "}
         <a href="/search" class="text-violet-400 hover:underline">search</a>.
       </p>
+      )
     ) : (
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {rows.map((r) => (
@@ -810,6 +872,7 @@ export const BrowseGenre: FC<{
 };
 
 export interface UserStats {
+  hoursWatched: number;
   epsWatched: number;
   moviesWatched: number;
   showsTracked: number;
@@ -822,8 +885,9 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
   const maxMonth = Math.max(1, ...stats.byMonth.map((m) => m.eps));
   return (
     <div>
-      <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {[
+          [stats.hoursWatched.toLocaleString("en-US"), "hours watched"],
           [String(stats.epsWatched), "episodes watched"],
           [String(stats.moviesWatched), "movies watched"],
           [String(stats.showsTracked), "shows tracked"],

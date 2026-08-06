@@ -55,6 +55,8 @@ export interface TvDetails {
   number_of_episodes: number;
   seasons: { season_number: number; episode_count: number; name: string; poster_path: string | null; air_date: string | null }[];
   next_episode_to_air: { season_number: number; episode_number: number; air_date: string; name: string } | null;
+  episode_run_time: number[];
+  last_episode_to_air: { runtime: number | null } | null;
 }
 
 export function tvDetails(env: Env, id: number) {
