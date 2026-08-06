@@ -560,7 +560,7 @@ app.get("/browse/network/:idslug", async (c) => {
   const id = parseInt(c.req.param("idslug"), 10);
   const network = NETWORKS.find((n) => n.id === id);
   if (!network) return c.notFound();
-  const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
   const res = await discoverByNetwork(c.env, network.id, page);
   const base = `${c.env.SITE_URL}/browse/network/${network.id}-${slugify(network.name)}`;
   const last = Math.min(res.total_pages, 20);
@@ -583,7 +583,7 @@ app.get("/browse/year/:type/:year", async (c) => {
   const year = parseInt(c.req.param("year"), 10);
   const current = new Date().getUTCFullYear();
   if (!type || !Number.isFinite(year) || year < 1950 || year > current + 1) return c.notFound();
-  const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
   const res = await discoverByYear(c.env, type, year, page);
   const base = `${c.env.SITE_URL}/browse/year/${type}/${year}`;
   const last = Math.min(res.total_pages, 20);
@@ -608,7 +608,7 @@ app.get("/browse/:type/:genreslug", async (c) => {
   const genres = await genreList(c.env, type);
   const genre = genres.genres.find((g) => g.id === genreId);
   if (!genre) return c.notFound();
-  const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
   const res = await discoverByGenre(c.env, type, genreId, page);
   const base = `${c.env.SITE_URL}/browse/${type}/${genre.id}-${slugify(genre.name)}`;
   const last = Math.min(res.total_pages, 20);

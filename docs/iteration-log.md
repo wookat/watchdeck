@@ -442,3 +442,17 @@
 
 **证据（线上验证）**
 - 匿名 GET /api/export → 302 /login；r10 账号导出 JSON 含 Breaking Bad tracked + 22 集观看记录，文件名 watchdeck-export-YYYY-MM-DD.json；/settings 显示导出区块。
+
+---
+
+## Round 30 — 2026-08-06
+
+**发现（QA 回归驱动，测试代理完整回归 26-29 轮）**
+- [P2，已修复] 三类分页聚合页（年份/题材/网络）只有下界钳制，?page=99 会渲染「Page 99 of 20」；TMDB 请求虽被钳制但 UI 页码失真且产生无限分页 URL 面。
+- 其余 26-29 轮全部通过：落地页双 Trending 网格、年份页/站点地图 30 URL、rel prev/next、数据导出（导出前后 D1 计数一致，只读验证）、QA 基线（8/4/0）与核心冒烟全过。
+
+**修复（已部署，Version 6bad3c18）**
+- 三个 browse 路由页码统一 Math.min(20, Math.max(1, …)) 上下界钳制，线上复验 ?page=99 全部显示 Page 20 of 20。
+
+**证据（线上验证）**
+- 测试代理报告 /home/ubuntu/test-report-rounds26-29-regression.md + 录屏；修复后 curl 复验三条 ?page=99 URL 均 Page 20 of 20。
