@@ -39,6 +39,7 @@ import {
   BrowseGenre,
   type UserStats,
   type NextUpItem,
+  type WatchlistPreviewItem,
   type LibraryRow,
   type CalendarItem,
 } from "./views";
@@ -241,6 +242,16 @@ app.get("/home", async (c) => {
   const wl = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND status = 'watchlist'")
     .bind(user.id)
     .first<{ n: number }>();
+  const watchlistPreview =
+    nextUp.length === 0 && (wl?.n ?? 0) > 0
+      ? (
+          await c.env.DB.prepare(
+            "SELECT tmdb_id, media_type, title, poster_path FROM tracked WHERE user_id = ? AND status = 'watchlist' ORDER BY updated_at DESC LIMIT 6"
+          )
+            .bind(user.id)
+            .all<WatchlistPreviewItem>()
+        ).results
+      : [];
   const wParam = (c.req.query("w") ?? "").split(".").map((x) => parseInt(x, 10));
   const justWatched =
     wParam.length === 3 && wParam.every(Number.isFinite)
@@ -248,7 +259,7 @@ app.get("/home", async (c) => {
       : null;
   return c.html(
     <Layout user={user} title="Next up">
-      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0} justWatched={justWatched} />
+      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0} justWatched={justWatched} watchlistPreview={watchlistPreview} />
     </Layout>
   );
 });

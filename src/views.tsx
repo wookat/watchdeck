@@ -272,7 +272,20 @@ export interface NextUpItem {
   airDate: string | null;
 }
 
-export const HomePage: FC<{ nextUp: NextUpItem[]; watchlistCount: number; hasAnything: boolean; justWatched?: { tmdbId: number; season: number; episode: number } | null }> = ({ nextUp, watchlistCount, hasAnything, justWatched }) => (
+export interface WatchlistPreviewItem {
+  tmdb_id: number;
+  media_type: "tv" | "movie";
+  title: string;
+  poster_path: string | null;
+}
+
+export const HomePage: FC<{
+  nextUp: NextUpItem[];
+  watchlistCount: number;
+  hasAnything: boolean;
+  justWatched?: { tmdbId: number; season: number; episode: number } | null;
+  watchlistPreview?: WatchlistPreviewItem[];
+}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview }) => (
   <div>
     <h1 class="mb-6 text-2xl font-bold">Next up</h1>
     {justWatched && (
@@ -293,7 +306,27 @@ export const HomePage: FC<{ nextUp: NextUpItem[]; watchlistCount: number; hasAny
     {nextUp.length === 0 ? (
       <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-10 text-center">
         {hasAnything ? (
-          <p class="text-slate-400">You're all caught up! 🎉 Check the <a href="/calendar" class="text-violet-400 hover:underline">calendar</a> for what's coming.</p>
+          <>
+            <p class="text-slate-400">You're all caught up! 🎉 Check the <a href="/calendar" class="text-violet-400 hover:underline">calendar</a> for what's coming.</p>
+            {(watchlistPreview?.length ?? 0) > 0 && (
+              <div class="mt-8 text-left">
+                <p class="mb-3 font-semibold">Start something from your watchlist</p>
+                <div class="grid grid-cols-3 gap-4 sm:grid-cols-6">
+                  {watchlistPreview!.map((w) => (
+                    <a href={`/${w.media_type === "tv" ? "shows" : "movies"}/${w.tmdb_id}-${slugify(w.title)}`} class="group">
+                      <img
+                        src={poster(w.poster_path)}
+                        alt={w.title}
+                        loading="lazy"
+                        class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
+                      />
+                      <p class="mt-2 line-clamp-1 text-sm group-hover:text-violet-400">{w.title}</p>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <>
             <p class="text-lg font-semibold">Let's get your shows in here</p>
