@@ -394,7 +394,7 @@ app.get("/search", async (c) => {
   }
   c.executionCtx.waitUntil(
     c.env.DB.prepare("INSERT INTO search_queries (q, results) VALUES (?, ?)")
-      .bind(q.slice(0, 200), res.results.length)
+      .bind(q.trim().toLowerCase().slice(0, 200), res.results.length)
       .run()
       .catch(() => {})
   );
@@ -1698,10 +1698,18 @@ async function submitSitemapToIndexNow(env: Env): Promise<void> {
   }
 }
 
+async function pruneAnalytics(env: Env): Promise<void> {
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM analytics_events WHERE ts < datetime('now', '-90 days')"),
+    env.DB.prepare("DELETE FROM search_queries WHERE ts < datetime('now', '-90 days')"),
+  ]);
+}
+
 export default {
   fetch: app.fetch,
   scheduled(_event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(sendAiringDigests(env));
+    ctx.waitUntil(pruneAnalytics(env).catch(() => {}));
     if (new Date().getUTCDay() === 1) ctx.waitUntil(submitSitemapToIndexNow(env).catch(() => {}));
   },
 };

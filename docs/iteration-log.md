@@ -1297,3 +1297,16 @@
 
 **证据**
 - Version 438328db；线上验证（r10 只读解析，未写库）：合成 TV Time ZIP（tracking + user-rating CSV）→ The Wire rating:5（9/10 折半）+ 2 集流水、Heat rating:4，source:"tvtime"。
+
+---
+
+## Round 93 — 2026-08-06
+
+**驱动：③视觉（375px 移动端走查：落地页/browse/详情页/404/落地页底部均正常，粘性导航半透明模糊为设计预期，无缺陷）+ ⑤数据（搜索词表存在大小写重复计数「Inception/inception」）+ 合规（隐私页未声明分析数据保留期）**
+
+**修复（P2/P3）**
+- 搜索词统计入库前 trim+小写归一（消除大小写重复计数）。
+- 每日 Cron 自动清理 90 天前的 analytics_events 与 search_queries（数据最小化），隐私页同步声明「分析数据 90 天后自动删除」。
+
+**证据**
+- Version 0f65c823；线上验证：搜索「TeSt CaSe R93」入库为「test case r93」；/privacy 已含 90 天保留声明；移动端截图走查无缺陷。

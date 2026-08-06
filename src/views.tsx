@@ -1463,7 +1463,8 @@ export const PrivacyPage: FC = () => (
     <p>
       We use first-party, cookie-free analytics: we count page views with the country provided by our CDN and a coarse
       browser class. We do not store IP addresses, do not fingerprint devices, do not use tracking cookies, and do not
-      share or sell data to anyone. The only cookie we set is the session cookie that keeps you logged in.
+      share or sell data to anyone. The only cookie we set is the session cookie that keeps you logged in. Page-view
+      and search analytics are automatically deleted after 90 days.
     </p>
     <h2 class="text-lg font-semibold text-white">Emails</h2>
     <p>
