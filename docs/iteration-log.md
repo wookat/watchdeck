@@ -1285,3 +1285,15 @@
 
 **证据**
 - Version 881ad0bd；线上验证（r10 登录后登出）：CSV 首行表头正确，show/movie/episode 行齐全（Breaking Bad S01E01/E02 等）。
+
+---
+
+## Round 92 — 2026-08-06
+
+**驱动：①测试（R82 只覆盖通用 CSV，TV Time ZIP 的评分被丢弃）+ ④竞品（TV Time 难民迁移时评分是核心资产）**
+
+**修复（P2）**
+- TV Time ZIP 导入解析评分：tracking 记录的 rating/user_rating/score 列 + 独立 *rating* CSV（tv_show_name/movie_name + rating），1-10 折半归一到 1-5，剧取首个有效评分；电影补齐 watchedAt 合并逻辑。写库仍走既有 COALESCE 不覆盖路径。
+
+**证据**
+- Version 438328db；线上验证（r10 只读解析，未写库）：合成 TV Time ZIP（tracking + user-rating CSV）→ The Wire rating:5（9/10 折半）+ 2 集流水、Heat rating:4，source:"tvtime"。
