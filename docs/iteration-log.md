@@ -778,3 +778,20 @@
 
 **证据（线上验证）**
 - r10 暂时 watchlist 一部在播剧后 /home 出现「Airing this week + 该剧 + Full calendar」；无 7 天内内容时该段隐藏；测试后 untrack，r10 复核 3 tracked 净零。
+
+---
+
+## Round 55 — 2026-08-06（QA 回归轮）
+
+**发现（测试驱动，测试代理完整回归 51-54 轮 + 冒烟）**
+- 无 P0/P1/P2。未测项：R51 每日邮件摘要（Cron 无法即时触发，日历+iCal 路径已验证）；R53 电影行 Remove 按钮存在但未点击（Inception 属 r10 受保护基线数据），TV 行删除已完整验证。
+
+**结果（生产 Version bcd8ad9d）**
+- R51 电影上映进日历/iCal：Doomsday watchlist 后「🎬 Movie release · Wed, Dec 16」+ iCal UID wd-m-1003596 通过；
+- R52 aggregateRating JSON-LD：BB 8.9/18297、Inception 8.4/39752，BreadcrumbList 完好；
+- R53 历史 Remove：标记→Today 出现→Remove→消失，episode_watches 复核 41；
+- R54 Airing this week：无 7 天内内容时隐藏（前置验证）；track 在播剧后出现且正确排除 12-16 的电影；
+- 冒烟（搜索角标/Library 计数 3-2-0-1-0/stats/history 日分组）通过；QA 基线 8/4/0 前后一致；r10 净零还原。
+
+**证据**
+- 测试代理报告 test-report-round55-regression.md + 录屏；PR 评论附截图。
