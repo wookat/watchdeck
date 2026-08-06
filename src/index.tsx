@@ -1194,6 +1194,30 @@ app.get("/:key{[a-f0-9]{32}\\.txt}", (c) => {
   return c.notFound();
 });
 
+app.post("/api/indexnow", async (c) => {
+  const user = c.get("user");
+  if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
+  if (!c.env.INDEXNOW_KEY) return c.json({ error: "no key configured" }, 400);
+  const form = await c.req.parseBody();
+  const paths = String(form.paths ?? "")
+    .split(/\s+/)
+    .map((p) => p.trim())
+    .filter((p) => p.startsWith("/"));
+  if (paths.length === 0 || paths.length > 100) return c.json({ error: "provide 1-100 paths" }, 400);
+  const host = new URL(c.env.SITE_URL).host;
+  const res = await fetch("https://api.indexnow.org/indexnow", {
+    method: "POST",
+    headers: { "content-type": "application/json; charset=utf-8" },
+    body: JSON.stringify({
+      host,
+      key: c.env.INDEXNOW_KEY,
+      keyLocation: `${c.env.SITE_URL}/${c.env.INDEXNOW_KEY}.txt`,
+      urlList: paths.map((p) => `${c.env.SITE_URL}${p}`),
+    }),
+  });
+  return c.json({ submitted: paths.length, status: res.status });
+});
+
 app.get("/api/stats", async (c) => {
   const user = c.get("user");
   if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);

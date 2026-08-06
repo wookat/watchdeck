@@ -318,3 +318,16 @@
 
 **证据（线上验证）**
 - curl 线上 styles.css grep right-1\.5 = 1；测试代理报告 /home/ubuntu/test-report-rounds16-19-regression.md + 录屏。
+
+---
+
+## Round 24 — 2026-08-06
+
+**发现**
+- [SEO/数据 / P2] 近几轮新增了 14 个可索引 URL（12 个 network 聚合页 + /privacy + /terms），但 IndexNow 只在最初上线时提交过一次，且提交脚本依赖只有 Worker 能读的 INDEXNOW_KEY，无法复用。
+
+**修复（已部署，Version ec780f63）**
+- 新增管理端点 POST /api/indexnow（仅 ADMIN_EMAIL，可提交 1-100 个以 / 开头的路径），Worker 内部用 INDEXNOW_KEY 调 api.indexnow.org 批量提交；管理员登录后一次表单提交即可通知搜索引擎新页面。
+
+**证据（线上验证）**
+- 未登录 POST → 403 {"error":"forbidden"}；非管理员账号 POST → 403（部署传播完成后连续 4 次一致）。实际提交待管理员（老板邮箱）登录后触发。
