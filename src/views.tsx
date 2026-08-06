@@ -347,6 +347,7 @@ export interface NextUpItem {
   episode: number;
   episodeName: string | null;
   airDate: string | null;
+  episodesLeft: number;
 }
 
 export interface WatchlistPreviewItem {
@@ -428,7 +429,10 @@ export const HomePage: FC<{
                 S{String(n.season).padStart(2, "0")}E{String(n.episode).padStart(2, "0")}
                 {n.episodeName ? ` · ${n.episodeName}` : ""}
               </p>
-              {n.airDate && <p class="text-xs text-slate-400">aired {n.airDate}</p>}
+              <p class="text-xs text-slate-400">
+                {n.airDate ? `aired ${n.airDate}` : ""}
+                {n.episodesLeft > 1 ? `${n.airDate ? " · " : ""}${n.episodesLeft} eps left` : ""}
+              </p>
               <form action="/api/watch" method="post" class="mt-2">
                 <input type="hidden" name="tmdb_id" value={String(n.tmdbId)} />
                 <input type="hidden" name="season" value={String(n.season)} />

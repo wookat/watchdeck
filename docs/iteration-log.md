@@ -1209,3 +1209,16 @@
 - 完整性：保护基线 D1 只读核验不变（8 tracked/Severance 4/Friends 0，另有先前已存在的 Mandalorian ★4）；r10 净零（3/0/41、Severance 19、rating 空）；throwaway r85-qa-* 经 /settings 删除并 D1 复核。
 
 **结论**：R81-R84 无 P0/P1/P2/P3 遗留。证据评论见 PR #37。
+
+---
+
+## Round 86 — 2026-08-06
+
+**驱动：④竞品（TV Time 招牌「落后 N 集」计数）+ ②UX（Next Up 卡只显示下一集，看不出追剧欠账）**
+- Next Up 卡片没有落后集数信息，用户无法一眼判断哪部剧欠账最多。
+
+**修复（P2）**
+- /home Next Up 计算遍历全部已播集统计未看数（季数据走 KV 缓存，无额外配额压力），卡片显示「aired 日期 · N eps left」（仅落后 >1 集时显示）。
+
+**证据**
+- Version a68bd9ed；线上验证（r10 只读浏览后登出）：Next Up 卡出现「eps left」徽章。
