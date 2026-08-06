@@ -604,3 +604,16 @@
 
 **证据（线上验证）**
 - r10 /history 呈现「Today」「Thu, Jan 2, 2025」「Wed, Jan 1, 2025」三个日期小节。
+
+---
+
+## Round 42 — 2026-08-06
+
+**发现（安全/合规驱动）**
+- [P1] 全站无任何安全响应头：缺 HSTS、CSP、X-Frame-Options、X-Content-Type-Options、Referrer-Policy、Permissions-Policy（点击劫持/嗅探/降级风险）。
+
+**修复（已部署，Version 7c6db593）**
+- 新增全局响应头中间件：HSTS 1 年 includeSubDomains、nosniff、DENY、strict-origin-when-cross-origin、最小化 Permissions-Policy；HTML 响应附 CSP（default-src 'self'，img-src 允许 image.tmdb.org，style/script 暂含 'unsafe-inline'——现存内联事件处理器所需，移除内联处理器后收紧列为后续项）。
+
+**证据（线上验证）**
+- curl -I 首页六个安全头全部返回；/browse、/search 页面正常渲染（TMDB 海报在 img-src 白名单内）。

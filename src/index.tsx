@@ -63,6 +63,22 @@ app.use("*", (c, next) =>
   csrf({ origin: (origin) => origin === new URL(c.env.SITE_URL).origin || origin === new URL(c.req.url).origin })(c, next)
 );
 
+app.use("*", async (c, next) => {
+  await next();
+  const h = c.res.headers;
+  h.set("strict-transport-security", "max-age=31536000; includeSubDomains");
+  h.set("x-content-type-options", "nosniff");
+  h.set("x-frame-options", "DENY");
+  h.set("referrer-policy", "strict-origin-when-cross-origin");
+  h.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  if (c.res.headers.get("content-type")?.includes("text/html")) {
+    h.set(
+      "content-security-policy",
+      "default-src 'self'; img-src 'self' https://image.tmdb.org data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    );
+  }
+});
+
 async function rateLimit(c: { env: { CACHE: KVNamespace }; req: { header: (n: string) => string | undefined } }, bucket: string, limit: number): Promise<boolean> {
   const ip = c.req.header("cf-connecting-ip") ?? "unknown";
   const key = `rl:${bucket}:${ip}`;
