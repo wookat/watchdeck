@@ -381,33 +381,24 @@ app.get("/shows/:idslug", async (c) => {
     return c.notFound();
   }
   const seasonNum = parseInt(c.req.query("season") ?? "1", 10) || 1;
-  let season = null;
-  try {
-    season = await seasonDetails(c.env, id, seasonNum);
-  } catch {}
-  let watched = new Set<string>();
-  let tracked: { status: string; rating: number | null; notes: string | null } | null = null;
-  if (user) {
-    const rows = await c.env.DB.prepare("SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
-      .bind(user.id, id)
-      .all<{ season: number; episode: number }>();
-    watched = new Set(rows.results.map((r) => `${r.season}x${r.episode}`));
-    tracked = await c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
-      .bind(user.id, id)
-      .first<{ status: string; rating: number | null; notes: string | null }>();
-  }
-  let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
-  try {
-    recs = (await recommendations(c.env, "tv", id)).results;
-  } catch {}
-  let providers = null;
-  try {
-    providers = await watchProviders(c.env, "tv", id);
-  } catch {}
-  let cast: CastMember[] = [];
-  try {
-    cast = await topCast(c.env, "tv", id);
-  } catch {}
+  const [season, watchedRows, tracked, recsRes, providers, cast] = await Promise.all([
+    seasonDetails(c.env, id, seasonNum).catch(() => null),
+    user
+      ? c.env.DB.prepare("SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
+          .bind(user.id, id)
+          .all<{ season: number; episode: number }>()
+      : Promise.resolve(null),
+    user
+      ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
+          .bind(user.id, id)
+          .first<{ status: string; rating: number | null; notes: string | null }>()
+      : Promise.resolve(null),
+    recommendations(c.env, "tv", id).catch(() => ({ results: [] as SearchResult[] })),
+    watchProviders(c.env, "tv", id).catch(() => null),
+    topCast(c.env, "tv", id).catch(() => [] as CastMember[]),
+  ]);
+  const watched = new Set((watchedRows?.results ?? []).map((r) => `${r.season}x${r.episode}`));
+  const recs = recsRes.results;
   const showCanonical = `${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`;
   return c.html(
     <Layout
@@ -455,26 +446,19 @@ app.get("/movies/:idslug", async (c) => {
   } catch {
     return c.notFound();
   }
-  let watched = false;
-  let tracked: { status: string; rating: number | null; notes: string | null } | null = null;
-  if (user) {
-    watched = !!(await c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first());
-    tracked = await c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
-      .bind(user.id, id)
-      .first<{ status: string; rating: number | null; notes: string | null }>();
-  }
-  let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
-  try {
-    recs = (await recommendations(c.env, "movie", id)).results;
-  } catch {}
-  let providers = null;
-  try {
-    providers = await watchProviders(c.env, "movie", id);
-  } catch {}
-  let cast: CastMember[] = [];
-  try {
-    cast = await topCast(c.env, "movie", id);
-  } catch {}
+  const [watchedRow, tracked, recsRes, providers, cast] = await Promise.all([
+    user ? c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first() : Promise.resolve(null),
+    user
+      ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
+          .bind(user.id, id)
+          .first<{ status: string; rating: number | null; notes: string | null }>()
+      : Promise.resolve(null),
+    recommendations(c.env, "movie", id).catch(() => ({ results: [] as SearchResult[] })),
+    watchProviders(c.env, "movie", id).catch(() => null),
+    topCast(c.env, "movie", id).catch(() => [] as CastMember[]),
+  ]);
+  const watched = !!watchedRow;
+  const recs = recsRes.results;
   const movieCanonical = `${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`;
   return c.html(
     <Layout

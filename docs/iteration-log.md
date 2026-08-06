@@ -685,3 +685,16 @@
 
 **证据（线上验证）**
 - /shows/95396-severance 显示 Top cast（Adam Scott、Britt Lower…）；/movies/27205-inception 显示 Leonardo DiCaprio 等。
+
+---
+
+## Round 48 — 2026-08-06
+
+**发现（性能/UX 驱动）**
+- [P1] 详情页 5-6 个数据源串行 await（season/recs/providers/cast/两条 D1），冷 TTFB 实测 ~2.0s。
+
+**修复（已部署，Version 1b3c3e07）**
+- shows/movies 路由改为 tvDetails/movieDetails 先行（404 判定），其余 season+recs+providers+cast+D1 查询 Promise.all 并行，逐项 .catch 降级。
+
+**证据（线上验证）**
+- 冷 TTFB 2.05s → 1.2-1.3s，暖缓存 0.09-0.18s；Top cast / More like this 区块正常渲染。
