@@ -1258,3 +1258,18 @@
 
 **证据**
 - Version 0448d376；线上验证（r10 只读浏览后登出）：/library?sort=rating 渲染 Top rated 选中态，零评分账号回落按更新时间排序。
+
+---
+
+## Round 90 — 2026-08-06（回归轮）
+
+**驱动：①测试（QA 回归 R86-R89）**
+
+**回归结果（生产 Version 0448d376，分支 tip 610f513）**
+- R86 落后集数徽章：r10 的 Breaking Bad 卡显示「aired 2010-04-04 · 40 eps left」= 62 已播 − 22 已看（对抗性核算精确匹配）；仅差 1 集的 Chernobyl（4/5）正确不显示徽章。
+- R87 性能：/home 双账号正常快速渲染（并行化按设计无行为差异；登录态精确 TTFB 未仪表化，属可选项）。
+- R88 预告片：Inception「▶ Trailer」新标签打开 watch?v=JE9z-gy4De4（rel=noopener 线上 HTML 复核）；Severance 链接存在；Breaking Bad 正确无链接。
+- R89 Top rated 排序：★5 → ★4 → 未评分最后（未评分项恰为最近更新，可区分于 recency 序）；与 Completed 筛选组合正常；r10 零评分回落 recency 无错误。
+- 冒烟全过；基线（8/Sev 4/Friends 0/Mandalorian ★4）D1 只读核验不变；r10 净零；throwaway r90-qa-* 已删除并 D1 复核。
+
+**结论**：R86-R89 无 P0/P1/P2/P3 遗留。证据评论见 PR #37。
