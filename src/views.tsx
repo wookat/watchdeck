@@ -926,6 +926,17 @@ export interface CalendarItem {
   airDate: string;
 }
 
+const airDateLabel = (iso: string): { label: string; today: boolean } => {
+  const todayIso = new Date().toISOString().slice(0, 10);
+  if (iso === todayIso) return { label: "Today", today: true };
+  const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  if (iso === tomorrow) return { label: "Tomorrow", today: false };
+  return {
+    label: new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }),
+    today: false,
+  };
+};
+
 export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEmail: boolean }> = ({ items, feedUrl, remindEmail }) => (
   <div>
     <div class="mb-6 flex flex-wrap items-center gap-3">
@@ -952,9 +963,11 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
       </p>
     ) : (
       <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
-        {items.map((it) => (
-          <li class="flex items-center gap-4 bg-slate-900/40 px-4 py-3">
-            <span class="w-24 shrink-0 text-sm text-violet-300">{it.airDate}</span>
+        {items.map((it) => {
+          const d = airDateLabel(it.airDate);
+          return (
+          <li class={d.today ? "flex items-center gap-4 bg-violet-950/40 px-4 py-3" : "flex items-center gap-4 bg-slate-900/40 px-4 py-3"}>
+            <span class={d.today ? "w-24 shrink-0 text-sm font-semibold text-violet-300" : "w-24 shrink-0 text-sm text-violet-300"} title={it.airDate}>{d.label}</span>
             <img src={poster(it.posterPath, "w92")} alt="" class="h-14 w-auto rounded border border-slate-800" />
             <div class="min-w-0">
               <a href={`/shows/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
@@ -965,7 +978,8 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
               </p>
             </div>
           </li>
-        ))}
+          );
+        })}
       </ul>
     )}
   </div>

@@ -549,3 +549,16 @@
 
 **证据（线上验证）**
 - sitemap.xml <loc> 总数 182，其中详情页 URL 98 条（此前约 40）。
+
+---
+
+## Round 38 — 2026-08-06
+
+**发现（UX/视觉驱动）**
+- [P2] 日历页播出日期显示原始 ISO 字符串（2026-09-27），扫读性差；当天播出的剧无任何视觉强调（TV Time/Trakt 均高亮 Today）。
+
+**修复（已部署，Version 59c6a021）**
+- 日历行日期人性化：Today（加粗+行背景 violet-950/40 高亮）/ Tomorrow / "Sun, Sep 27"（UTC 格式化），原始日期保留在 title 提示。
+
+**证据（线上验证）**
+- r10 临时追踪 The Simpsons 后 /calendar 显示 title="2026-09-27">Sun, Sep 27；验证后已 untrack，r10 恢复 3 条净零。
