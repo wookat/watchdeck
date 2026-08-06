@@ -376,6 +376,10 @@ app.get("/search", async (c) => {
   );
 });
 
+app.get("/show/:idslug", (c) => c.redirect(`/shows/${c.req.param("idslug")}`, 301));
+app.get("/movie/:idslug", (c) => c.redirect(`/movies/${c.req.param("idslug")}`, 301));
+app.get("/tv/:idslug", (c) => c.redirect(`/shows/${c.req.param("idslug")}`, 301));
+
 app.get("/shows/:idslug", async (c) => {
   const user = c.get("user");
   const id = parseInt(c.req.param("idslug"), 10);
@@ -385,6 +389,11 @@ app.get("/shows/:idslug", async (c) => {
     show = await tvDetails(c.env, id);
   } catch {
     return c.notFound();
+  }
+  const showSlug = `${show.id}-${slugify(show.name)}`;
+  if (c.req.param("idslug") !== showSlug) {
+    const qs = new URL(c.req.url).search;
+    return c.redirect(`/shows/${showSlug}${qs}`, 301);
   }
   const seasonNum = parseInt(c.req.query("season") ?? "1", 10) || 1;
   const [season, watchedRows, tracked, recsRes, providers, cast] = await Promise.all([
@@ -455,6 +464,8 @@ app.get("/movies/:idslug", async (c) => {
   } catch {
     return c.notFound();
   }
+  const movieSlug = `${movie.id}-${slugify(movie.title)}`;
+  if (c.req.param("idslug") !== movieSlug) return c.redirect(`/movies/${movieSlug}`, 301);
   const [watchedRow, tracked, recsRes, providers, cast] = await Promise.all([
     user ? c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first() : Promise.resolve(null),
     user

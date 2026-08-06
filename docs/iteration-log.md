@@ -936,3 +936,17 @@
 
 **证据**
 - test-report-round65-regression.md + 录屏；PR #36 回归评论。
+
+---
+
+## Round 66 — 2026-08-06
+
+**驱动：⑤数据分析（analytics_events 路径审计）**
+- 发现真实流量打到不存在的 URL 变体：`/show/95396`（9 次 404）、`/movies/27205` 无 slug（10 次，200 但产生重复内容 URL）；错 slug URL 也直接 200。
+
+**修复（P2）**
+- 新增单数别名 301：`/show/:idslug`、`/movie/:idslug`、`/tv/:idslug` → 复数路由。
+- 详情页 slug 不匹配（缺失/错误）时 301 到规范 slug URL，shows 保留 ?season 查询串。
+
+**证据**
+- Version 2e551fd9；线上验证：/show/95396→301、/tv/95396→301、/movies/27205→301 /movies/27205-inception、/shows/95396-wrong-slug?season=2→301 …-severance?season=2、规范 URL 仍 200。
