@@ -399,9 +399,9 @@ app.get("/search", async (c) => {
   );
 });
 
-app.get("/show/:idslug", (c) => c.redirect(`/shows/${c.req.param("idslug")}`, 301));
-app.get("/movie/:idslug", (c) => c.redirect(`/movies/${c.req.param("idslug")}`, 301));
-app.get("/tv/:idslug", (c) => c.redirect(`/shows/${c.req.param("idslug")}`, 301));
+app.get("/show/:idslug", (c) => c.redirect(`/shows/${c.req.param("idslug")}${new URL(c.req.url).search}`, 301));
+app.get("/movie/:idslug", (c) => c.redirect(`/movies/${c.req.param("idslug")}${new URL(c.req.url).search}`, 301));
+app.get("/tv/:idslug", (c) => c.redirect(`/shows/${c.req.param("idslug")}${new URL(c.req.url).search}`, 301));
 
 app.get("/shows/:idslug", async (c) => {
   const user = c.get("user");

@@ -990,3 +990,18 @@
 
 **证据**
 - Version 9220d69b；线上验证详情页海报类名含 aspect-[2/3]。
+
+---
+
+## Round 70 — 2026-08-06（QA 回归轮）
+
+**发现与结果（测试代理完整回归 66-69 轮，目标 Version 9220d69b）**
+- 无 P0/P1/P2；1 个 P3：单数别名 301（/show、/movie、/tv）丢弃查询串（slug 纠正 301 会保留 ?season）。
+- R66 重定向链全过（/show/95396→/shows/95396→/shows/95396-severance 200，错 slug 保留 ?season=2 且浏览器落在 S2）；R67 空搜索文案+Trending 建议全过；R68 FAQ 6 项折叠可用、JSON-LD @graph [WebSite, FAQPage(6 Question)] 解析通过；R69 海报 2:3 无变形。
+- 冒烟 + QA 基线 8/4/0 前后一致 + r10 净零；本轮未创建账号。
+
+**P3 修复**
+- 三个单数别名 301 现附带原查询串（/show/95396?season=2 → /shows/95396?season=2），线上验证通过（Version 1b551df4）。
+
+**证据**
+- test-report-round70-regression.md + 录屏；PR #36 回归评论。
