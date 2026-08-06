@@ -102,7 +102,21 @@ app.get("/", async (c) => {
     trending = { shows: shows.results, movies: movies.results };
   } catch {}
   return c.html(
-    <Layout user={null} canonical={c.env.SITE_URL + "/"}>
+    <Layout
+      user={null}
+      canonical={c.env.SITE_URL + "/"}
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "WatchDeck",
+        url: c.env.SITE_URL + "/",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: { "@type": "EntryPoint", urlTemplate: `${c.env.SITE_URL}/search?q={search_term_string}` },
+          "query-input": "required name=search_term_string",
+        },
+      }}
+    >
       <div>
         <Landing subscribed={c.req.query("subscribed") === "1"} />
         {trending ? <TrendingSection shows={trending.shows} movies={trending.movies} /> : null}

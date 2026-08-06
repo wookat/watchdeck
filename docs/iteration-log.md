@@ -562,3 +562,16 @@
 
 **证据（线上验证）**
 - r10 临时追踪 The Simpsons 后 /calendar 显示 title="2026-09-27">Sun, Sep 27；验证后已 untrack，r10 恢复 3 条净零。
+
+---
+
+## Round 39 — 2026-08-06
+
+**发现（pSEO/竞品驱动）**
+- [P2] 首页缺少 WebSite + SearchAction 结构化数据（Trakt 等竞品均有），搜索引擎无法识别站内搜索入口（sitelinks searchbox 资格）。
+
+**修复（已部署，Version 835735b5）**
+- 匿名首页注入 schema.org WebSite JSON-LD，potentialAction 为 SearchAction，urlTemplate 指向 /search?q={search_term_string}。
+
+**证据（线上验证）**
+- curl 首页解析 ld+json 成功，urlTemplate=https://watchdeck.zalize.com/search?q={search_term_string}。
