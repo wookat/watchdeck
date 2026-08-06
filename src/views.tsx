@@ -179,11 +179,57 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string }> = ({ mod
     </form>
     <p class="mt-4 text-sm text-slate-400">
       {mode === "login" ? (
-        <>No account? <a href="/signup" class="text-violet-400 hover:underline">Sign up free</a></>
+        <>No account? <a href="/signup" class="text-violet-400 hover:underline">Sign up free</a> · <a href="/forgot" class="text-violet-400 hover:underline">Forgot password?</a></>
       ) : (
         <>Already a member? <a href="/login" class="text-violet-400 hover:underline">Log in</a></>
       )}
     </p>
+  </div>
+);
+
+export const ForgotForm: FC<{ sent?: boolean; error?: string }> = ({ sent, error }) => (
+  <div class="mx-auto max-w-sm py-10">
+    <h1 class="mb-6 text-2xl font-bold">Reset your password</h1>
+    {sent ? (
+      <p class="rounded-lg border border-emerald-800 bg-emerald-950/50 px-3 py-2 text-sm text-emerald-300">
+        If that email is registered, a reset link is on its way. Check your inbox (and spam).
+      </p>
+    ) : (
+      <>
+        {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
+        <form action="/forgot" method="post" class="space-y-4">
+          <input
+            type="email"
+            name="email"
+            required
+            placeholder="Email"
+            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
+          />
+          <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">Send reset link</button>
+        </form>
+      </>
+    )}
+    <p class="mt-4 text-sm text-slate-400">
+      <a href="/login" class="text-violet-400 hover:underline">Back to log in</a>
+    </p>
+  </div>
+);
+
+export const ResetForm: FC<{ token: string; error?: string }> = ({ token, error }) => (
+  <div class="mx-auto max-w-sm py-10">
+    <h1 class="mb-6 text-2xl font-bold">Choose a new password</h1>
+    {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
+    <form action={`/reset/${token}`} method="post" class="space-y-4">
+      <input
+        type="password"
+        name="password"
+        required
+        minlength={8}
+        placeholder="New password (8+ characters)"
+        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
+      />
+      <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">Set new password</button>
+    </form>
   </div>
 );
 
@@ -345,7 +391,7 @@ export const RatingStars: FC<{ tmdbId: number; mediaType: "tv" | "movie"; title:
         <input type="hidden" name="rating" value={String(rating === n ? 0 : n)} />
         <input type="hidden" name="redirect" value={redirect} />
         <button
-          class={(rating ?? 0) >= n ? "text-xl text-amber-400 hover:scale-110" : "text-xl text-slate-600 hover:text-amber-300"}
+          class={(rating ?? 0) >= n ? "text-xl text-amber-400 transition-colors hover:scale-110" : "text-xl text-slate-600 transition-colors hover:text-amber-300"}
           title={rating === n ? "Clear rating" : `Rate ${n} star${n === 1 ? "" : "s"}`}
         >
           ★

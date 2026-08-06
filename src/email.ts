@@ -24,3 +24,15 @@ export function welcomeEmail(siteUrl: string): [string, string] {
 </div>`;
   return ["Welcome to WatchDeck — pick up where you left off", html];
 }
+
+export function resetEmail(siteUrl: string, token: string): [string, string] {
+  const link = `${siteUrl}/reset/${token}`;
+  const html = `
+<div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;color:#1f2937">
+  <h2 style="color:#7c3aed">Reset your WatchDeck password</h2>
+  <p>Someone (hopefully you) requested a password reset for this email address.</p>
+  <p><a href="${link}" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Choose a new password</a></p>
+  <p style="color:#6b7280;font-size:13px">This link expires in 1 hour. If you didn't request this, you can safely ignore this email — your password is unchanged.</p>
+</div>`;
+  return ["Reset your WatchDeck password", html];
+}
