@@ -178,21 +178,30 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string }> = ({ mod
     <h1 class="mb-6 text-2xl font-bold">{mode === "login" ? "Log in" : "Create your free account"}</h1>
     {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
     <form action={`/${mode}`} method="post" class="space-y-4">
-      <input
-        type="email"
-        name="email"
-        required
-        placeholder="Email"
-        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
-      />
-      <input
-        type="password"
-        name="password"
-        required
-        minlength={8}
-        placeholder="Password (8+ characters)"
-        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
-      />
+      <div>
+        <label for="auth-email" class="mb-1 block text-sm text-slate-400">Email</label>
+        <input
+          id="auth-email"
+          type="email"
+          name="email"
+          required
+          autocomplete="email"
+          placeholder="you@example.com"
+          class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
+        />
+      </div>
+      <div>
+        <label for="auth-password" class="mb-1 block text-sm text-slate-400">Password{mode === "signup" ? " (8+ characters)" : ""}</label>
+        <input
+          id="auth-password"
+          type="password"
+          name="password"
+          required
+          minlength={8}
+          autocomplete={mode === "signup" ? "new-password" : "current-password"}
+          class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
+        />
+      </div>
       <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">
         {mode === "login" ? "Log in" : "Sign up"}
       </button>
@@ -218,13 +227,18 @@ export const ForgotForm: FC<{ sent?: boolean; error?: string }> = ({ sent, error
       <>
         {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
         <form action="/forgot" method="post" class="space-y-4">
-          <input
-            type="email"
-            name="email"
-            required
-            placeholder="Email"
-            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
-          />
+          <div>
+            <label for="forgot-email" class="mb-1 block text-sm text-slate-400">Email</label>
+            <input
+              id="forgot-email"
+              type="email"
+              name="email"
+              required
+              autocomplete="email"
+              placeholder="you@example.com"
+              class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
+            />
+          </div>
           <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">Send reset link</button>
         </form>
       </>
@@ -240,14 +254,18 @@ export const ResetForm: FC<{ token: string; error?: string }> = ({ token, error 
     <h1 class="mb-6 text-2xl font-bold">Choose a new password</h1>
     {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
     <form action={`/reset/${token}`} method="post" class="space-y-4">
-      <input
-        type="password"
-        name="password"
-        required
-        minlength={8}
-        placeholder="New password (8+ characters)"
-        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
-      />
+      <div>
+        <label for="reset-password" class="mb-1 block text-sm text-slate-400">New password (8+ characters)</label>
+        <input
+          id="reset-password"
+          type="password"
+          name="password"
+          required
+          minlength={8}
+          autocomplete="new-password"
+          class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
+        />
+      </div>
       <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">Set new password</button>
     </form>
   </div>
@@ -1380,8 +1398,8 @@ export const SettingsPage: FC<{ user: User; saved?: string; error?: string }> = 
     <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
       <h2 class="font-semibold">Change password</h2>
       <form action="/api/settings/password" method="post" class="mt-4 space-y-3">
-        <input type="password" name="current" required placeholder="Current password" aria-label="Current password" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none" />
-        <input type="password" name="next" required minlength={8} placeholder="New password (min 8 characters)" aria-label="New password" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none" />
+        <input type="password" name="current" required autocomplete="current-password" placeholder="Current password" aria-label="Current password" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none" />
+        <input type="password" name="next" required minlength={8} autocomplete="new-password" placeholder="New password (min 8 characters)" aria-label="New password" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none" />
         <button class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Update password</button>
       </form>
     </section>
@@ -1400,7 +1418,7 @@ export const SettingsPage: FC<{ user: User; saved?: string; error?: string }> = 
         Permanently deletes your account and all data — library, watch history, ratings, share page and calendar feed. This cannot be undone.
       </p>
       <form action="/api/settings/delete" method="post" class="mt-4 flex gap-2" data-confirm="Delete your account and all data permanently?">
-        <input type="password" name="password" required placeholder="Confirm with your password" aria-label="Confirm password to delete account" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-red-500 focus:outline-none" />
+        <input type="password" name="password" required autocomplete="current-password" placeholder="Confirm with your password" aria-label="Confirm password to delete account" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-red-500 focus:outline-none" />
         <button class="shrink-0 rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-600">Delete</button>
       </form>
     </section>

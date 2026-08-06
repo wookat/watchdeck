@@ -909,3 +909,16 @@
 
 **证据（线上验证）**
 - Breaking Bad / Inception 匿名页均渲染新 CTA（curl 验证）。
+
+---
+
+## Round 64 — 2026-08-06
+
+**发现（无障碍/表单 UX 驱动）**
+- [P2] 全部认证表单（signup/login/forgot/reset/settings 改密/删号）只有 placeholder 无可见 label（WCAG 3.3.2/占位符消失问题），且无 autocomplete 提示——密码管理器无法正确识别生成/填充密码。
+
+**修复（已部署，Version f184c52f）**
+- signup/login/forgot/reset 加可见 `<label for>`；全站密码/邮箱输入补 autocomplete：email、new-password（注册/重置/新密码）、current-password（登录/改密/删号确认）。
+
+**证据（线上验证）**
+- /signup 渲染 label + autocomplete=email/new-password；/login current-password（curl 验证）。
