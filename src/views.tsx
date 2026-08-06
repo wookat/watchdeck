@@ -2,7 +2,7 @@ import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
 import { poster, slugify, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders } from "./tmdb";
 
-export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; jsonLd?: object }>> = ({
+export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; jsonLd?: object; prev?: string; next?: string }>> = ({
   children,
   user,
   title,
@@ -10,6 +10,8 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
   canonical,
   ogImage,
   jsonLd,
+  prev,
+  next,
 }) => (
   <html lang="en" class="dark">
     <head>
@@ -21,6 +23,8 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
         content={description ?? "WatchDeck is a free web-first TV show and movie tracker. Import your TV Time export in one click and pick up right where you left off."}
       />
       {canonical && <link rel="canonical" href={canonical} />}
+      {prev && <link rel="prev" href={prev} />}
+      {next && <link rel="next" href={next} />}
       <meta property="og:title" content={title ? `${title} — WatchDeck` : "WatchDeck — Track your TV shows & movies on the web"} />
       {description && <meta property="og:description" content={description} />}
       {canonical && <meta property="og:url" content={canonical} />}
@@ -917,8 +921,8 @@ export const BrowseIndex: FC<{
   years: number[];
 }> = ({ tvGenres, movieGenres, networks, years }) => (
   <div>
-    <h1 class="mb-2 text-2xl font-bold">Browse by genre</h1>
-    <p class="mb-8 text-slate-400">Find your next watch across every genre — powered by TMDB.</p>
+    <h1 class="mb-2 text-2xl font-bold">Browse TV shows &amp; movies</h1>
+    <p class="mb-8 text-slate-400">Find your next watch by genre, year or network — powered by TMDB.</p>
     {(
       [
         ["TV shows", "tv", tvGenres],

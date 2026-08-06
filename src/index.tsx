@@ -563,12 +563,15 @@ app.get("/browse/network/:idslug", async (c) => {
   const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
   const res = await discoverByNetwork(c.env, network.id, page);
   const base = `${c.env.SITE_URL}/browse/network/${network.id}-${slugify(network.name)}`;
+  const last = Math.min(res.total_pages, 20);
   return c.html(
     <Layout
       user={c.get("user")}
       title={`${network.name} TV shows to watch`}
       description={`Popular TV shows on ${network.name} to discover and track for free on WatchDeck.`}
       canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
     >
       <BrowseNetwork network={network} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
@@ -583,12 +586,15 @@ app.get("/browse/year/:type/:year", async (c) => {
   const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
   const res = await discoverByYear(c.env, type, year, page);
   const base = `${c.env.SITE_URL}/browse/year/${type}/${year}`;
+  const last = Math.min(res.total_pages, 20);
   return c.html(
     <Layout
       user={c.get("user")}
       title={`${type === "tv" ? "TV shows" : "Movies"} of ${year}`}
       description={`The most popular ${type === "tv" ? `TV shows that premiered in ${year}` : `movies released in ${year}`} to discover and track for free on WatchDeck.`}
       canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
     >
       <BrowseYear type={type} year={year} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
@@ -605,12 +611,15 @@ app.get("/browse/:type/:genreslug", async (c) => {
   const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
   const res = await discoverByGenre(c.env, type, genreId, page);
   const base = `${c.env.SITE_URL}/browse/${type}/${genre.id}-${slugify(genre.name)}`;
+  const last = Math.min(res.total_pages, 20);
   return c.html(
     <Layout
       user={c.get("user")}
       title={`${genre.name} ${type === "tv" ? "TV shows" : "movies"} to watch`}
       description={`Popular ${genre.name.toLowerCase()} ${type === "tv" ? "TV shows" : "movies"} to discover and track for free on WatchDeck.`}
       canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
     >
       <BrowseGenre type={type} genre={genre} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>

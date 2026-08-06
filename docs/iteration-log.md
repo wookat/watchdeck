@@ -413,3 +413,18 @@
 
 **证据（线上验证）**
 - `/` 包含 "Trending shows this week" 与 "Trending movies this week" 两个海报网格，卡片链接到 /shows/:id、/movies/:id。
+
+---
+
+## Round 28 — 2026-08-06
+
+**发现（视觉/SEO 驱动）**
+- [P2] /browse 标题仍写「Browse by genre」，但页面已含年份与网络维度，标题失真。
+- [P2] 三类分页聚合页（题材/年份/网络）缺 rel=prev/next 链接标记，分页序列对爬虫不友好。
+
+**修复（已部署，Version c7cfebfb）**
+- /browse H1/副标改为「Browse TV shows & movies · by genre, year or network」。
+- Layout 新增 prev/next 可选属性，三个分页路由全部输出 <link rel="prev|next">（第 2 页的 prev 指向无参数首页 URL，与 canonical 一致）。
+
+**证据（线上验证）**
+- /browse/year/tv/2025?page=2 head 内输出 rel=prev（…/2025）与 rel=next（…?page=3）；/browse 显示新标题。
