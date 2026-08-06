@@ -399,3 +399,17 @@
 
 **证据（线上验证）**
 - /browse 出现 By year；/browse/year/tv/2025 与 /browse/year/movie/2010 均 200；?page=2 显示 Page 2 of 20；/browse/year/tv/1900 404；sitemap 含 30 个 browse/year URL。
+
+---
+
+## Round 27 — 2026-08-06
+
+**发现（UX/数据驱动）**
+- [P1] 匿名访客落地页只有营销文案，没有任何真实内容/内链；第一方数据显示 `/` 是最高 PV 路径（70），但落地页对 SEO 与转化贡献低。
+
+**修复（已部署，Version 34ef9dd7）**
+- 落地页在英雄区与订阅卡下方追加「Trending this week」剧集+电影海报网格（复用 TrendingSection，TMDB 12h 缓存，失败降级不渲染）——匿名访客可直接点进详情页，形成 pSEO 内链。
+- 顺带修复 hono/jsx 陷阱：Layout 传入多个直接子节点时第二个不渲染，需包一层容器（已加 <div> 包裹）。
+
+**证据（线上验证）**
+- `/` 包含 "Trending shows this week" 与 "Trending movies this week" 两个海报网格，卡片链接到 /shows/:id、/movies/:id。

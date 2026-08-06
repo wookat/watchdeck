@@ -19,6 +19,7 @@ import {
   recommendations,
   watchProviders,
   slugify,
+  type SearchResult,
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, type ParsedImport } from "./importer";
 import { sendEmail, welcomeEmail, resetEmail } from "./email";
@@ -94,9 +95,17 @@ app.use("*", async (c, next) => {
 app.get("/", async (c) => {
   const user = c.get("user");
   if (user) return c.redirect("/home");
+  let trending: { shows: SearchResult[]; movies: SearchResult[] } | null = null;
+  try {
+    const [shows, movies] = await Promise.all([trendingTv(c.env), trendingMovies(c.env)]);
+    trending = { shows: shows.results, movies: movies.results };
+  } catch {}
   return c.html(
     <Layout user={null} canonical={c.env.SITE_URL + "/"}>
-      <Landing subscribed={c.req.query("subscribed") === "1"} />
+      <div>
+        <Landing subscribed={c.req.query("subscribed") === "1"} />
+        {trending ? <TrendingSection shows={trending.shows} movies={trending.movies} /> : null}
+      </div>
     </Layout>
   );
 });
