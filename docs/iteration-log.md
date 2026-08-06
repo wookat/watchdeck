@@ -277,3 +277,16 @@
 
 **证据（线上验证）**
 - r15 throwaway 账号线上走通：改昵称 302→saved；错误当前密码 → error 提示；删除账号 → 302 / + 会话清除，D1 复查 users=0 且无孤儿行。
+
+---
+
+## Round 18 — 2026-08-05
+
+**发现**
+- [合规 / P1] 产品收集邮箱/密码/观看数据、主打 GDPR 迁移，却没有 Privacy Policy 与 Terms 页面（竞品均有，也是 GDPR 透明度义务）。
+
+**修复（已部署，Version 3b068b43）**
+- 新增 /privacy（收集内容、无 Cookie 统计说明、不存 IP、邮件仅 opt-in、Settings 自助删除、第三方 TMDB/Resend/Cloudflare）与 /terms；页脚加 Privacy · Terms 链接；两页入 sitemap。联系邮箱用已验证发信域 watchdeck@zalize.com。
+
+**证据（线上验证）**
+- /privacy、/terms 均 200，首页页脚含链接。

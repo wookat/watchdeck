@@ -93,6 +93,9 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
             . This product uses the TMDB API but is not endorsed or certified by TMDB.
           </p>
           <p>
+            <a href="/privacy" class="hover:underline">Privacy</a> · <a href="/terms" class="hover:underline">Terms</a>
+          </p>
+          <p>
             More from us:{" "}
             <a href="https://astrosage.zalize.com" class="hover:underline">AstroSage</a> ·{" "}
             <a href="https://subsleuth.zalize.com" class="hover:underline">SubSleuth</a> ·{" "}
@@ -978,6 +981,67 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
     </div>
   );
 };
+
+export const PrivacyPage: FC = () => (
+  <div class="prose-invert mx-auto max-w-2xl space-y-4 text-slate-300">
+    <h1 class="text-2xl font-bold text-white">Privacy policy</h1>
+    <p class="text-sm text-slate-400">Last updated: August 5, 2026</p>
+    <h2 class="text-lg font-semibold text-white">What we collect</h2>
+    <p>
+      Your email address and password (stored as a salted PBKDF2-SHA256 hash), the shows, movies, episodes and ratings
+      you track, and any display name you set. If you upload a TV Time export or CSV, we parse it to extract titles and
+      watch records and store only those — the uploaded file itself is never retained.
+    </p>
+    <h2 class="text-lg font-semibold text-white">Analytics without cookies</h2>
+    <p>
+      We use first-party, cookie-free analytics: we count page views with the country provided by our CDN and a coarse
+      browser class. We do not store IP addresses, do not fingerprint devices, do not use tracking cookies, and do not
+      share or sell data to anyone. The only cookie we set is the session cookie that keeps you logged in.
+    </p>
+    <h2 class="text-lg font-semibold text-white">Emails</h2>
+    <p>
+      We only email you when you ask us to: airing reminders you switch on (opt-out anytime on the calendar page),
+      password resets you request, and a welcome note on signup. We never send marketing emails without consent.
+    </p>
+    <h2 class="text-lg font-semibold text-white">Your rights</h2>
+    <p>
+      You can delete your account and all associated data at any time from{" "}
+      <a href="/settings" class="text-violet-400 hover:underline">Settings</a> — deletion is immediate and permanent.
+      For questions or data requests, contact{" "}
+      <a href="mailto:watchdeck@zalize.com" class="text-violet-400 hover:underline">watchdeck@zalize.com</a>.
+    </p>
+    <h2 class="text-lg font-semibold text-white">Third parties</h2>
+    <p>
+      Show and movie metadata comes from <a href="https://www.themoviedb.org/" rel="noopener" class="text-violet-400 hover:underline">TMDB</a>.
+      Poster images are loaded from TMDB's image CDN. Transactional email is delivered by Resend. Hosting is provided by Cloudflare.
+    </p>
+  </div>
+);
+
+export const TermsPage: FC = () => (
+  <div class="mx-auto max-w-2xl space-y-4 text-slate-300">
+    <h1 class="text-2xl font-bold text-white">Terms of service</h1>
+    <p class="text-sm text-slate-400">Last updated: August 5, 2026</p>
+    <p>
+      WatchDeck is a free service for tracking TV shows and movies. By using it you agree to these terms.
+    </p>
+    <h2 class="text-lg font-semibold text-white">Your account</h2>
+    <p>
+      You are responsible for keeping your password safe. You may delete your account at any time from Settings.
+      We may suspend accounts that abuse the service (automated scraping, spam, attempts to disrupt it).
+    </p>
+    <h2 class="text-lg font-semibold text-white">The service</h2>
+    <p>
+      WatchDeck is provided "as is" without warranty. We aim for high availability but do not guarantee it. Metadata is
+      provided by TMDB and may contain errors; this product uses the TMDB API but is not endorsed or certified by TMDB.
+    </p>
+    <h2 class="text-lg font-semibold text-white">Changes</h2>
+    <p>
+      We may update these terms; material changes will be noted on this page. Continued use after changes constitutes
+      acceptance. Contact: <a href="mailto:watchdeck@zalize.com" class="text-violet-400 hover:underline">watchdeck@zalize.com</a>.
+    </p>
+  </div>
+);
 
 export const SettingsPage: FC<{ user: User; saved?: string; error?: string }> = ({ user, saved, error }) => (
   <div class="mx-auto max-w-lg">
