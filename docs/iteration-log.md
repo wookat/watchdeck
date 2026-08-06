@@ -223,3 +223,17 @@
 
 **证据（线上验证）**
 - throwaway 账号 `/history` 200，按倒序列出 Breaking Bad S02E10…S02E02 等观看记录。
+
+---
+
+## Round 14 — 2026-08-05
+
+**发现**
+- [QA/性能 / P2] `upcomingItems`（/calendar 与 iCal feed 共用）串行 `await tvDetails`，追 30 部剧且 KV 缓存未命中时最坏 ~6s（与 round-2 修复前的 /home 同型问题）。
+- [QA 回归] 边界路由抽查：不存在的 show/movie/genre/share token、og.png 坏 token 均正确 404；未登录访问 /history 302 → /login。无新问题。
+
+**修复（已部署，Version 2443cbb7）**
+- `upcomingItems` 改为 `Promise.all` 并行拉取（单剧失败返回 null 不影响整页），/calendar 与 /feed/<token>.ics 同时受益。
+
+**证据（线上验证）**
+- /calendar 登录态 200（0.45s，热缓存）；tsc/css 构建通过。

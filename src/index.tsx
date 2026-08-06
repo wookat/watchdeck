@@ -430,12 +430,12 @@ async function upcomingItems(env: AppContext["Bindings"], userId: number): Promi
   )
     .bind(userId)
     .all<{ tmdb_id: number }>();
-  const items: CalendarItem[] = [];
-  for (const t of tracked.results) {
-    try {
-      const d = await tvDetails(env, t.tmdb_id);
-      if (d.next_episode_to_air?.air_date) {
-        items.push({
+  const perShow = await Promise.all(
+    tracked.results.map(async (t): Promise<CalendarItem | null> => {
+      try {
+        const d = await tvDetails(env, t.tmdb_id);
+        if (!d.next_episode_to_air?.air_date) return null;
+        return {
           tmdbId: d.id,
           title: d.name,
           posterPath: d.poster_path,
@@ -443,10 +443,13 @@ async function upcomingItems(env: AppContext["Bindings"], userId: number): Promi
           episode: d.next_episode_to_air.episode_number,
           episodeName: d.next_episode_to_air.name,
           airDate: d.next_episode_to_air.air_date,
-        });
+        };
+      } catch {
+        return null;
       }
-    } catch {}
-  }
+    })
+  );
+  const items = perShow.filter((i): i is CalendarItem => i !== null);
   items.sort((a, b) => a.airDate.localeCompare(b.airDate));
   return items;
 }
