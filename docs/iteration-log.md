@@ -883,3 +883,16 @@
 
 **证据（线上验证）**
 - /import HTML 含 confirm 卡、/import.js 含确认逻辑（curl 验证）；交互路径留待下轮回归代理点击验证。
+
+---
+
+## Round 62 — 2026-08-06
+
+**发现（pSEO/前端走查驱动）**
+- [P2] 详情页 meta description 用 `overview.slice(0,155)` 生硬截断（如 Breaking Bad 结尾是 "filled wi"），SERP 摘要观感差、无省略号。
+
+**修复（已部署，Version 9ba358a4）**
+- tmdb.ts 新增 metaDescription(text, max=155)：≤155 原样；超长回退到最后一个词边界（>80 时）去尾标点加 "…"；剧集/电影详情页统一改用。
+
+**证据（线上验证）**
+- Breaking Bad meta description 现以 "…He becomes filled…" 词边界+省略号收尾（curl 验证）。

@@ -169,6 +169,14 @@ export function recommendations(env: Env, type: "tv" | "movie", id: number) {
   return tmdb<{ results: SearchResult[] }>(env, `/${type}/${id}/recommendations`, 24 * 3600);
 }
 
+export function metaDescription(text: string | null | undefined, max = 155): string | undefined {
+  if (!text) return undefined;
+  if (text.length <= max) return text;
+  const cut = text.slice(0, max);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${cut.slice(0, lastSpace > 80 ? lastSpace : max).replace(/[,.;:\s]+$/, "")}\u2026`;
+}
+
 export function slugify(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60) || "title";
 }

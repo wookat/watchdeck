@@ -21,6 +21,7 @@ import {
   recommendations,
   watchProviders,
   slugify,
+  metaDescription,
   type SearchResult,
   topCast,
   type CastMember,
@@ -409,7 +410,7 @@ app.get("/shows/:idslug", async (c) => {
     <Layout
       user={user}
       title={show.name}
-      description={show.overview?.slice(0, 155)}
+      description={metaDescription(show.overview)}
       canonical={showCanonical}
       ogImage={show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : undefined}
       jsonLd={{
@@ -472,7 +473,7 @@ app.get("/movies/:idslug", async (c) => {
     <Layout
       user={user}
       title={movie.title}
-      description={movie.overview?.slice(0, 155)}
+      description={metaDescription(movie.overview)}
       canonical={movieCanonical}
       ogImage={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined}
       jsonLd={{
