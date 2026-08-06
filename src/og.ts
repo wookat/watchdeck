@@ -26,10 +26,10 @@ export async function shareOgImage(env: Env, name: string, stats: UserStats): Pr
       <span style="font-size:52px;font-weight:700;margin-top:16px;">${esc(name)}'s watch stats</span>
     </div>
     <div style="display:flex;gap:24px;">
+      ${stat(stats.hoursWatched, "hours watched")}
       ${stat(stats.epsWatched, "episodes")}
       ${stat(stats.moviesWatched, "movies")}
       ${stat(stats.showsTracked, "shows tracked")}
-      ${stat(stats.completedShows, "completed")}
     </div>
     <span style="font-size:24px;color:#64748b;">watchdeck.zalize.com — track your TV shows and movies on the web</span>
   </div>`;

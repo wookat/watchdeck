@@ -485,8 +485,45 @@ app.get("/browse/:type/:genreslug", async (c) => {
   );
 });
 
+async function hoursWatched(env: Env, userId: number): Promise<number> {
+  const cacheKey = `hours:${userId}`;
+  const cached = await env.CACHE.get(cacheKey);
+  if (cached !== null) return parseInt(cached, 10);
+  const [showEps, movieIds] = await Promise.all([
+    env.DB.prepare("SELECT tmdb_id, COUNT(*) AS n FROM episode_watches WHERE user_id = ? GROUP BY tmdb_id")
+      .bind(userId)
+      .all<{ tmdb_id: number; n: number }>(),
+    env.DB.prepare("SELECT tmdb_id FROM movie_watches WHERE user_id = ?").bind(userId).all<{ tmdb_id: number }>(),
+  ]);
+  let minutes = 0;
+  const showMinutes = await Promise.all(
+    showEps.results.map(async (s) => {
+      try {
+        const d = await tvDetails(env, s.tmdb_id);
+        const runtime = d.last_episode_to_air?.runtime || d.episode_run_time?.[0] || 40;
+        return s.n * runtime;
+      } catch {
+        return s.n * 40;
+      }
+    })
+  );
+  const movieMinutes = await Promise.all(
+    movieIds.results.map(async (m) => {
+      try {
+        return (await movieDetails(env, m.tmdb_id)).runtime || 110;
+      } catch {
+        return 110;
+      }
+    })
+  );
+  minutes = [...showMinutes, ...movieMinutes].reduce((a, b) => a + b, 0);
+  const hours = Math.round(minutes / 60);
+  await env.CACHE.put(cacheKey, String(hours), { expirationTtl: 3600 });
+  return hours;
+}
+
 async function userStats(env: Env, userId: number): Promise<UserStats> {
-  const [eps, movies, tracked, completed, topShows, byMonth] = await Promise.all([
+  const [eps, movies, tracked, completed, topShows, byMonth, hours] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(userId).first<{ n: number }>(),
@@ -500,8 +537,10 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
       `SELECT strftime('%Y-%m', watched_at) AS month, COUNT(*) AS eps FROM episode_watches
        WHERE user_id = ? AND watched_at >= date('now', '-12 months') GROUP BY month ORDER BY month`
     ).bind(userId).all<{ month: string; eps: number }>(),
+    hoursWatched(env, userId),
   ]);
   return {
+    hoursWatched: hours,
     epsWatched: eps?.n ?? 0,
     moviesWatched: movies?.n ?? 0,
     showsTracked: tracked?.n ?? 0,
@@ -557,7 +596,7 @@ app.get("/u/:token", async (c) => {
     <Layout
       user={c.get("user")}
       title={`${profile.name}'s watch stats`}
-      description={`${profile.stats.epsWatched} episodes and ${profile.stats.moviesWatched} movies watched \u2014 tracked free on WatchDeck.`}
+      description={`${profile.stats.hoursWatched} hours of TV & movies \u2014 ${profile.stats.epsWatched} episodes and ${profile.stats.moviesWatched} movies tracked free on WatchDeck.`}
       canonical={`${c.env.SITE_URL}/u/${token}`}
       ogImage={`${c.env.SITE_URL}/u/${token}/og.png`}
     >

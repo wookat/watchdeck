@@ -781,6 +781,7 @@ export const BrowseGenre: FC<{
 };
 
 export interface UserStats {
+  hoursWatched: number;
   epsWatched: number;
   moviesWatched: number;
   showsTracked: number;
@@ -793,8 +794,9 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
   const maxMonth = Math.max(1, ...stats.byMonth.map((m) => m.eps));
   return (
     <div>
-      <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {[
+          [stats.hoursWatched.toLocaleString("en-US"), "hours watched"],
           [String(stats.epsWatched), "episodes watched"],
           [String(stats.moviesWatched), "movies watched"],
           [String(stats.showsTracked), "shows tracked"],
