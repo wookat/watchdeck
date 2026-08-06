@@ -1074,3 +1074,187 @@
 
 **证据**
 - test-report-round75-regression.md + 录屏；PR #36 回归评论。
+
+---
+
+## Round 76 — 2026-08-06
+
+**驱动：④竞品（Bingers 仅移动 App；我们 web 优先但缺「可安装」能力）+ ③视觉/移动端**
+- 站点无 Web App Manifest、无 apple-touch-icon、无 theme-color——移动用户无法「添加到主屏幕」获得类 App 体验，iOS 收藏图标为截图缩略。
+
+**修复（P1）**
+- 新增 manifest.webmanifest（standalone、start_url=/home、深色主题、192/512 + maskable 图标）、icon-192/512.png、apple-touch-icon.png（由 favicon.svg 生成）、<meta theme-color>，Layout head 注入三个链接。
+
+**证据**
+- Version 444aa948；线上验证：/manifest.webmanifest 200 application/manifest+json，三个 PNG 200 image/png，首页 head 含 manifest/apple-touch-icon/theme-color。
+
+---
+
+## Round 77 — 2026-08-06
+
+**驱动：①QA 新用例（/history 大历史边界，同 R73 思路）**
+- /history 各取剧集/电影 100 条再内存合并截断：大导入用户（数千条流水）第 101 条起不可见且无翻页；两表各取 100 合并排序也可能错序。
+
+**修复（P1）**
+- 改为 UNION ALL 子查询全局按 watched_at DESC 排序 + LIMIT/OFFSET 分页（每页 100），COUNT 合计计算总页数并钳制 page；底部 Previous/Page x of y/Next 分页条（仅多页时显示）；Remove 行的 redirect 保留当前页码。
+
+**证据**
+- Version 146e2552；线上验证（r10 只读登录）：42 条流水单页全显（41 集 + 1 电影），不足一页无分页条，?page=99 被钳制正常渲染。
+
+---
+
+## Round 78 — 2026-08-06
+
+**驱动：合规与安全审计（开放重定向纵深防御）**
+- 10 个 POST API（track/untrack/notes/watch/watch-season/watch-up-to/watch-movie 等）把表单 redirect 参数原样传给 302，可被用作绝对 URL 开放重定向（CSRF Origin 校验挡住跨站 POST，但同源触发仍可能，属纵深防御缺口）。
+
+**修复（P2 安全）**
+- 全部 10 处改为 safeNext(form.redirect) ?? 默认路径——只接受站内相对路径（拒绝绝对 URL、//、\\）。
+
+**证据**
+- Version f8d54abb；线上验证（r10，幂等同状态 POST）：redirect=https://evil.com → 302 /home（回落默认），站内相对路径正常保留。
+
+---
+
+## Round 79 — 2026-08-06
+
+**驱动：③视觉/社交分享 + ⑤数据（落地页是分享/引流主入口却无 og:image）**
+- 仅详情页与分享页有 og:image；首页/browse/FAQ 等被分享到社交平台时无预览卡片，og:site_name 缺失。
+
+**修复（P2）**
+- 新增品牌 OG 卡 public/og-default.png（1200×630，渐变 logo+标语+域名）；Layout 对所有页面输出 og:site_name 与 og:image 回落（页面自带 ogImage 时优先，如详情页海报）。
+
+**证据**
+- Version cdb6632f；线上验证：/og-default.png 200，首页 og:image=og-default.png、og:site_name=WatchDeck，Severance 详情页仍为海报 og:image（未被覆盖）。
+
+---
+
+## Round 80 — 2026-08-06（QA 回归轮）
+
+**发现与结果（测试代理完整回归 76-79 轮，目标 Version cdb6632f）**
+- 无 P0/P1/P2/P3。
+- R76：manifest/三个 PNG 图标全部 200 且 content-type 正确，首页与详情页 head 均含 manifest/apple-touch-icon/theme-color。
+- R77：103 条流水一次性账号 → Page 1 of 2 分页条、第 2 页延续全局倒序、第 2 页 Remove 后回到 ?page=2；r10 42 条无分页条，?page=99 钳制正常。
+- R78：/api/track redirect=https://evil.com 回落 /home，站内相对路径正常（10 个端点共用同一 safeNext 行，抽测 1 个）。
+- R79：/og-default.png 200，非详情页输出 og:site_name+回落 og:image，详情页保留海报 og:image。
+- 冒烟全过；基线 8/4/0 未动（未登录）；r10 净零 3/0/41（测试中一次误在 r10 会话里执行脚本 POST 短暂多出一条 tracked，已当场清除并 D1 复核）；103 条一次性账号已自删。
+
+**证据**
+- test-report-round80-regression.md + 录屏；PR #37 回归评论。
+
+---
+
+## Round 81 — 2026-08-06
+
+**驱动：③视觉/无障碍（导航当前页无指示，WCAG 2.4.8 / 现代导航惯例）**
+- 顶部导航所有链接同色，用户无法一眼看出身处哪个板块；无 aria-current。
+
+**修复（P2）**
+- app.js 在 DOMContentLoaded 时对 #site-nav 内匹配当前 pathname 的链接（前缀匹配子路径、排除 logo）加 aria-current="page" 与 text-violet-400/font-semibold 高亮。
+
+**证据**
+- Version 1cf0d4b5；线上验证：app.js 已含 site-nav 高亮逻辑，页面 nav 已带 id（浏览器端效果由 R85 回归复核）。
+
+---
+
+## Round 82 — 2026-08-06
+
+**驱动：④竞品（Trakt ratings.csv 导出含 1-10 评分；我们 CSV 导入丢弃评分数据）**
+- Trakt/Serializd 难民迁移时个人评分全部丢失，需手动重打。
+
+**修复（P1）**
+- 通用 CSV 导入解析 rating/your rating/user rating 列，1-10 分制自动折半归一到 1-5 星；批量导入把评分写入 tracked.rating（已有评分不覆盖，COALESCE 保护）；导入页文案注明。
+
+**证据**
+- Version c67c21d4；线上验证（r10 只读解析，未写库）：title,type,rating CSV → The Wire rating:5（9/10 折半）、Heat rating:4；端到端 apply 由 R85 回归覆盖。
+
+---
+
+## Round 83 — 2026-08-06
+
+**驱动：②UX 走查 + ④竞品（TV Time/Trakt 均有评分分布画像；我们评分数据无可视化出口）**
+- /stats 无「Your ratings」维度，R82 导入的评分数据没有展示价值出口。
+
+**修复（P2）**
+- userStats 新增 tracked.rating GROUP BY 统计；StatsBody 新增「Your ratings」5→1 星分布条形卡（无评分时隐藏），/stats 与公开分享页同时生效。
+
+**证据**
+- Version 2dd2db4c；线上验证（r10）：打 ★4 后 /stats 出现 Your ratings 卡，清除评分后卡片消失，r10 评分已复原（D1 复核 rating 非空行数 0）。
+
+---
+
+## Round 84 — 2026-08-06
+
+**驱动：⑤数据（R66 曾观测到真实 404 流量）+ ②UX（404 死胡同）**
+- 404 页只有一句话和 Go home 链接，无恢复路径。
+
+**修复（P2）**
+- 404 页新增搜索框（直达 /search）与 browse by genre / go home 出路。
+
+**证据**
+- Version 545a6bcf；线上验证：随机路径返回 404 且含搜索表单与 browse 链接。
+
+---
+
+## Round 85 — 2026-08-06（回归轮）
+
+**驱动：①测试（QA 回归 R81-R84 + 复验 R76-R79）**
+
+**回归结果（生产 Version 545a6bcf，分支 tip 93fd63e）**
+- R81 活动导航高亮：/library、/history 对应链接紫色加粗，logo 与其他链接不高亮（像素级验证）；aria-current 与高亮类在 app.js 同一语句设置（curl 复核线上 app.js）。DOM 属性未能直接读取（CDP 旧标签页干扰），以视觉+代码构造证据通过。
+- R82 CSV 评分导入端到端：throwaway 上传 rating CSV → Library 显示 The Wire ★5（9/10 折半）、Heat ★4，D1 rating=5/4、source='csv'；用 2/1 分重导不覆盖（COALESCE 验证）。
+- R83 Your ratings 卡：有评分账号显示 5→1 分布（★5=1、★4=1），r10（零评分）不显示。
+- R84 404 恢复：未知路径 HTTP 404 + 搜索框 + browse/home 出路，404 搜索 severance 直达真实结果页。
+- 冒烟：home/search/detail/library/calendar/stats 全过。
+- 完整性：保护基线 D1 只读核验不变（8 tracked/Severance 4/Friends 0，另有先前已存在的 Mandalorian ★4）；r10 净零（3/0/41、Severance 19、rating 空）；throwaway r85-qa-* 经 /settings 删除并 D1 复核。
+
+**结论**：R81-R84 无 P0/P1/P2/P3 遗留。证据评论见 PR #37。
+
+---
+
+## Round 86 — 2026-08-06
+
+**驱动：④竞品（TV Time 招牌「落后 N 集」计数）+ ②UX（Next Up 卡只显示下一集，看不出追剧欠账）**
+- Next Up 卡片没有落后集数信息，用户无法一眼判断哪部剧欠账最多。
+
+**修复（P2）**
+- /home Next Up 计算遍历全部已播集统计未看数（季数据走 KV 缓存，无额外配额压力），卡片显示「aired 日期 · N eps left」（仅落后 >1 集时显示）。
+
+**证据**
+- Version a68bd9ed；线上验证（r10 只读浏览后登出）：Next Up 卡出现「eps left」徽章。
+
+---
+
+## Round 87 — 2026-08-06
+
+**驱动：①测试/性能（R86 使 Next Up 需遍历全部季；长剧如 36 季的 Simpsons 冷缓存下逐季串行拉取会拖慢首屏）**
+
+**修复（P1 性能回归预防）**
+- /home 每部剧的季数据改为 Promise.all 并行拉取（原逐季 await 串行），遍历顺序不变，KV 缓存命中时零差异、冷缓存时首屏耗时随季数从 O(n) 串行降为并行。
+
+**证据**
+- Version a7d58fb4；线上验证（r10 只读浏览后登出）：/home 正常渲染含 eps left 徽章，整页 curl 1.07s。
+
+---
+
+## Round 88 — 2026-08-06
+
+**驱动：④竞品（TV Time/Trakt/IMDb 详情页均有预告片入口）+ ②UX（详情页无试看出口，决定「要不要追」缺一环）**
+
+**修复（P2）**
+- 新增 tmdb.trailerUrl（/videos 端点，KV 缓存 7 天，优先 official YouTube Trailer）；剧集/电影详情页题材行追加「▶ Trailer」外链（新标签打开），无预告片时不显示。
+
+**证据**
+- Version 0787eda1；线上验证：Inception 页出现 youtube.com/watch?v=JE9z-gy4De4，Severance 页出现 xEQP4VVuyrY；Breaking Bad（TMDB 无 Trailer 条目）正确不显示。
+
+---
+
+## Round 89 — 2026-08-06
+
+**驱动：②UX（R82/R83 引入的评分数据在 Library 无排序出口）+ ④竞品（Trakt/Serializd 支持按个人评分排序）**
+
+**修复（P2）**
+- Library 新增「Top rated」排序（rating IS NULL 排最后 → rating DESC → updated_at DESC），SQL 下推与既有分页兼容。
+
+**证据**
+- Version 0448d376；线上验证（r10 只读浏览后登出）：/library?sort=rating 渲染 Top rated 选中态，零评分账号回落按更新时间排序。

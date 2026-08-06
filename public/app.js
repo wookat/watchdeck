@@ -12,6 +12,16 @@ document.addEventListener("keydown", (e) => {
     box.focus();
   }
 });
+document.addEventListener("DOMContentLoaded", () => {
+  const path = location.pathname;
+  document.querySelectorAll("#site-nav a[href]:not([data-logo])").forEach((a) => {
+    const href = a.getAttribute("href");
+    if (href === path || (href !== "/" && href.length > 1 && path.startsWith(href + "/"))) {
+      a.setAttribute("aria-current", "page");
+      a.classList.add("text-violet-400", "font-semibold");
+    }
+  });
+});
 document.addEventListener("submit", (e) => {
   const form = e.target;
   if (form instanceof HTMLFormElement && form.dataset.confirm && !window.confirm(form.dataset.confirm)) e.preventDefault();

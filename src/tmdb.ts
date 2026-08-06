@@ -165,6 +165,17 @@ export async function watchProviders(env: Env, type: "tv" | "movie", id: number,
   return res.results[region] ?? null;
 }
 
+export async function trailerUrl(env: Env, type: "tv" | "movie", id: number): Promise<string | null> {
+  const data = await tmdb<{ results: { site: string; type: string; key: string; official: boolean }[] }>(
+    env,
+    `/${type}/${id}/videos`,
+    7 * 24 * 3600
+  );
+  const yt = data.results.filter((v) => v.site === "YouTube" && v.type === "Trailer");
+  const best = yt.find((v) => v.official) ?? yt[0];
+  return best ? `https://www.youtube.com/watch?v=${best.key}` : null;
+}
+
 export function recommendations(env: Env, type: "tv" | "movie", id: number) {
   return tmdb<{ results: SearchResult[] }>(env, `/${type}/${id}/recommendations`, 24 * 3600);
 }

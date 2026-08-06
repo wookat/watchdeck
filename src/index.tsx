@@ -20,6 +20,7 @@ import {
   NETWORKS,
   recommendations,
   watchProviders,
+  trailerUrl,
   slugify,
   metaDescription,
   type SearchResult,
@@ -307,21 +308,33 @@ app.get("/home", async (c) => {
           .bind(user.id, t.tmdb_id)
           .all<{ season: number; episode: number }>();
         const seen = new Set(watched.results.map((w) => `${w.season}x${w.episode}`));
-        for (const s of details.seasons.filter((s) => s.season_number > 0)) {
-          const season = await seasonDetails(c.env, t.tmdb_id, s.season_number);
+        let first: NextUpItem | null = null;
+        let left = 0;
+        const seasons = await Promise.all(
+          details.seasons.filter((s) => s.season_number > 0).map((s) => seasonDetails(c.env, t.tmdb_id, s.season_number))
+        );
+        for (const season of seasons) {
           for (const ep of season.episodes) {
             if (ep.air_date && ep.air_date <= today && !seen.has(`${ep.season_number}x${ep.episode_number}`)) {
-              return {
-                tmdbId: t.tmdb_id,
-                title: details.name,
-                posterPath: details.poster_path,
-                season: ep.season_number,
-                episode: ep.episode_number,
-                episodeName: ep.name,
-                airDate: ep.air_date,
-              };
+              left++;
+              if (!first) {
+                first = {
+                  tmdbId: t.tmdb_id,
+                  title: details.name,
+                  posterPath: details.poster_path,
+                  season: ep.season_number,
+                  episode: ep.episode_number,
+                  episodeName: ep.name,
+                  airDate: ep.air_date,
+                  episodesLeft: 1,
+                };
+              }
             }
           }
+        }
+        if (first) {
+          first.episodesLeft = left;
+          return first;
         }
       } catch {
         // TMDB hiccup on one show shouldn't kill the page
@@ -424,7 +437,7 @@ app.get("/shows/:idslug", async (c) => {
     return c.redirect(`/shows/${showSlug}${qs}`, 301);
   }
   const seasonNum = parseInt(c.req.query("season") ?? "1", 10) || 1;
-  const [season, watchedRows, tracked, recsRes, providers, cast] = await Promise.all([
+  const [season, watchedRows, tracked, recsRes, providers, cast, trailer] = await Promise.all([
     seasonDetails(c.env, id, seasonNum).catch(() => null),
     user
       ? c.env.DB.prepare("SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
@@ -439,6 +452,7 @@ app.get("/shows/:idslug", async (c) => {
     recommendations(c.env, "tv", id).catch(() => ({ results: [] as SearchResult[] })),
     watchProviders(c.env, "tv", id).catch(() => null),
     topCast(c.env, "tv", id).catch(() => [] as CastMember[]),
+    trailerUrl(c.env, "tv", id).catch(() => null),
   ]);
   const watched = new Set((watchedRows?.results ?? []).map((r) => `${r.season}x${r.episode}`));
   const recs = recsRes.results;
@@ -477,7 +491,7 @@ app.get("/shows/:idslug", async (c) => {
         ],
       }}
     >
-      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} />
+      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} />
     </Layout>
   );
 });
@@ -494,7 +508,7 @@ app.get("/movies/:idslug", async (c) => {
   }
   const movieSlug = `${movie.id}-${slugify(movie.title)}`;
   if (c.req.param("idslug") !== movieSlug) return c.redirect(`/movies/${movieSlug}`, 301);
-  const [watchedRow, tracked, recsRes, providers, cast] = await Promise.all([
+  const [watchedRow, tracked, recsRes, providers, cast, trailer] = await Promise.all([
     user ? c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first() : Promise.resolve(null),
     user
       ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
@@ -504,6 +518,7 @@ app.get("/movies/:idslug", async (c) => {
     recommendations(c.env, "movie", id).catch(() => ({ results: [] as SearchResult[] })),
     watchProviders(c.env, "movie", id).catch(() => null),
     topCast(c.env, "movie", id).catch(() => [] as CastMember[]),
+    trailerUrl(c.env, "movie", id).catch(() => null),
   ]);
   const watched = !!watchedRow;
   const recs = recsRes.results;
@@ -541,7 +556,7 @@ app.get("/movies/:idslug", async (c) => {
         ],
       }}
     >
-      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} />
+      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} />
     </Layout>
   );
 });
@@ -563,9 +578,15 @@ app.get("/library", async (c) => {
     conds.push("title LIKE ? COLLATE NOCASE");
     binds.push(`%${q}%`);
   }
-  const sort = ["recent", "title", "progress"].includes(c.req.query("sort") ?? "") ? c.req.query("sort")! : "recent";
+  const sort = ["recent", "title", "progress", "rating"].includes(c.req.query("sort") ?? "") ? c.req.query("sort")! : "recent";
   const orderBy =
-    sort === "title" ? "title COLLATE NOCASE ASC" : sort === "progress" ? "eps_watched DESC, updated_at DESC" : "updated_at DESC";
+    sort === "title"
+      ? "title COLLATE NOCASE ASC"
+      : sort === "progress"
+        ? "eps_watched DESC, updated_at DESC"
+        : sort === "rating"
+          ? "rating IS NULL, rating DESC, updated_at DESC"
+          : "updated_at DESC";
   const perPage = 120;
   const [filteredTotal, countRows] = await Promise.all([
     c.env.DB.prepare(`SELECT COUNT(*) AS n FROM tracked WHERE ${conds.join(" AND ")}`).bind(...binds).first<{ n: number }>(),
@@ -838,7 +859,7 @@ async function hoursWatched(env: Env, userId: number): Promise<number> {
 }
 
 async function userStats(env: Env, userId: number): Promise<UserStats> {
-  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear, byYear] = await Promise.all([
+  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear, byYear, ratingRows] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(userId).first<{ n: number }>(),
@@ -862,7 +883,11 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
          SELECT strftime('%Y', watched_at) AS y, 0 AS eps, COUNT(*) AS movies FROM movie_watches WHERE user_id = ?1 GROUP BY y
        ) WHERE y IS NOT NULL GROUP BY y ORDER BY y DESC LIMIT 15`
     ).bind(userId).all<{ year: string; eps: number; movies: number }>(),
+    env.DB.prepare(
+      "SELECT rating, COUNT(*) AS n FROM tracked WHERE user_id = ? AND rating IS NOT NULL GROUP BY rating"
+    ).bind(userId).all<{ rating: number; n: number }>(),
   ]);
+  const ratingCounts = [1, 2, 3, 4, 5].map((r) => ratingRows.results.find((row) => row.rating === r)?.n ?? 0);
   const items = await env.DB.prepare(
     "SELECT tmdb_id, media_type FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 40"
   )
@@ -890,6 +915,7 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     topShows: topShows.results,
     byMonth: byMonth.results,
     byYear: byYear.results,
+    ratingCounts,
     topGenres,
     epsThisYear: epsYear?.n ?? 0,
     moviesThisYear: moviesYear?.n ?? 0,
@@ -899,49 +925,41 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
 app.get("/history", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
-  const [eps, movies] = await Promise.all([
-    c.env.DB.prepare(
-      `SELECT w.tmdb_id, w.season, w.episode, w.watched_at, t.title, t.poster_path
+  const perPage = 100;
+  const total = await c.env.DB.prepare(
+    "SELECT (SELECT COUNT(*) FROM episode_watches WHERE user_id = ?1) + (SELECT COUNT(*) FROM movie_watches WHERE user_id = ?1) AS n"
+  )
+    .bind(user.id)
+    .first<{ n: number }>();
+  const lastPage = Math.max(1, Math.ceil((total?.n ?? 0) / perPage));
+  const page = Math.min(lastPage, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const rows = await c.env.DB.prepare(
+    `SELECT * FROM (
+       SELECT 'tv' AS kind, w.tmdb_id, w.season, w.episode, w.watched_at, t.title, t.poster_path
        FROM episode_watches w
        LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
-       WHERE w.user_id = ? ORDER BY w.watched_at DESC LIMIT 100`
-    )
-      .bind(user.id)
-      .all<{ tmdb_id: number; season: number; episode: number; watched_at: string; title: string | null; poster_path: string | null }>(),
-    c.env.DB.prepare(
-      `SELECT w.tmdb_id, w.watched_at, t.title, t.poster_path
+       WHERE w.user_id = ?1
+       UNION ALL
+       SELECT 'movie' AS kind, w.tmdb_id, NULL AS season, NULL AS episode, w.watched_at, t.title, t.poster_path
        FROM movie_watches w
        LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'movie'
-       WHERE w.user_id = ? ORDER BY w.watched_at DESC LIMIT 100`
-    )
-      .bind(user.id)
-      .all<{ tmdb_id: number; watched_at: string; title: string | null; poster_path: string | null }>(),
-  ]);
-  const items: HistoryItem[] = [
-    ...eps.results.map((e) => ({
-      tmdbId: e.tmdb_id,
-      mediaType: "tv" as const,
-      title: e.title ?? `Show #${e.tmdb_id}`,
-      posterPath: e.poster_path,
-      season: e.season,
-      episode: e.episode,
-      watchedAt: e.watched_at,
-    })),
-    ...movies.results.map((m) => ({
-      tmdbId: m.tmdb_id,
-      mediaType: "movie" as const,
-      title: m.title ?? `Movie #${m.tmdb_id}`,
-      posterPath: m.poster_path,
-      season: null,
-      episode: null,
-      watchedAt: m.watched_at,
-    })),
-  ]
-    .sort((a, b) => (a.watchedAt < b.watchedAt ? 1 : -1))
-    .slice(0, 100);
+       WHERE w.user_id = ?1
+     ) ORDER BY watched_at DESC LIMIT ${perPage} OFFSET ${(page - 1) * perPage}`
+  )
+    .bind(user.id)
+    .all<{ kind: "tv" | "movie"; tmdb_id: number; season: number | null; episode: number | null; watched_at: string; title: string | null; poster_path: string | null }>();
+  const items: HistoryItem[] = rows.results.map((r) => ({
+    tmdbId: r.tmdb_id,
+    mediaType: r.kind,
+    title: r.title ?? (r.kind === "tv" ? `Show #${r.tmdb_id}` : `Movie #${r.tmdb_id}`),
+    posterPath: r.poster_path,
+    season: r.season,
+    episode: r.episode,
+    watchedAt: r.watched_at,
+  }));
   return c.html(
     <Layout user={user} title="History">
-      <HistoryPage items={items} />
+      <HistoryPage items={items} page={page} lastPage={lastPage} />
     </Layout>
   );
 });
@@ -1151,7 +1169,7 @@ app.post("/api/rate", async (c) => {
   )
     .bind(user.id, tmdbId, mediaType, title, posterPath, mediaType === "movie" ? "completed" : "watching", rating === 0 ? null : rating)
     .run();
-  return c.redirect(String(form.redirect ?? "/library"));
+  return c.redirect(safeNext(form.redirect) ?? "/library");
 });
 
 app.post("/api/notes", async (c) => {
@@ -1167,7 +1185,7 @@ app.post("/api/notes", async (c) => {
   )
     .bind(notes || null, user.id, tmdbId, mediaType)
     .run();
-  return c.redirect(String(form.redirect ?? "/library"));
+  return c.redirect(safeNext(form.redirect) ?? "/library");
 });
 
 app.post("/api/track", async (c) => {
@@ -1188,7 +1206,7 @@ app.post("/api/track", async (c) => {
   )
     .bind(user.id, tmdbId, mediaType, title, details.poster_path, status)
     .run();
-  return c.redirect(String(form.redirect ?? "/home"));
+  return c.redirect(safeNext(form.redirect) ?? "/home");
 });
 
 app.post("/api/untrack", async (c) => {
@@ -1200,7 +1218,7 @@ app.post("/api/untrack", async (c) => {
   await c.env.DB.prepare("DELETE FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = ?")
     .bind(user.id, tmdbId, mediaType)
     .run();
-  return c.redirect(String(form.redirect ?? "/library"));
+  return c.redirect(safeNext(form.redirect) ?? "/library");
 });
 
 app.post("/api/watch", async (c) => {
@@ -1232,7 +1250,7 @@ app.post("/api/watch", async (c) => {
     await maybeAutoComplete(c.env, user.id, tmdbId, details);
   }
   invalidateHours(c, user.id);
-  return c.redirect(String(form.redirect ?? "/home"));
+  return c.redirect(safeNext(form.redirect) ?? "/home");
 });
 
 app.post("/api/reminders", async (c) => {
@@ -1258,7 +1276,7 @@ app.post("/api/watch-season", async (c) => {
       .bind(user.id, tmdbId)
       .run();
     invalidateHours(c, user.id);
-    return c.redirect(String(form.redirect ?? "/home"));
+    return c.redirect(safeNext(form.redirect) ?? "/home");
   }
   const details = await tvDetails(c.env, tmdbId);
   const season = await seasonDetails(c.env, tmdbId, seasonNum);
@@ -1282,7 +1300,7 @@ app.post("/api/watch-season", async (c) => {
     .run();
   await maybeAutoComplete(c.env, user.id, tmdbId, details);
   invalidateHours(c, user.id);
-  return c.redirect(String(form.redirect ?? "/home"));
+  return c.redirect(safeNext(form.redirect) ?? "/home");
 });
 
 app.post("/api/watch-up-to", async (c) => {
@@ -1293,7 +1311,7 @@ app.post("/api/watch-up-to", async (c) => {
   const targetSeason = parseInt(String(form.season), 10);
   const targetEpisode = parseInt(String(form.episode), 10);
   if (!Number.isFinite(tmdbId) || !Number.isFinite(targetSeason) || !Number.isFinite(targetEpisode)) {
-    return c.redirect(String(form.redirect ?? "/home"));
+    return c.redirect(safeNext(form.redirect) ?? "/home");
   }
   const details = await tvDetails(c.env, tmdbId);
   const today = new Date().toISOString().slice(0, 10);
@@ -1327,7 +1345,7 @@ app.post("/api/watch-up-to", async (c) => {
     .run();
   await maybeAutoComplete(c.env, user.id, tmdbId, details);
   invalidateHours(c, user.id);
-  return c.redirect(String(form.redirect ?? "/home"));
+  return c.redirect(safeNext(form.redirect) ?? "/home");
 });
 
 app.post("/api/watch-movie", async (c) => {
@@ -1354,7 +1372,7 @@ app.post("/api/watch-movie", async (c) => {
       .run();
   }
   invalidateHours(c, user.id);
-  return c.redirect(String(form.redirect ?? "/home"));
+  return c.redirect(safeNext(form.redirect) ?? "/home");
 });
 
 // step 1: parse the uploaded export (TV Time ZIP, or a Trakt/Serializd-style CSV) into JSON (no TMDB calls here)
@@ -1404,12 +1422,13 @@ app.post("/api/import/batch", async (c) => {
       }
       const title = match.name ?? show.name;
       const allWatched = show.episodes.length > 0;
+      const showRating = Number.isInteger(show.rating) && show.rating! >= 1 && show.rating! <= 5 ? show.rating! : null;
       await c.env.DB.prepare(
-        `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, source)
-         VALUES (?, ?, 'tv', ?, ?, ?, ?)
-         ON CONFLICT(user_id, tmdb_id, media_type) DO NOTHING`
+        `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, source, rating)
+         VALUES (?, ?, 'tv', ?, ?, ?, ?, ?)
+         ON CONFLICT(user_id, tmdb_id, media_type) DO UPDATE SET rating = COALESCE(tracked.rating, excluded.rating)`
       )
-        .bind(user.id, match.id, title, match.poster_path, allWatched ? "watching" : "watchlist", source)
+        .bind(user.id, match.id, title, match.poster_path, allWatched ? "watching" : "watchlist", source, showRating)
         .run();
       showsImported++;
       const stmts = show.episodes.slice(0, 400).map((e) =>
@@ -1434,12 +1453,13 @@ app.post("/api/import/batch", async (c) => {
         unmatchedNames.push(movie.name);
         continue;
       }
+      const movieRating = Number.isInteger(movie.rating) && movie.rating! >= 1 && movie.rating! <= 5 ? movie.rating! : null;
       await c.env.DB.batch([
         c.env.DB.prepare(
-          `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, source)
-           VALUES (?, ?, 'movie', ?, ?, 'completed', ?)
-           ON CONFLICT(user_id, tmdb_id, media_type) DO NOTHING`
-        ).bind(user.id, match.id, match.title ?? movie.name, match.poster_path, source),
+          `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status, source, rating)
+           VALUES (?, ?, 'movie', ?, ?, 'completed', ?, ?)
+           ON CONFLICT(user_id, tmdb_id, media_type) DO UPDATE SET rating = COALESCE(tracked.rating, excluded.rating)`
+        ).bind(user.id, match.id, match.title ?? movie.name, match.poster_path, source, movieRating),
         c.env.DB.prepare(
           "INSERT OR IGNORE INTO movie_watches (user_id, tmdb_id, watched_at) VALUES (?, ?, COALESCE(?, datetime('now')))"
         ).bind(user.id, match.id, movie.watchedAt),
@@ -1575,10 +1595,21 @@ app.get("/api/stats", async (c) => {
 app.notFound((c) =>
   c.html(
     <Layout user={c.get("user")} title="Not found">
-      <div class="py-20 text-center">
+      <div class="mx-auto max-w-md py-20 text-center">
         <h1 class="text-3xl font-bold">404</h1>
-        <p class="mt-2 text-slate-400">
-          That page drifted off the deck. <a href="/" class="text-violet-400 hover:underline">Go home</a>.
+        <p class="mt-2 text-slate-400">That page drifted off the deck.</p>
+        <form action="/search" method="get" class="mt-6 flex gap-2">
+          <input
+            type="search"
+            name="q"
+            placeholder="Search shows & movies…"
+            aria-label="Search shows and movies"
+            class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+          />
+          <button class="shrink-0 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Search</button>
+        </form>
+        <p class="mt-4 text-sm text-slate-400">
+          Or <a href="/browse" class="text-violet-400 hover:underline">browse by genre</a> · <a href="/" class="text-violet-400 hover:underline">go home</a>.
         </p>
       </div>
     </Layout>,

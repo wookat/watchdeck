@@ -28,12 +28,16 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <meta property="og:title" content={title ? `${title} — WatchDeck` : "WatchDeck — Track your TV shows & movies on the web"} />
       {description && <meta property="og:description" content={description} />}
       {canonical && <meta property="og:url" content={canonical} />}
-      {ogImage && <meta property="og:image" content={ogImage} />}
-      {ogImage && <meta name="twitter:card" content="summary_large_image" />}
+      <meta property="og:site_name" content="WatchDeck" />
+      <meta property="og:image" content={ogImage ?? "https://watchdeck.zalize.com/og-default.png"} />
+      <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <link rel="stylesheet" href="/styles.css" />
       <script src="/app.js" defer></script>
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+      <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      <link rel="manifest" href="/manifest.webmanifest" />
+      <meta name="theme-color" content="#020617" />
     </head>
     <body class="min-h-screen bg-slate-950 text-slate-100 antialiased">
       <a
@@ -42,9 +46,9 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       >
         Skip to content
       </a>
-      <nav class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+      <nav id="site-nav" class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
         <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-3">
-          <a href={user ? "/home" : "/"} class="flex items-center gap-2 text-lg font-bold tracking-tight">
+          <a href={user ? "/home" : "/"} data-logo class="flex items-center gap-2 text-lg font-bold tracking-tight">
             <span class="inline-block h-6 w-6 rounded bg-gradient-to-br from-violet-500 to-fuchsia-500" />
             WatchDeck
           </a>
@@ -343,6 +347,7 @@ export interface NextUpItem {
   episode: number;
   episodeName: string | null;
   airDate: string | null;
+  episodesLeft: number;
 }
 
 export interface WatchlistPreviewItem {
@@ -424,7 +429,10 @@ export const HomePage: FC<{
                 S{String(n.season).padStart(2, "0")}E{String(n.episode).padStart(2, "0")}
                 {n.episodeName ? ` · ${n.episodeName}` : ""}
               </p>
-              {n.airDate && <p class="text-xs text-slate-400">aired {n.airDate}</p>}
+              <p class="text-xs text-slate-400">
+                {n.airDate ? `aired ${n.airDate}` : ""}
+                {n.episodesLeft > 1 ? `${n.airDate ? " · " : ""}${n.episodesLeft} eps left` : ""}
+              </p>
               <form action="/api/watch" method="post" class="mt-2">
                 <input type="hidden" name="tmdb_id" value={String(n.tmdbId)} />
                 <input type="hidden" name="season" value={String(n.season)} />
@@ -660,7 +668,8 @@ export const ShowPage: FC<{
   recs: SearchResult[];
   providers?: WatchProviders | null;
   cast?: CastMember[];
-}> = ({ show, season, watched, tracked, user, recs, providers, cast }) => {
+  trailer?: string | null;
+}> = ({ show, season, watched, tracked, user, recs, providers, cast, trailer }) => {
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
@@ -672,7 +681,15 @@ export const ShowPage: FC<{
             {show.first_air_date?.slice(0, 4)} · {show.number_of_seasons} season{show.number_of_seasons === 1 ? "" : "s"} ·{" "}
             {show.number_of_episodes} episodes · {show.status} · ★ {show.vote_average?.toFixed(1)}
           </p>
-          <p class="mt-1 text-sm text-slate-400">{show.genres.map((g) => g.name).join(", ")}</p>
+          <p class="mt-1 text-sm text-slate-400">
+            {show.genres.map((g) => g.name).join(", ")}
+            {trailer && (
+              <>
+                {" · "}
+                <a href={trailer} rel="noopener" target="_blank" class="text-violet-400 hover:underline">▶ Trailer</a>
+              </>
+            )}
+          </p>
           {show.next_episode_to_air?.air_date && (
             <p class="mt-3 inline-block rounded-lg border border-violet-800 bg-violet-950/50 px-3 py-1.5 text-sm text-violet-300">
               Next episode: S{String(show.next_episode_to_air.season_number).padStart(2, "0")}E
@@ -839,7 +856,8 @@ export const MoviePage: FC<{
   recs: SearchResult[];
   providers?: WatchProviders | null;
   cast?: CastMember[];
-}> = ({ movie, watched, tracked, user, recs, providers, cast }) => {
+  trailer?: string | null;
+}> = ({ movie, watched, tracked, user, recs, providers, cast, trailer }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
   return (
     <div>
@@ -850,7 +868,15 @@ export const MoviePage: FC<{
         <p class="mt-1 text-sm text-slate-400">
           {movie.release_date?.slice(0, 4)} {movie.runtime ? `· ${movie.runtime} min` : ""} · ★ {movie.vote_average?.toFixed(1)}
         </p>
-        <p class="mt-1 text-sm text-slate-400">{movie.genres.map((g) => g.name).join(", ")}</p>
+        <p class="mt-1 text-sm text-slate-400">
+          {movie.genres.map((g) => g.name).join(", ")}
+          {trailer && (
+            <>
+              {" · "}
+              <a href={trailer} rel="noopener" target="_blank" class="text-violet-400 hover:underline">▶ Trailer</a>
+            </>
+          )}
+        </p>
         <p class="mt-4 max-w-2xl text-slate-300">{movie.overview}</p>
         <WhereToWatch providers={providers ?? null} />
         {user ? (
@@ -964,6 +990,7 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
           ["recent", "Recently updated"],
           ["title", "Title A\u2013Z"],
           ["progress", "Most watched"],
+          ["rating", "Top rated"],
         ] as const
       ).map(([key, label]) => (
         <a
@@ -1299,6 +1326,7 @@ export interface UserStats {
   topShows: { title: string; tmdb_id: number; eps: number }[];
   byMonth: { month: string; eps: number }[];
   byYear: { year: string; eps: number; movies: number }[];
+  ratingCounts: number[];
   topGenres: { name: string; count: number }[];
   epsThisYear: number;
   moviesThisYear: number;
@@ -1379,6 +1407,24 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
                   <span class="whitespace-nowrap text-slate-400">
                     {y.eps} ep{y.eps === 1 ? "" : "s"}{y.movies > 0 ? ` · ${y.movies} movie${y.movies === 1 ? "" : "s"}` : ""}
                   </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+      {stats.ratingCounts.some((n) => n > 0) && (
+        <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h2 class="mb-4 font-semibold">Your ratings</h2>
+          <ul class="space-y-1.5">
+            {[5, 4, 3, 2, 1].map((r) => {
+              const n = stats.ratingCounts[r - 1];
+              const maxN = Math.max(1, ...stats.ratingCounts);
+              return (
+                <li class="flex items-center gap-2 text-xs">
+                  <span class="w-16 shrink-0 text-slate-400">{"★".repeat(r)}</span>
+                  <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((n / maxN) * 100))}%`} />
+                  <span class="text-slate-400">{n}</span>
                 </li>
               );
             })}
@@ -1526,7 +1572,7 @@ export interface HistoryItem {
   watchedAt: string;
 }
 
-export const HistoryPage: FC<{ items: HistoryItem[] }> = ({ items }) => (
+export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: number }> = ({ items, page = 1, lastPage = 1 }) => (
   <div>
     <h1 class="mb-6 text-2xl font-bold">History</h1>
     {items.length === 0 ? (
@@ -1578,7 +1624,7 @@ export const HistoryPage: FC<{ items: HistoryItem[] }> = ({ items }) => (
                           </>
                         )}
                         <input type="hidden" name="undo" value="1" />
-                        <input type="hidden" name="redirect" value="/history" />
+                        <input type="hidden" name="redirect" value={`/history${page > 1 ? `?page=${page}` : ""}`} />
                         <button
                           class="rounded-lg border border-slate-700 px-2.5 py-1 text-xs text-slate-400 hover:border-red-500 hover:text-red-400"
                           aria-label={`Remove ${it.title}${it.mediaType === "tv" && it.season != null && it.episode != null ? ` S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}` : ""} from history`}
@@ -1594,6 +1640,21 @@ export const HistoryPage: FC<{ items: HistoryItem[] }> = ({ items }) => (
           </div>
         );
       })()
+    )}
+    {lastPage > 1 && (
+      <nav class="mt-8 flex items-center justify-center gap-4 text-sm" aria-label="History pages">
+        {page > 1 ? (
+          <a href={`/history?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>
+        ) : (
+          <span class="rounded-lg border border-slate-800 px-3 py-1.5 text-slate-600">← Previous</span>
+        )}
+        <span class="text-slate-400">Page {page} of {lastPage}</span>
+        {page < lastPage ? (
+          <a href={`/history?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>
+        ) : (
+          <span class="rounded-lg border border-slate-800 px-3 py-1.5 text-slate-600">Next →</span>
+        )}
+      </nav>
     )}
   </div>
 );
@@ -1649,7 +1710,7 @@ export const ImportPage: FC = () => (
         gdpr.tvtime.com
       </a>
       . We import your tracked episodes, followed shows <strong>and movies</strong> — then take you straight to your next episode. Coming
-      from Trakt or Serializd? A CSV export with a title column works too. Netflix's ViewingActivity.csv also works — shows are added to
+      from Trakt or Serializd? A CSV export with a title column works too — a rating column (1–5 or 1–10) becomes your star ratings. Netflix's ViewingActivity.csv also works — shows are added to
       your library and movies marked watched (Netflix doesn't export episode numbers).
     </p>
     <div
