@@ -46,9 +46,9 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       >
         Skip to content
       </a>
-      <nav class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
+      <nav id="site-nav" class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
         <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-3">
-          <a href={user ? "/home" : "/"} class="flex items-center gap-2 text-lg font-bold tracking-tight">
+          <a href={user ? "/home" : "/"} data-logo class="flex items-center gap-2 text-lg font-bold tracking-tight">
             <span class="inline-block h-6 w-6 rounded bg-gradient-to-br from-violet-500 to-fuchsia-500" />
             WatchDeck
           </a>

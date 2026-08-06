@@ -1141,3 +1141,16 @@
 
 **证据**
 - test-report-round80-regression.md + 录屏；PR #37 回归评论。
+
+---
+
+## Round 81 — 2026-08-06
+
+**驱动：③视觉/无障碍（导航当前页无指示，WCAG 2.4.8 / 现代导航惯例）**
+- 顶部导航所有链接同色，用户无法一眼看出身处哪个板块；无 aria-current。
+
+**修复（P2）**
+- app.js 在 DOMContentLoaded 时对 #site-nav 内匹配当前 pathname 的链接（前缀匹配子路径、排除 logo）加 aria-current="page" 与 text-violet-400/font-semibold 高亮。
+
+**证据**
+- Version 1cf0d4b5；线上验证：app.js 已含 site-nav 高亮逻辑，页面 nav 已带 id（浏览器端效果由 R85 回归复核）。
