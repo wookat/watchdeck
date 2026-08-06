@@ -1126,3 +1126,18 @@
 
 **证据**
 - Version cdb6632f；线上验证：/og-default.png 200，首页 og:image=og-default.png、og:site_name=WatchDeck，Severance 详情页仍为海报 og:image（未被覆盖）。
+
+---
+
+## Round 80 — 2026-08-06（QA 回归轮）
+
+**发现与结果（测试代理完整回归 76-79 轮，目标 Version cdb6632f）**
+- 无 P0/P1/P2/P3。
+- R76：manifest/三个 PNG 图标全部 200 且 content-type 正确，首页与详情页 head 均含 manifest/apple-touch-icon/theme-color。
+- R77：103 条流水一次性账号 → Page 1 of 2 分页条、第 2 页延续全局倒序、第 2 页 Remove 后回到 ?page=2；r10 42 条无分页条，?page=99 钳制正常。
+- R78：/api/track redirect=https://evil.com 回落 /home，站内相对路径正常（10 个端点共用同一 safeNext 行，抽测 1 个）。
+- R79：/og-default.png 200，非详情页输出 og:site_name+回落 og:image，详情页保留海报 og:image。
+- 冒烟全过；基线 8/4/0 未动（未登录）；r10 净零 3/0/41（测试中一次误在 r10 会话里执行脚本 POST 短暂多出一条 tracked，已当场清除并 D1 复核）；103 条一次性账号已自删。
+
+**证据**
+- test-report-round80-regression.md + 录屏；PR #37 回归评论。
