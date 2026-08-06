@@ -14,10 +14,15 @@ import {
   genreList,
   discoverByGenre,
   discoverByNetwork,
+  discoverByYear,
+  discoverPopular,
   NETWORKS,
   recommendations,
   watchProviders,
   slugify,
+  type SearchResult,
+  topCast,
+  type CastMember,
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, type ParsedImport } from "./importer";
 import { sendEmail, welcomeEmail, resetEmail } from "./email";
@@ -41,6 +46,7 @@ import {
   BrowseIndex,
   BrowseGenre,
   BrowseNetwork,
+  BrowseYear,
   type UserStats,
   type NextUpItem,
   type HistoryItem,
@@ -59,12 +65,45 @@ app.use("*", (c, next) =>
   csrf({ origin: (origin) => origin === new URL(c.env.SITE_URL).origin || origin === new URL(c.req.url).origin })(c, next)
 );
 
+app.use("*", async (c, next) => {
+  await next();
+  const h = c.res.headers;
+  h.set("strict-transport-security", "max-age=31536000; includeSubDomains");
+  h.set("x-content-type-options", "nosniff");
+  h.set("x-frame-options", "DENY");
+  h.set("referrer-policy", "strict-origin-when-cross-origin");
+  h.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
+  if (c.res.headers.get("content-type")?.includes("text/html")) {
+    h.set(
+      "content-security-policy",
+      "default-src 'self'; img-src 'self' https://image.tmdb.org data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+    );
+  }
+});
+
+const RATE_WINDOW_MS = 600_000;
+
+function rateLimitKey(c: { req: { header: (n: string) => string | undefined } }, bucket: string): string {
+  return `rl:${bucket}:${c.req.header("cf-connecting-ip") ?? "unknown"}`;
+}
+
 async function rateLimit(c: { env: { CACHE: KVNamespace }; req: { header: (n: string) => string | undefined } }, bucket: string, limit: number): Promise<boolean> {
-  const ip = c.req.header("cf-connecting-ip") ?? "unknown";
-  const key = `rl:${bucket}:${ip}`;
-  const count = parseInt((await c.env.CACHE.get(key)) ?? "0", 10) + 1;
-  await c.env.CACHE.put(key, String(count), { expirationTtl: 600 });
-  return count <= limit;
+  const key = rateLimitKey(c, bucket);
+  const now = Date.now();
+  const raw = await c.env.CACHE.get(key);
+  let n = 0;
+  let exp = now + RATE_WINDOW_MS;
+  if (raw) {
+    const parts = raw.split(":");
+    const storedExp = parseInt(parts[1] ?? "0", 10);
+    if (storedExp > now) {
+      n = parseInt(parts[0] ?? "0", 10);
+      exp = storedExp;
+    }
+  }
+  n += 1;
+  await c.env.CACHE.put(key, `${n}:${exp}`, { expirationTtl: Math.max(60, Math.ceil((exp - now) / 1000)) });
+  return n <= limit;
 }
 
 app.use("*", async (c, next) => {
@@ -92,9 +131,31 @@ app.use("*", async (c, next) => {
 app.get("/", async (c) => {
   const user = c.get("user");
   if (user) return c.redirect("/home");
+  let trending: { shows: SearchResult[]; movies: SearchResult[] } | null = null;
+  try {
+    const [shows, movies] = await Promise.all([trendingTv(c.env), trendingMovies(c.env)]);
+    trending = { shows: shows.results, movies: movies.results };
+  } catch {}
   return c.html(
-    <Layout user={null} canonical={c.env.SITE_URL + "/"}>
-      <Landing subscribed={c.req.query("subscribed") === "1"} />
+    <Layout
+      user={null}
+      canonical={c.env.SITE_URL + "/"}
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        name: "WatchDeck",
+        url: c.env.SITE_URL + "/",
+        potentialAction: {
+          "@type": "SearchAction",
+          target: { "@type": "EntryPoint", urlTemplate: `${c.env.SITE_URL}/search?q={search_term_string}` },
+          "query-input": "required name=search_term_string",
+        },
+      }}
+    >
+      <div>
+        <Landing subscribed={c.req.query("subscribed") === "1"} />
+        {trending ? <TrendingSection shows={trending.shows} movies={trending.movies} /> : null}
+      </div>
     </Layout>
   );
 });
@@ -140,6 +201,7 @@ app.post("/login", async (c) => {
     return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Wrong email or password." /></Layout>, 401);
   }
   await createSession(c, row.id);
+  c.executionCtx.waitUntil(c.env.CACHE.delete(rateLimitKey(c, "login")).catch(() => {}));
   return c.redirect("/home");
 });
 
@@ -299,9 +361,11 @@ app.get("/search", async (c) => {
       .run()
       .catch(() => {})
   );
+  const typeQ = c.req.query("type");
+  const type = typeQ === "tv" || typeQ === "movie" ? typeQ : "all";
   return c.html(
     <Layout user={user} title={`Search: ${q}`}>
-      <SearchPage q={q} results={res.results} libraryIds={libraryIds} />
+      <SearchPage q={q} results={res.results} libraryIds={libraryIds} type={type} />
     </Layout>
   );
 });
@@ -322,15 +386,15 @@ app.get("/shows/:idslug", async (c) => {
     season = await seasonDetails(c.env, id, seasonNum);
   } catch {}
   let watched = new Set<string>();
-  let tracked: { status: string; rating: number | null } | null = null;
+  let tracked: { status: string; rating: number | null; notes: string | null } | null = null;
   if (user) {
     const rows = await c.env.DB.prepare("SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
       .bind(user.id, id)
       .all<{ season: number; episode: number }>();
     watched = new Set(rows.results.map((r) => `${r.season}x${r.episode}`));
-    tracked = await c.env.DB.prepare("SELECT status, rating FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
+    tracked = await c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
       .bind(user.id, id)
-      .first<{ status: string; rating: number | null }>();
+      .first<{ status: string; rating: number | null; notes: string | null }>();
   }
   let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
   try {
@@ -339,6 +403,10 @@ app.get("/shows/:idslug", async (c) => {
   let providers = null;
   try {
     providers = await watchProviders(c.env, "tv", id);
+  } catch {}
+  let cast: CastMember[] = [];
+  try {
+    cast = await topCast(c.env, "tv", id);
   } catch {}
   const showCanonical = `${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`;
   return c.html(
@@ -350,17 +418,29 @@ app.get("/shows/:idslug", async (c) => {
       ogImage={show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : undefined}
       jsonLd={{
         "@context": "https://schema.org",
-        "@type": "TVSeries",
-        name: show.name,
-        url: showCanonical,
-        ...(show.overview ? { description: show.overview } : {}),
-        ...(show.poster_path ? { image: `https://image.tmdb.org/t/p/w500${show.poster_path}` } : {}),
-        ...(show.first_air_date ? { datePublished: show.first_air_date } : {}),
-        ...(show.number_of_seasons ? { numberOfSeasons: show.number_of_seasons } : {}),
-        ...(show.genres?.length ? { genre: show.genres.map((g) => g.name) } : {}),
+        "@graph": [
+          {
+            "@type": "TVSeries",
+            name: show.name,
+            url: showCanonical,
+            ...(show.overview ? { description: show.overview } : {}),
+            ...(show.poster_path ? { image: `https://image.tmdb.org/t/p/w500${show.poster_path}` } : {}),
+            ...(show.first_air_date ? { datePublished: show.first_air_date } : {}),
+            ...(show.number_of_seasons ? { numberOfSeasons: show.number_of_seasons } : {}),
+            ...(show.genres?.length ? { genre: show.genres.map((g) => g.name) } : {}),
+          },
+          {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "WatchDeck", item: c.env.SITE_URL + "/" },
+              { "@type": "ListItem", position: 2, name: "Browse", item: c.env.SITE_URL + "/browse" },
+              { "@type": "ListItem", position: 3, name: show.name, item: showCanonical },
+            ],
+          },
+        ],
       }}
     >
-      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} />
+      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} />
     </Layout>
   );
 });
@@ -376,12 +456,12 @@ app.get("/movies/:idslug", async (c) => {
     return c.notFound();
   }
   let watched = false;
-  let tracked: { status: string; rating: number | null } | null = null;
+  let tracked: { status: string; rating: number | null; notes: string | null } | null = null;
   if (user) {
     watched = !!(await c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first());
-    tracked = await c.env.DB.prepare("SELECT status, rating FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
+    tracked = await c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
       .bind(user.id, id)
-      .first<{ status: string; rating: number | null }>();
+      .first<{ status: string; rating: number | null; notes: string | null }>();
   }
   let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
   try {
@@ -390,6 +470,10 @@ app.get("/movies/:idslug", async (c) => {
   let providers = null;
   try {
     providers = await watchProviders(c.env, "movie", id);
+  } catch {}
+  let cast: CastMember[] = [];
+  try {
+    cast = await topCast(c.env, "movie", id);
   } catch {}
   const movieCanonical = `${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`;
   return c.html(
@@ -401,16 +485,28 @@ app.get("/movies/:idslug", async (c) => {
       ogImage={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined}
       jsonLd={{
         "@context": "https://schema.org",
-        "@type": "Movie",
-        name: movie.title,
-        url: movieCanonical,
-        ...(movie.overview ? { description: movie.overview } : {}),
-        ...(movie.poster_path ? { image: `https://image.tmdb.org/t/p/w500${movie.poster_path}` } : {}),
-        ...(movie.release_date ? { datePublished: movie.release_date } : {}),
-        ...(movie.genres?.length ? { genre: movie.genres.map((g) => g.name) } : {}),
+        "@graph": [
+          {
+            "@type": "Movie",
+            name: movie.title,
+            url: movieCanonical,
+            ...(movie.overview ? { description: movie.overview } : {}),
+            ...(movie.poster_path ? { image: `https://image.tmdb.org/t/p/w500${movie.poster_path}` } : {}),
+            ...(movie.release_date ? { datePublished: movie.release_date } : {}),
+            ...(movie.genres?.length ? { genre: movie.genres.map((g) => g.name) } : {}),
+          },
+          {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "WatchDeck", item: c.env.SITE_URL + "/" },
+              { "@type": "ListItem", position: 2, name: "Browse", item: c.env.SITE_URL + "/browse" },
+              { "@type": "ListItem", position: 3, name: movie.title, item: movieCanonical },
+            ],
+          },
+        ],
       }}
     >
-      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} />
+      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} />
     </Layout>
   );
 });
@@ -439,9 +535,13 @@ app.get("/library", async (c) => {
   const sorted = [...rows.results];
   if (sort === "title") sorted.sort((a, b) => a.title.localeCompare(b.title));
   else if (sort === "progress") sorted.sort((a, b) => b.eps_watched - a.eps_watched);
+  const countRows = await c.env.DB.prepare("SELECT status, COUNT(*) AS n FROM tracked WHERE user_id = ? GROUP BY status")
+    .bind(user.id)
+    .all<{ status: string; n: number }>();
+  const counts = Object.fromEntries(countRows.results.map((r) => [r.status, r.n]));
   return c.html(
     <Layout user={user} title="Library">
-      <LibraryPage rows={sorted} status={status} sort={sort} q={q} />
+      <LibraryPage rows={sorted} status={status} sort={sort} q={q} counts={counts} />
     </Layout>
   );
 });
@@ -526,6 +626,11 @@ app.get("/feed/:token", async (c) => {
   });
 });
 
+function browseYears(): number[] {
+  const current = new Date().getUTCFullYear();
+  return Array.from({ length: 15 }, (_, i) => current - i);
+}
+
 app.get("/browse", async (c) => {
   const [tv, movie] = await Promise.all([genreList(c.env, "tv"), genreList(c.env, "movie")]);
   return c.html(
@@ -535,7 +640,7 @@ app.get("/browse", async (c) => {
       description="Explore popular TV shows and movies by genre and start tracking them for free on WatchDeck."
       canonical={`${c.env.SITE_URL}/browse`}
     >
-      <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} networks={NETWORKS} />
+      <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} networks={NETWORKS} years={browseYears()} />
     </Layout>
   );
 });
@@ -544,17 +649,43 @@ app.get("/browse/network/:idslug", async (c) => {
   const id = parseInt(c.req.param("idslug"), 10);
   const network = NETWORKS.find((n) => n.id === id);
   if (!network) return c.notFound();
-  const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
   const res = await discoverByNetwork(c.env, network.id, page);
   const base = `${c.env.SITE_URL}/browse/network/${network.id}-${slugify(network.name)}`;
+  const last = Math.min(res.total_pages, 20);
   return c.html(
     <Layout
       user={c.get("user")}
       title={`${network.name} TV shows to watch`}
       description={`Popular TV shows on ${network.name} to discover and track for free on WatchDeck.`}
       canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
     >
       <BrowseNetwork network={network} results={res.results} page={page} totalPages={res.total_pages} />
+    </Layout>
+  );
+});
+
+app.get("/browse/year/:type/:year", async (c) => {
+  const type = c.req.param("type") === "movie" ? "movie" : c.req.param("type") === "tv" ? "tv" : null;
+  const year = parseInt(c.req.param("year"), 10);
+  const current = new Date().getUTCFullYear();
+  if (!type || !Number.isFinite(year) || year < 1950 || year > current + 1) return c.notFound();
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const res = await discoverByYear(c.env, type, year, page);
+  const base = `${c.env.SITE_URL}/browse/year/${type}/${year}`;
+  const last = Math.min(res.total_pages, 20);
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={`${type === "tv" ? "TV shows" : "Movies"} of ${year}`}
+      description={`The most popular ${type === "tv" ? `TV shows that premiered in ${year}` : `movies released in ${year}`} to discover and track for free on WatchDeck.`}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
+    >
+      <BrowseYear type={type} year={year} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
   );
 });
@@ -566,15 +697,18 @@ app.get("/browse/:type/:genreslug", async (c) => {
   const genres = await genreList(c.env, type);
   const genre = genres.genres.find((g) => g.id === genreId);
   if (!genre) return c.notFound();
-  const page = Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1);
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
   const res = await discoverByGenre(c.env, type, genreId, page);
   const base = `${c.env.SITE_URL}/browse/${type}/${genre.id}-${slugify(genre.name)}`;
+  const last = Math.min(res.total_pages, 20);
   return c.html(
     <Layout
       user={c.get("user")}
       title={`${genre.name} ${type === "tv" ? "TV shows" : "movies"} to watch`}
       description={`Popular ${genre.name.toLowerCase()} ${type === "tv" ? "TV shows" : "movies"} to discover and track for free on WatchDeck.`}
       canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
     >
       <BrowseGenre type={type} genre={genre} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
@@ -660,6 +794,24 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     ).bind(userId).all<{ month: string; eps: number }>(),
     hoursWatched(env, userId),
   ]);
+  const items = await env.DB.prepare(
+    "SELECT tmdb_id, media_type FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 40"
+  )
+    .bind(userId)
+    .all<{ tmdb_id: number; media_type: "tv" | "movie" }>();
+  const genreCounts = new Map<string, number>();
+  await Promise.all(
+    items.results.map(async (t) => {
+      try {
+        const d = t.media_type === "tv" ? await tvDetails(env, t.tmdb_id) : await movieDetails(env, t.tmdb_id);
+        for (const g of d.genres ?? []) genreCounts.set(g.name, (genreCounts.get(g.name) ?? 0) + 1);
+      } catch {}
+    })
+  );
+  const topGenres = [...genreCounts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .slice(0, 6);
   return {
     hoursWatched: hours,
     epsWatched: eps?.n ?? 0,
@@ -668,6 +820,7 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     completedShows: completed?.n ?? 0,
     topShows: topShows.results,
     byMonth: byMonth.results,
+    topGenres,
   };
 }
 
@@ -747,6 +900,29 @@ app.get("/settings", async (c) => {
       <SettingsPage user={user} saved={saved} error={error} />
     </Layout>
   );
+});
+
+app.get("/api/export", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const [tracked, episodes, movies] = await c.env.DB.batch([
+    c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating, notes, created_at, updated_at FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
+    c.env.DB.prepare("SELECT tmdb_id, season, episode, watched_at FROM episode_watches WHERE user_id = ? ORDER BY tmdb_id, season, episode").bind(user.id),
+    c.env.DB.prepare("SELECT tmdb_id, watched_at FROM movie_watches WHERE user_id = ? ORDER BY tmdb_id").bind(user.id),
+  ]);
+  const payload = {
+    exported_at: new Date().toISOString(),
+    source: "watchdeck.zalize.com",
+    account: { email: user.email, display_name: user.display_name ?? null },
+    tracked: tracked.results,
+    episode_watches: episodes.results,
+    movie_watches: movies.results,
+  };
+  return c.body(JSON.stringify(payload, null, 2), 200, {
+    "content-type": "application/json; charset=utf-8",
+    "content-disposition": `attachment; filename="watchdeck-export-${new Date().toISOString().slice(0, 10)}.json"`,
+    "cache-control": "no-store",
+  });
 });
 
 app.post("/api/settings/profile", async (c) => {
@@ -902,6 +1078,22 @@ app.post("/api/rate", async (c) => {
      ON CONFLICT(user_id, tmdb_id, media_type) DO UPDATE SET rating = excluded.rating, updated_at = datetime('now')`
   )
     .bind(user.id, tmdbId, mediaType, title, posterPath, mediaType === "movie" ? "completed" : "watching", rating === 0 ? null : rating)
+    .run();
+  return c.redirect(String(form.redirect ?? "/library"));
+});
+
+app.post("/api/notes", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const mediaType = String(form.media_type) === "movie" ? "movie" : "tv";
+  const notes = String(form.notes ?? "").trim().slice(0, 2000);
+  if (!Number.isFinite(tmdbId)) return c.json({ error: "bad request" }, 400);
+  await c.env.DB.prepare(
+    "UPDATE tracked SET notes = ?, updated_at = datetime('now') WHERE user_id = ? AND tmdb_id = ? AND media_type = ?"
+  )
+    .bind(notes || null, user.id, tmdbId, mediaType)
     .run();
   return c.redirect(String(form.redirect ?? "/library"));
 });
@@ -1202,17 +1394,35 @@ app.get("/robots.txt", (c) =>
 app.get("/sitemap.xml", async (c) => {
   const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`, `${c.env.SITE_URL}/privacy`, `${c.env.SITE_URL}/terms`];
   try {
-    const [shows, movies, tvGenres, movieGenres] = await Promise.all([
+    const [shows, movies, tvGenres, movieGenres, ...popular] = await Promise.all([
       trendingTv(c.env),
       trendingMovies(c.env),
       genreList(c.env, "tv"),
       genreList(c.env, "movie"),
+      discoverPopular(c.env, "tv", 1),
+      discoverPopular(c.env, "tv", 2),
+      discoverPopular(c.env, "movie", 1),
+      discoverPopular(c.env, "movie", 2),
     ]);
-    for (const s of shows.results) urls.push(`${c.env.SITE_URL}/shows/${s.id}-${slugify(s.name ?? "")}`);
-    for (const m of movies.results) urls.push(`${c.env.SITE_URL}/movies/${m.id}-${slugify(m.title ?? "")}`);
+    const seen = new Set<string>();
+    const pushTitle = (type: "tv" | "movie", id: number, title: string) => {
+      const key = `${type}:${id}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      urls.push(`${c.env.SITE_URL}/${type === "tv" ? "shows" : "movies"}/${id}-${slugify(title)}`);
+    };
+    for (const s of shows.results) pushTitle("tv", s.id, s.name ?? "");
+    for (const m of movies.results) pushTitle("movie", m.id, m.title ?? "");
+    for (const [i, p] of popular.entries()) {
+      const type = i < 2 ? "tv" : "movie";
+      for (const r of p.results) pushTitle(type, r.id, (type === "tv" ? r.name : r.title) ?? "");
+    }
     for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
     for (const g of movieGenres.genres) urls.push(`${c.env.SITE_URL}/browse/movie/${g.id}-${slugify(g.name)}`);
     for (const n of NETWORKS) urls.push(`${c.env.SITE_URL}/browse/network/${n.id}-${slugify(n.name)}`);
+    for (const y of browseYears()) {
+      urls.push(`${c.env.SITE_URL}/browse/year/tv/${y}`, `${c.env.SITE_URL}/browse/year/movie/${y}`);
+    }
   } catch {}
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
     .map((u) => `  <url><loc>${u}</loc></url>`)

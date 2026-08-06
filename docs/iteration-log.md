@@ -385,3 +385,303 @@
 
 **证据（线上验证）**
 - 测试代理报告 /home/ubuntu/test-report-rounds21-24-regression.md + 录屏：21-24 轮全过、QA 基线（8 shows/Severance 4/Friends 0）前后一致、r10 状态往返还原。
+
+---
+
+## Round 26 — 2026-08-06
+
+**发现（pSEO/竞品驱动）**
+- [P1] Trakt/Simkl 都有按年份浏览入口；WatchDeck 只有题材/网络聚合，缺「年份」维度的 pSEO 长尾页。
+
+**修复（已部署，Version 21906b4c）**
+- 新增 /browse/year/:type/:year（tv|movie × 1950–明年，超范围 404），TMDB discover 按 first_air_date_year / primary_release_year 热度排序，24h 缓存、页码钳制 20、canonical 就位。
+- /browse 增加「By year」区块（近 15 年 × TV/电影）；sitemap 新增 30 个年份 URL。
+
+**证据（线上验证）**
+- /browse 出现 By year；/browse/year/tv/2025 与 /browse/year/movie/2010 均 200；?page=2 显示 Page 2 of 20；/browse/year/tv/1900 404；sitemap 含 30 个 browse/year URL。
+
+---
+
+## Round 27 — 2026-08-06
+
+**发现（UX/数据驱动）**
+- [P1] 匿名访客落地页只有营销文案，没有任何真实内容/内链；第一方数据显示 `/` 是最高 PV 路径（70），但落地页对 SEO 与转化贡献低。
+
+**修复（已部署，Version 34ef9dd7）**
+- 落地页在英雄区与订阅卡下方追加「Trending this week」剧集+电影海报网格（复用 TrendingSection，TMDB 12h 缓存，失败降级不渲染）——匿名访客可直接点进详情页，形成 pSEO 内链。
+- 顺带修复 hono/jsx 陷阱：Layout 传入多个直接子节点时第二个不渲染，需包一层容器（已加 <div> 包裹）。
+
+**证据（线上验证）**
+- `/` 包含 "Trending shows this week" 与 "Trending movies this week" 两个海报网格，卡片链接到 /shows/:id、/movies/:id。
+
+---
+
+## Round 28 — 2026-08-06
+
+**发现（视觉/SEO 驱动）**
+- [P2] /browse 标题仍写「Browse by genre」，但页面已含年份与网络维度，标题失真。
+- [P2] 三类分页聚合页（题材/年份/网络）缺 rel=prev/next 链接标记，分页序列对爬虫不友好。
+
+**修复（已部署，Version c7cfebfb）**
+- /browse H1/副标改为「Browse TV shows & movies · by genre, year or network」。
+- Layout 新增 prev/next 可选属性，三个分页路由全部输出 <link rel="prev|next">（第 2 页的 prev 指向无参数首页 URL，与 canonical 一致）。
+
+**证据（线上验证）**
+- /browse/year/tv/2025?page=2 head 内输出 rel=prev（…/2025）与 rel=next（…?page=3）；/browse 显示新标题。
+
+---
+
+## Round 29 — 2026-08-06
+
+**发现（竞品/合规驱动）**
+- [P1] TV Time 关停的最大教训是「数据被锁死」，但 WatchDeck 自己也只进不出：只有导入没有导出，GDPR 数据可携带权仅靠删除不够，Trakt 免费档亦提供数据导出。
+
+**修复（已部署，Version 4e30794a）**
+- 新增 GET /api/export（需登录，匿名 302 → /login）：一次性导出 tracked（含状态/评分/时间戳）、episode_watches、movie_watches 为格式化 JSON，Content-Disposition 附件下载、no-store。
+- /settings 新增「Export your data」区块，一键下载。
+
+**证据（线上验证）**
+- 匿名 GET /api/export → 302 /login；r10 账号导出 JSON 含 Breaking Bad tracked + 22 集观看记录，文件名 watchdeck-export-YYYY-MM-DD.json；/settings 显示导出区块。
+
+---
+
+## Round 30 — 2026-08-06
+
+**发现（QA 回归驱动，测试代理完整回归 26-29 轮）**
+- [P2，已修复] 三类分页聚合页（年份/题材/网络）只有下界钳制，?page=99 会渲染「Page 99 of 20」；TMDB 请求虽被钳制但 UI 页码失真且产生无限分页 URL 面。
+- 其余 26-29 轮全部通过：落地页双 Trending 网格、年份页/站点地图 30 URL、rel prev/next、数据导出（导出前后 D1 计数一致，只读验证）、QA 基线（8/4/0）与核心冒烟全过。
+
+**修复（已部署，Version 6bad3c18）**
+- 三个 browse 路由页码统一 Math.min(20, Math.max(1, …)) 上下界钳制，线上复验 ?page=99 全部显示 Page 20 of 20。
+
+**证据（线上验证）**
+- 测试代理报告 /home/ubuntu/test-report-rounds26-29-regression.md + 录屏；修复后 curl 复验三条 ?page=99 URL 均 Page 20 of 20。
+
+---
+
+## Round 31 — 2026-08-06
+
+**发现（竞品驱动）**
+- [P1] Trakt/Simkl 搜索均可按类型过滤；WatchDeck 搜索把 TV/电影混排且无过滤，重名标题（如 Inception 相关剧集与电影）难区分。
+
+**修复（已部署，Version 6b6e8abd）**
+- 搜索结果页新增 All / TV shows / Movies 过滤 tab（?type=tv|movie，role=group + aria-current 可访问性标记），空结果时提示「try All」。
+
+**证据（线上验证）**
+- /search?q=inception&type=tv 仅剩 /shows/ 链接（无 /movies/27205）；&type=movie 含 /movies/27205；tab 组 aria-label="Filter results by type" 输出。
+
+---
+
+## Round 32 — 2026-08-06
+
+**发现（UX/竞品驱动）**
+- [P1] Trakt 剧集页醒目显示下一集播出信息；WatchDeck 剧集页无「下一集何时播」，用户须去日历翻找。
+
+**修复（已部署，Version 59b0b265）**
+- 剧集详情页在类型行下方新增「Next episode: SxxExx — 集名 · 日期」高亮徽章（TMDB next_episode_to_air，UTC 格式化，无未播集则不渲染）。
+
+**证据（线上验证）**
+- 在播剧集页显示「Next episode: S03E06 — The Drive · Aug 6, 2026」；已完结剧（Severance 等）无徽章。
+
+---
+
+## Round 33 — 2026-08-06
+
+**发现（竞品驱动）**
+- [P1] Serializd 的核心卖点是剧集日记/笔记，TV Time 也有 notes；WatchDeck 无任何私人笔记能力，导入用户的「感想」无处安放。
+
+**修复（已部署，Version 45aa4989）**
+- tracked 表新增 notes 列（D1 已迁移，schema.sql 同步）；新增 POST /api/notes（登录+CSRF Origin 校验，2000 字上限，空值清除）。
+- 剧集/电影详情页对已追踪条目显示「📝 Private notes」折叠区（有笔记默认展开），textarea+保存；/api/export 导出同步包含 notes 字段。
+
+**证据（线上验证）**
+- r10 账号 Breaking Bad 页保存笔记 → 刷新可见 → /api/export tracked.notes 含同一内容 → 清空后不再显示（数据已还原，r10 无残留笔记）。
+
+---
+
+## Round 34 — 2026-08-06
+
+**发现（UX/视觉驱动）**
+- [P2] Library 状态 tab（All/Watching/Watchlist/Completed/Dropped）无数量提示，须点进每个 tab 才知道有没有内容（TV Time/Trakt 均带计数）。
+
+**修复（已部署，Version 99ed3cc6）**
+- /library 增加一次 GROUP BY status 计数查询，每个 tab 显示条目数（All 为总和），当前 tab 用浅紫、其余用 slate-500 弱化。
+
+**证据（线上验证）**
+- r10 账号 /library tab 呈现 All 3 / Watching 2 / Watchlist 0 / Completed 1 / Dropped 0，与 D1 数据一致。
+
+---
+
+## Round 35 — 2026-08-06（QA 回归轮）
+
+**发现（测试驱动，测试代理完整回归 31-34 轮 + 冒烟）**
+- 无 P0/P1/P2。1 个 P3 为测试夹具问题（原示例剧 219246 的下一集播出日已过，改用 The Simpsons /shows/456 验证徽章，功能正常）。
+
+**结果（生产 Version 99ed3cc6）**
+- R31 搜索类型过滤（All/TV/Movies、aria-current、空结果提示）通过；R32 下一集徽章（在播显示/完结不显示）通过；R33 私人笔记（保存/持久/导出含 notes/清除还原 NULL、未追踪与未登录不显示）通过；R34 Library tab 计数与 D1 一致通过。
+- 冒烟：落地页 Trending、R30 分页钳制（?page=99 → Page 20 of 20）、标记+撤销均通过；QA 基线 8/4/0 前后一致；r10 净零还原（0 笔记）。
+
+**证据**
+- 测试代理报告 test-report-rounds31-34-regression.md + 录屏；PR #34 评论附截图。
+
+---
+
+## Round 36 — 2026-08-06
+
+**发现（竞品驱动）**
+- [P1] TV Time/Trakt 均有「口味画像」类统计（Top genres）；WatchDeck /stats 只有数量与月度条形图，缺题材维度。
+
+**修复（已部署，Version b0efd363）**
+- userStats 新增 topGenres：取最近 40 个 tracked 条目并行读 TMDB 详情（已有 12/24h KV 缓存，零新增配额压力），聚合 genre 计数取前 6；/stats 与公开分享页复用 StatsBody 渲染「Top genres」条形图（无数据不渲染）。
+
+**证据（线上验证）**
+- r10 账号 /stats 显示 Top genres：Drama/Mystery/Sci-Fi & Fantasy/Action/Science Fiction/Adventure，与其 3 个 tracked 条目的 TMDB 题材一致。
+
+---
+
+## Round 37 — 2026-08-06
+
+**发现（pSEO/数据驱动）**
+- [P1] sitemap 的详情页 URL 只来自本周 trending（约 40 条且随周轮换），最大的 pSEO 面（剧集/电影详情页）覆盖不足。
+
+**修复（已部署，Version 5f03421d）**
+- 新增 discoverPopular（TMDB discover 按 popularity 排序，24h 缓存）；sitemap 并行拉取 TV/电影各前 2 页热门并与 trending 去重合并。
+
+**证据（线上验证）**
+- sitemap.xml <loc> 总数 182，其中详情页 URL 98 条（此前约 40）。
+
+---
+
+## Round 38 — 2026-08-06
+
+**发现（UX/视觉驱动）**
+- [P2] 日历页播出日期显示原始 ISO 字符串（2026-09-27），扫读性差；当天播出的剧无任何视觉强调（TV Time/Trakt 均高亮 Today）。
+
+**修复（已部署，Version 59c6a021）**
+- 日历行日期人性化：Today（加粗+行背景 violet-950/40 高亮）/ Tomorrow / "Sun, Sep 27"（UTC 格式化），原始日期保留在 title 提示。
+
+**证据（线上验证）**
+- r10 临时追踪 The Simpsons 后 /calendar 显示 title="2026-09-27">Sun, Sep 27；验证后已 untrack，r10 恢复 3 条净零。
+
+---
+
+## Round 39 — 2026-08-06
+
+**发现（pSEO/竞品驱动）**
+- [P2] 首页缺少 WebSite + SearchAction 结构化数据（Trakt 等竞品均有），搜索引擎无法识别站内搜索入口（sitelinks searchbox 资格）。
+
+**修复（已部署，Version 835735b5）**
+- 匿名首页注入 schema.org WebSite JSON-LD，potentialAction 为 SearchAction，urlTemplate 指向 /search?q={search_term_string}。
+
+**证据（线上验证）**
+- curl 首页解析 ld+json 成功，urlTemplate=https://watchdeck.zalize.com/search?q={search_term_string}。
+
+---
+
+## Round 40 — 2026-08-06（QA 回归轮）
+
+**发现（测试驱动，测试代理完整回归 36-39 轮 + 冒烟）**
+- 无 P0/P1/P2。1 个 P3：Top genres 同计数并列时排序不确定（Map 插入序），截前 6 时结果随机。
+
+**修复（已部署，Version b35db39b）**
+- Top genres 排序加字母序二级排序（count desc, name asc），并列结果确定化；线上复验 r10 显示 Drama/Action/Adventure/Crime/Mystery/Sci-Fi & Fantasy。
+
+**结果（回归目标 Version 835735b5）**
+- R36 Top genres 卡片通过；R37 sitemap 182 loc / 98 详情 URL 通过；R38 日历 Today（高亮加粗）/Tomorrow/Sun, Sep 27 通过；R39 首页 WebSite+SearchAction JSON-LD 通过；冒烟（搜索 tab/标记撤销/Library 计数/年份页）通过；QA 基线 8/4/0 前后一致；r10 净零还原。
+
+**证据**
+- 测试代理报告 test-report-rounds36-39-regression.md + 录屏；PR #34 评论附截图。
+
+---
+
+## Round 41 — 2026-08-06
+
+**发现（UX/视觉驱动）**
+- [P2] /history 是无分组的流水列表，每行重复裸 ISO 日期，长列表扫读性差（Trakt history 按日分组）。
+
+**修复（已部署，Version d6512e75）**
+- History 按日分组渲染：Today/Yesterday/「Thu, Jan 2, 2025」小节标题（原始日期在 title 提示），行内不再重复日期。
+
+**证据（线上验证）**
+- r10 /history 呈现「Today」「Thu, Jan 2, 2025」「Wed, Jan 1, 2025」三个日期小节。
+
+---
+
+## Round 42 — 2026-08-06
+
+**发现（安全/合规驱动）**
+- [P1] 全站无任何安全响应头：缺 HSTS、CSP、X-Frame-Options、X-Content-Type-Options、Referrer-Policy、Permissions-Policy（点击劫持/嗅探/降级风险）。
+
+**修复（已部署，Version 7c6db593）**
+- 新增全局响应头中间件：HSTS 1 年 includeSubDomains、nosniff、DENY、strict-origin-when-cross-origin、最小化 Permissions-Policy；HTML 响应附 CSP（default-src 'self'，img-src 允许 image.tmdb.org，style/script 暂含 'unsafe-inline'——现存内联事件处理器所需，移除内联处理器后收紧列为后续项）。
+
+**证据（线上验证）**
+- curl -I 首页六个安全头全部返回；/browse、/search 页面正常渲染（TMDB 海报在 img-src 白名单内）。
+
+---
+
+## Round 43 — 2026-08-06
+
+**发现（安全驱动，承接 R42）**
+- [P2] CSP script-src 因两处内联事件处理器（library 状态下拉 onchange、删号确认 onsubmit）被迫保留 'unsafe-inline'。
+
+**修复（已部署，Version cd7a24a2）**
+- 新增 public/app.js（事件委托：select[data-autosubmit] 自动提交、form[data-confirm] 确认弹窗），Layout 全站 defer 加载；两处内联处理器改为 data-* 属性；CSP script-src 收紧为 'self'。
+
+**证据（线上验证）**
+- 响应头 script-src 'self'；/app.js 200；r10 /library 下拉渲染 data-autosubmit。
+
+**附带发现**
+- [P2 → R44] 登录速率限制每次尝试都刷新 600s TTL 且成功登录不清零，导致持续尝试时锁定无限延长（QA 验证时实测触发）。
+
+---
+
+## Round 44 — 2026-08-06
+
+**发现（QA 驱动，R43 回归时实测触发）**
+- [P2] 登录/注册/忘记密码速率限制的两个缺陷：① 每次尝试都刷新 600s TTL——持续尝试时窗口永不过期，合法用户被无限锁定；② 成功登录不清零计数。
+
+**修复（已部署，Version b74f9d45）**
+- rateLimit 改为固定窗口：KV 值存 `count:expiresAt`，窗口起点由首次尝试决定、到期自动重置，TTL 不再随尝试刷新；登录成功后异步删除该 IP 的 login 桶。
+
+**证据（线上验证）**
+- 3 次错误密码返回 401（未误伤），随后正确密码 302 登录成功，KV 中 rl:login 键已被清除。
+
+---
+
+## Round 45 — 2026-08-06（QA 回归轮）
+
+**发现（测试驱动，测试代理完整回归 41-44 轮 + 冒烟）**
+- 无 P0/P1/P2。429 锁定正向路径（第 16 次尝试）按预算刻意未跑，仅验证桶创建与成功清零。
+
+**结果（生产 Version b74f9d45）**
+- R41 /history 按日分组（Today / Thu, Jan 2, 2025 / Wed, Jan 1, 2025，title 存 ISO）通过；R42 六个安全响应头全部返回、海报在 CSP 下正常渲染通过；R43 script-src 'self' 下 data-autosubmit 下拉自动提交（保留筛选参数）与删号 confirm 弹窗（已取消未删除）通过；R44 KV 记 count:expiresAt、登录成功后桶清零通过；冒烟（搜索角标/标记撤销/stats/日历）通过；QA 基线 8/4/0 前后一致；r10 净零还原。
+
+**证据**
+- 测试代理报告 test-report-round45-regression.md + 录屏；PR #34 评论附截图。
+
+---
+
+## Round 46 — 2026-08-06
+
+**发现（pSEO/竞品驱动）**
+- [P2] 剧集/电影详情页 JSON-LD 只有 TVSeries/Movie 单实体，缺 BreadcrumbList——搜索结果无法展示面包屑富结果（IMDb/TMDb 详情页均有）。
+
+**修复（已部署，Version 650d41b9）**
+- 详情页 JSON-LD 改为 @graph：TVSeries/Movie + BreadcrumbList（WatchDeck → Browse → 标题）。
+
+**证据（线上验证）**
+- /shows/95396-severance 与 /movies/27205-inception 的 ld+json 均含两个实体（TVSeries|Movie + BreadcrumbList）。
+
+---
+
+## Round 47 — 2026-08-06
+
+**发现（竞品/pSEO 驱动）**
+- [P2] 详情页无演员阵容——TV Time/Trakt/Serializd/IMDb 详情页均有 cast；纯文本人名也是 pSEO 长尾入口。
+
+**修复（已部署，Version 6161a31e）**
+- 新增 tmdb topCast()（TV 用 aggregate_credits、电影用 credits，7 天缓存，取前 8）；详情页 Recs 前插入 CastSection（头像+姓名+角色，响应式 2/4/8 列）。
+
+**证据（线上验证）**
+- /shows/95396-severance 显示 Top cast（Adam Scott、Britt Lower…）；/movies/27205-inception 显示 Leonardo DiCaprio 等。
