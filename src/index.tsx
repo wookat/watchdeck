@@ -335,15 +335,15 @@ app.get("/shows/:idslug", async (c) => {
     season = await seasonDetails(c.env, id, seasonNum);
   } catch {}
   let watched = new Set<string>();
-  let tracked: { status: string; rating: number | null } | null = null;
+  let tracked: { status: string; rating: number | null; notes: string | null } | null = null;
   if (user) {
     const rows = await c.env.DB.prepare("SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
       .bind(user.id, id)
       .all<{ season: number; episode: number }>();
     watched = new Set(rows.results.map((r) => `${r.season}x${r.episode}`));
-    tracked = await c.env.DB.prepare("SELECT status, rating FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
+    tracked = await c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
       .bind(user.id, id)
-      .first<{ status: string; rating: number | null }>();
+      .first<{ status: string; rating: number | null; notes: string | null }>();
   }
   let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
   try {
@@ -389,12 +389,12 @@ app.get("/movies/:idslug", async (c) => {
     return c.notFound();
   }
   let watched = false;
-  let tracked: { status: string; rating: number | null } | null = null;
+  let tracked: { status: string; rating: number | null; notes: string | null } | null = null;
   if (user) {
     watched = !!(await c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first());
-    tracked = await c.env.DB.prepare("SELECT status, rating FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
+    tracked = await c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
       .bind(user.id, id)
-      .first<{ status: string; rating: number | null }>();
+      .first<{ status: string; rating: number | null; notes: string | null }>();
   }
   let recs: Awaited<ReturnType<typeof recommendations>>["results"] = [];
   try {
@@ -800,7 +800,7 @@ app.get("/api/export", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
   const [tracked, episodes, movies] = await c.env.DB.batch([
-    c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating, created_at, updated_at FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
+    c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating, notes, created_at, updated_at FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
     c.env.DB.prepare("SELECT tmdb_id, season, episode, watched_at FROM episode_watches WHERE user_id = ? ORDER BY tmdb_id, season, episode").bind(user.id),
     c.env.DB.prepare("SELECT tmdb_id, watched_at FROM movie_watches WHERE user_id = ? ORDER BY tmdb_id").bind(user.id),
   ]);
@@ -972,6 +972,22 @@ app.post("/api/rate", async (c) => {
      ON CONFLICT(user_id, tmdb_id, media_type) DO UPDATE SET rating = excluded.rating, updated_at = datetime('now')`
   )
     .bind(user.id, tmdbId, mediaType, title, posterPath, mediaType === "movie" ? "completed" : "watching", rating === 0 ? null : rating)
+    .run();
+  return c.redirect(String(form.redirect ?? "/library"));
+});
+
+app.post("/api/notes", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const mediaType = String(form.media_type) === "movie" ? "movie" : "tv";
+  const notes = String(form.notes ?? "").trim().slice(0, 2000);
+  if (!Number.isFinite(tmdbId)) return c.json({ error: "bad request" }, 400);
+  await c.env.DB.prepare(
+    "UPDATE tracked SET notes = ?, updated_at = datetime('now') WHERE user_id = ? AND tmdb_id = ? AND media_type = ?"
+  )
+    .bind(notes || null, user.id, tmdbId, mediaType)
     .run();
   return c.redirect(String(form.redirect ?? "/library"));
 });

@@ -482,3 +482,17 @@
 
 **证据（线上验证）**
 - 在播剧集页显示「Next episode: S03E06 — The Drive · Aug 6, 2026」；已完结剧（Severance 等）无徽章。
+
+---
+
+## Round 33 — 2026-08-06
+
+**发现（竞品驱动）**
+- [P1] Serializd 的核心卖点是剧集日记/笔记，TV Time 也有 notes；WatchDeck 无任何私人笔记能力，导入用户的「感想」无处安放。
+
+**修复（已部署，Version 45aa4989）**
+- tracked 表新增 notes 列（D1 已迁移，schema.sql 同步）；新增 POST /api/notes（登录+CSRF Origin 校验，2000 字上限，空值清除）。
+- 剧集/电影详情页对已追踪条目显示「📝 Private notes」折叠区（有笔记默认展开），textarea+保存；/api/export 导出同步包含 notes 字段。
+
+**证据（线上验证）**
+- r10 账号 Breaking Bad 页保存笔记 → 刷新可见 → /api/export tracked.notes 含同一内容 → 清空后不再显示（数据已还原，r10 无残留笔记）。

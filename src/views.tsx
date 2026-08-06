@@ -494,6 +494,28 @@ export const RatingStars: FC<{ tmdbId: number; mediaType: "tv" | "movie"; title:
   </div>
 );
 
+export const NotesBox: FC<{ tmdbId: number; mediaType: "tv" | "movie"; notes: string | null; redirect: string }> = ({ tmdbId, mediaType, notes, redirect }) => (
+  <details class="mt-3 max-w-2xl" open={!!notes}>
+    <summary class="cursor-pointer text-sm text-slate-400 hover:text-violet-300">📝 Private notes{notes ? " · saved" : ""}</summary>
+    <form action="/api/notes" method="post" class="mt-2">
+      <input type="hidden" name="tmdb_id" value={String(tmdbId)} />
+      <input type="hidden" name="media_type" value={mediaType} />
+      <input type="hidden" name="redirect" value={redirect} />
+      <textarea
+        name="notes"
+        rows={3}
+        maxlength={2000}
+        placeholder="Your thoughts — only you can see this"
+        aria-label="Private notes"
+        class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+      >
+        {notes ?? ""}
+      </textarea>
+      <button class="mt-2 rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">Save notes</button>
+    </form>
+  </details>
+);
+
 export const WhereToWatch: FC<{ providers: WatchProviders | null }> = ({ providers }) =>
   !providers?.flatrate?.length ? null : (
     <div class="mt-4">
@@ -522,7 +544,7 @@ export const ShowPage: FC<{
   show: TvDetails;
   season: SeasonDetails | null;
   watched: Set<string>;
-  tracked: { status: string; rating: number | null } | null;
+  tracked: { status: string; rating: number | null; notes: string | null } | null;
   user: User | null;
   recs: SearchResult[];
   providers?: WatchProviders | null;
@@ -587,6 +609,7 @@ export const ShowPage: FC<{
           {user && (
             <RatingStars tmdbId={show.id} mediaType="tv" title={show.name} posterPath={show.poster_path} rating={tracked?.rating ?? null} redirect={showUrl} />
           )}
+          {user && tracked && <NotesBox tmdbId={show.id} mediaType="tv" notes={tracked.notes} redirect={showUrl} />}
         </div>
       </div>
 
@@ -697,7 +720,7 @@ export const ShowPage: FC<{
 export const MoviePage: FC<{
   movie: MovieDetails;
   watched: boolean;
-  tracked: { status: string; rating: number | null } | null;
+  tracked: { status: string; rating: number | null; notes: string | null } | null;
   user: User | null;
   recs: SearchResult[];
   providers?: WatchProviders | null;
@@ -765,6 +788,7 @@ export const MoviePage: FC<{
         {user && (
           <RatingStars tmdbId={movie.id} mediaType="movie" title={movie.title} posterPath={movie.poster_path} rating={tracked?.rating ?? null} redirect={movieUrl} />
         )}
+        {user && tracked && <NotesBox tmdbId={movie.id} mediaType="movie" notes={tracked.notes} redirect={movieUrl} />}
       </div>
     </div>
     <RecsSection recs={recs} type="movie" />
