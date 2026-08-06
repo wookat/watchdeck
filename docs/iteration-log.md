@@ -331,3 +331,17 @@
 
 **证据（线上验证）**
 - /browse/network/213-netflix 200（h1 "Netflix TV shows"）、无效 id 404、HBO page=2 200；sitemap 含 12 个 network URL；/browse 显示 By network。
+
+
+---
+
+## Round 22 — 2026-08-06
+
+**发现**
+- [UX / P2] Library 卡片上无法直接改状态（watching/watchlist/completed/dropped），必须进详情页；TV Time/Trakt 均支持列表内快速改状态。
+
+**修复（已部署，Version 691d4cb9）**
+- Library 每张卡片下方新增紧凑状态下拉（onchange 自动提交，noscript 有 Save 按钮兜底），POST 复用 /api/track upsert；redirect 保留当前 status/sort/q 筛选参数；下拉带 aria-label。
+
+**证据（线上验证）**
+- r10 账号 /library 渲染下拉；POST 改 Breaking Bad→completed 后出现在 completed 筛选（grep=1），已还原 watching。
