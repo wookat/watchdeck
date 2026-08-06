@@ -63,6 +63,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
                 <a href="/import" class="px-1 py-2 hover:text-violet-400">Import</a>
                 <a href="/history" class="px-1 py-2 hover:text-violet-400">History</a>
                 <a href="/stats" class="px-1 py-2 hover:text-violet-400">Stats</a>
+                <a href="/settings" class="px-1 py-2 hover:text-violet-400" aria-label="Settings">⚙</a>
                 <form action="/logout" method="post" class="inline">
                   <button class="px-1 py-2 text-slate-400 hover:text-slate-200">Log out</button>
                 </form>
@@ -977,6 +978,49 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
     </div>
   );
 };
+
+export const SettingsPage: FC<{ user: User; saved?: string; error?: string }> = ({ user, saved, error }) => (
+  <div class="mx-auto max-w-lg">
+    <h1 class="mb-6 text-2xl font-bold">Settings</h1>
+    {saved && <p class="mb-4 rounded-lg border border-emerald-800 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">{saved}</p>}
+    {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-4 py-2 text-sm text-red-300">{error}</p>}
+    <section class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+      <h2 class="font-semibold">Profile</h2>
+      <p class="mt-1 text-sm text-slate-400">Signed in as {user.email}</p>
+      <form action="/api/settings/profile" method="post" class="mt-4 flex gap-2">
+        <input
+          type="text"
+          name="display_name"
+          value={user.display_name ?? ""}
+          maxlength={40}
+          placeholder="Display name"
+          aria-label="Display name"
+          class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+        />
+        <button class="shrink-0 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Save</button>
+      </form>
+      <p class="mt-2 text-xs text-slate-400">Shown on your public share page instead of a generic label.</p>
+    </section>
+    <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+      <h2 class="font-semibold">Change password</h2>
+      <form action="/api/settings/password" method="post" class="mt-4 space-y-3">
+        <input type="password" name="current" required placeholder="Current password" aria-label="Current password" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none" />
+        <input type="password" name="next" required minlength={8} placeholder="New password (min 8 characters)" aria-label="New password" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none" />
+        <button class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Update password</button>
+      </form>
+    </section>
+    <section class="mt-6 rounded-2xl border border-red-900/60 bg-red-950/20 p-6">
+      <h2 class="font-semibold text-red-300">Delete account</h2>
+      <p class="mt-1 text-sm text-slate-400">
+        Permanently deletes your account and all data — library, watch history, ratings, share page and calendar feed. This cannot be undone.
+      </p>
+      <form action="/api/settings/delete" method="post" class="mt-4 flex gap-2" onsubmit="return confirm('Delete your account and all data permanently?')">
+        <input type="password" name="password" required placeholder="Confirm with your password" aria-label="Confirm password to delete account" class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-red-500 focus:outline-none" />
+        <button class="shrink-0 rounded-lg bg-red-700 px-4 py-2 text-sm font-medium text-white hover:bg-red-600">Delete</button>
+      </form>
+    </section>
+  </div>
+);
 
 export interface HistoryItem {
   tmdbId: number;

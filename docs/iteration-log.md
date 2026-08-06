@@ -264,3 +264,16 @@
 
 **证据（线上验证）**
 - 线上 HTML 已无 text-slate-500；对比度计算脚本输出见本轮记录。
+
+---
+
+## Round 17 — 2026-08-05
+
+**发现**
+- [合规/竞品 / P1] 产品面向 GDPR 导出用户，却没有账号自助管理：不能改昵称/密码（登录态）、更没有删除账号（GDPR 被遗忘权）。TV Time/Trakt 均有完整账号设置页。
+
+**修复（已部署，Version 21c79ae3）**
+- 新增 /settings（导航 ⚙）：① Display name（展示于公开分享页）；② 修改密码（校验当前密码，新密码 ≥8）；③ 删除账号（输密码确认 + confirm 弹窗，D1 batch 删除 episode/movie watches、tracked、share/feed tokens、password_resets、imports、sessions、users 后销毁会话）。
+
+**证据（线上验证）**
+- r15 throwaway 账号线上走通：改昵称 302→saved；错误当前密码 → error 提示；删除账号 → 302 / + 会话清除，D1 复查 users=0 且无孤儿行。
