@@ -176,7 +176,12 @@ app.get("/", async (c) => {
 });
 
 // ---------- auth ----------
-app.get("/signup", (c) => c.html(<Layout user={c.get("user")} title="Sign up"><AuthForm mode="signup" /></Layout>));
+function safeNext(raw: unknown): string | undefined {
+  const s = typeof raw === "string" ? raw : "";
+  return s.startsWith("/") && !s.startsWith("//") && !s.includes("\\") ? s : undefined;
+}
+
+app.get("/signup", (c) => c.html(<Layout user={c.get("user")} title="Sign up"><AuthForm mode="signup" next={safeNext(c.req.query("next"))} /></Layout>));
 app.get("/login", (c) => c.html(<Layout user={c.get("user")} title="Log in"><AuthForm mode="login" /></Layout>));
 
 app.post("/signup", async (c) => {
@@ -187,7 +192,7 @@ app.post("/signup", async (c) => {
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || password.length < 8) {
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Enter a valid email and a password of 8+ characters." /></Layout>, 400);
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Enter a valid email and a password of 8+ characters." next={safeNext(form.next)} /></Layout>, 400);
   }
   const { hash, salt } = await hashPassword(password);
   try {
@@ -196,9 +201,9 @@ app.post("/signup", async (c) => {
       .first<{ id: number }>();
     await createSession(c, res!.id);
     c.executionCtx.waitUntil(sendEmail(c.env, email, ...welcomeEmail(c.env.SITE_URL)));
-    return c.redirect("/import");
+    return c.redirect(safeNext(form.next) ?? "/import");
   } catch {
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." /></Layout>, 400);
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." next={safeNext(form.next)} /></Layout>, 400);
   }
 });
 

@@ -1018,3 +1018,16 @@
 
 **证据**
 - Version 1e319ca0；线上验证（r10 只读登录）：By year 显示 2026=39 eps·1 movie（100%）、2025=2 eps（5%）。
+
+---
+
+## Round 72 — 2026-08-06
+
+**驱动：②UX 走查（R63 CTA 转化漏斗断点）**
+- 详情页「Track this show/movie — join free」注册成功后落到 /import，丢失用户「想追这部剧」的原始意图。
+
+**修复（P1）**
+- 注册支持 next 返回路径：CTA 链接带 ?next=<详情页>，/signup GET 注入 hidden next，POST 成功后跳回 next（safeNext 校验仅接受站内相对路径，拒绝 //、\\ 开放重定向）；校验失败/重复邮箱的错误重渲染也保留 next。默认仍 /import。
+
+**证据**
+- Version 9251b087；线上验证：详情页 CTA href 含 ?next=%2Fshows%2F95396-severance，/signup 页面渲染 hidden next。
