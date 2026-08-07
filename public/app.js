@@ -22,6 +22,25 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+document.addEventListener("input", (e) => {
+  const el = e.target;
+  if (!(el instanceof HTMLInputElement)) return;
+  const hint = document.getElementById("pw-hint");
+  if (!hint || !el.form || !el.form.contains(hint)) return;
+  if (el.id === "auth-password") {
+    const left = 8 - el.value.length;
+    hint.classList.remove("hidden");
+    if (left > 0) {
+      hint.textContent = left + " more character" + (left === 1 ? "" : "s") + " needed";
+      hint.className = "mt-1.5 text-xs text-amber-400";
+    } else {
+      hint.textContent = "✓ Password looks good";
+      hint.className = "mt-1.5 text-xs text-emerald-400";
+    }
+  } else if (el.id === "auth-email" && el.value.length > 3) {
+    el.classList.toggle("border-amber-500", !el.checkValidity());
+  }
+});
 document.addEventListener("submit", (e) => {
   const form = e.target;
   if (form instanceof HTMLFormElement && form.dataset.confirm && !window.confirm(form.dataset.confirm)) e.preventDefault();

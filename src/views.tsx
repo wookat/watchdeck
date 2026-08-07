@@ -20,7 +20,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <title>{title ? `${title} — WatchDeck` : "WatchDeck — Track your TV shows & movies on the web"}</title>
       <meta
         name="description"
-        content={description ?? "WatchDeck is a free web-first TV show and movie tracker. Import your TV Time export in one click and pick up right where you left off."}
+        content={description ?? "WatchDeck is a web-first TV show and movie tracker, free while in beta. Import your TV Time export in one click and pick up right where you left off."}
       />
       {canonical && <link rel="canonical" href={canonical} />}
       {prev && <link rel="prev" href={prev} />}
@@ -82,7 +82,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
               <>
                 <a href="/login" class="hover:text-violet-400">Log in</a>
                 <a href="/signup" class="rounded-lg bg-violet-600 px-3 py-1.5 font-medium text-white hover:bg-violet-500">
-                  Join free
+                  Join the beta
                 </a>
               </>
             )}
@@ -93,7 +93,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <footer class="mt-16 border-t border-slate-800 py-8 text-sm text-slate-400">
         <div class="mx-auto max-w-6xl space-y-3 px-4">
           <p>
-            WatchDeck — free, web-first TV & movie tracking. <a href="/import" class="text-violet-400 hover:underline">Import from TV Time</a>.
+            WatchDeck — web-first TV & movie tracking, free while in beta. <a href="/import" class="text-violet-400 hover:underline">Import from TV Time</a>.
           </p>
           <p>
             Data by{" "}
@@ -103,7 +103,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
             . This product uses the TMDB API but is not endorsed or certified by TMDB.
           </p>
           <p>
-            <a href="/privacy" class="hover:underline">Privacy</a> · <a href="/terms" class="hover:underline">Terms</a>
+            <a href="/pricing" class="hover:underline">Pricing</a> · <a href="/privacy" class="hover:underline">Privacy</a> · <a href="/terms" class="hover:underline">Terms</a>
           </p>
           <p>
             More from us:{" "}
@@ -131,8 +131,8 @@ export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
         </span>
       </h1>
       <p class="mx-auto mt-4 max-w-xl text-slate-400">
-        WatchDeck is a free, web-first tracker for TV shows <em>and</em> movies. One-click import of your TV Time GDPR
-        export — episodes, follows and movies included. No app required.
+        Your show is back after two years. You remember loving it — not much else. WatchDeck remembers everything:
+        every episode, every movie, every rating. Web-first, no app required, and every feature is free during the beta.
       </p>
       <div class="mt-8 flex flex-wrap justify-center gap-3">
         <a href="/signup" class="rounded-xl bg-violet-600 px-6 py-3 font-semibold text-white hover:bg-violet-500">
@@ -142,12 +142,18 @@ export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
           Browse shows
         </a>
       </div>
+      <p class="mt-6 text-sm text-slate-500">
+        No app to install · No ads · Your data exports any time · <a href="/pricing" class="text-violet-400 hover:underline">Free while in beta</a>
+      </p>
     </section>
     <section class="grid gap-6 py-10 sm:grid-cols-3">
       {[
-        ["📦 One-click TV Time import", "Upload the GDPR ZIP as-is. We match shows, episodes and movies — nothing left behind."],
-        ["▶️ Next-episode first", "Your home screen is simply what to watch next. No feeds, no noise, no paywall."],
-        ["🗓️ Never miss an airing", "A clean calendar of upcoming episodes for everything you track."],
+        ["📦 One-click TV Time import", "Upload the GDPR ZIP as-is. We match shows, episodes, movies and ratings — nothing left behind."],
+        ["▶️ Next-episode first", "Your home screen is simply what to watch next, with an episodes-left badge for every show."],
+        ["🗓️ Never miss an airing", "A clean calendar of upcoming episodes and releases, with iCal feeds and email reminders."],
+        ["📊 Your watch life, quantified", "Hours watched, top genres, by-year history and your ratings distribution — shareable as a public stats card."],
+        ["🔀 More than one way in", "Also imports Trakt- and Serializd-style CSVs and Netflix viewing history — with a confirmation step before anything is written."],
+        ["🔓 Your data stays yours", "Download everything as JSON or CSV whenever you like, and delete your account in one click. No lock-in, ever."],
       ].map(([h, p]) => (
         <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
           <h3 class="mb-2 font-semibold">{h}</h3>
@@ -194,8 +200,8 @@ export const landingFaqs: [string, string][] = [
     "Request your GDPR data export from TV Time (or use the ZIP you already downloaded before the shutdown), then upload it as-is on the Import page. WatchDeck matches your shows, watched episodes and movies automatically — no unpacking or reformatting needed.",
   ],
   [
-    "Is WatchDeck really free?",
-    "Yes. Tracking, importing, statistics, the calendar, iCal feeds and email reminders are all free. There is no paywall on core features.",
+    "How much does WatchDeck cost?",
+    "WatchDeck is in beta, and during the beta every feature — tracking, importing, statistics, the calendar, iCal feeds and email reminders — is free for everyone. Paid Plus plans (from $1.99/month) will arrive after the beta; see the Pricing page for details. Beta members are not charged anything.",
   ],
   [
     "Does WatchDeck track movies as well as TV shows?",
@@ -217,7 +223,7 @@ export const landingFaqs: [string, string][] = [
 
 export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: string }> = ({ mode, error, next }) => (
   <div class="mx-auto max-w-sm py-10">
-    <h1 class="mb-6 text-2xl font-bold">{mode === "login" ? "Log in" : "Create your free account"}</h1>
+    <h1 class="mb-6 text-2xl font-bold">{mode === "login" ? "Log in" : "Create your account"}</h1>
     {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
     <form action={`/${mode}`} method="post" class="space-y-4">
       {next && <input type="hidden" name="next" value={next} />}
@@ -244,6 +250,9 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
           autocomplete={mode === "signup" ? "new-password" : "current-password"}
           class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
         />
+        {mode === "signup" && (
+          <p id="pw-hint" class="mt-1.5 hidden text-xs" aria-live="polite"></p>
+        )}
       </div>
       <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">
         {mode === "login" ? "Log in" : "Sign up"}
@@ -251,7 +260,7 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
     </form>
     <p class="mt-4 text-sm text-slate-400">
       {mode === "login" ? (
-        <>No account? <a href="/signup" class="text-violet-400 hover:underline">Sign up free</a> · <a href="/forgot" class="text-violet-400 hover:underline">Forgot password?</a></>
+        <>No account? <a href="/signup" class="text-violet-400 hover:underline">Sign up</a> · <a href="/forgot" class="text-violet-400 hover:underline">Forgot password?</a></>
       ) : (
         <>Already a member? <a href="/login" class="text-violet-400 hover:underline">Log in</a></>
       )}
@@ -749,7 +758,7 @@ export const ShowPage: FC<{
             </div>
           ) : (
             <div class="mt-5 flex flex-wrap items-center gap-3">
-              <a href={`/signup?next=${encodeURIComponent(showUrl)}`} class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this show — join free</a>
+              <a href={`/signup?next=${encodeURIComponent(showUrl)}`} class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this show — free in beta</a>
               <a href="/signup" class="text-sm text-violet-400 hover:underline">Coming from TV Time? Import your export →</a>
             </div>
           )}
@@ -867,15 +876,16 @@ export const ShowPage: FC<{
 
 export const MoviePage: FC<{
   movie: MovieDetails;
-  watched: boolean;
+  watchCount: number;
   tracked: { status: string; rating: number | null; notes: string | null } | null;
   user: User | null;
   recs: SearchResult[];
   providers?: WatchProviders | null;
   cast?: CastMember[];
   trailer?: string | null;
-}> = ({ movie, watched, tracked, user, recs, providers, cast, trailer }) => {
+}> = ({ movie, watchCount, tracked, user, recs, providers, cast, trailer }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
+  const watched = watchCount > 0;
   return (
     <div>
     <div class="flex flex-col gap-6 sm:flex-row">
@@ -909,9 +919,19 @@ export const MoviePage: FC<{
                     : "rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-500"
                 }
               >
-                {watched ? "✓ Watched" : "Mark watched"}
+                {watched ? (watchCount > 1 ? `✓ Watched ${watchCount}×` : "✓ Watched") : "Mark watched"}
               </button>
             </form>
+            {watched && (
+              <form action="/api/watch-movie" method="post">
+                <input type="hidden" name="tmdb_id" value={String(movie.id)} />
+                <input type="hidden" name="rewatch" value="1" />
+                <input type="hidden" name="redirect" value={movieUrl} />
+                <button class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500" title="Log another watch of this movie">
+                  ↺ Watched again
+                </button>
+              </form>
+            )}
             <form action="/api/track" method="post">
               <input type="hidden" name="tmdb_id" value={String(movie.id)} />
               <input type="hidden" name="media_type" value="movie" />
@@ -940,7 +960,7 @@ export const MoviePage: FC<{
           </div>
         ) : (
           <div class="mt-5 flex flex-wrap items-center gap-3">
-            <a href={`/signup?next=${encodeURIComponent(movieUrl)}`} class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this movie — join free</a>
+            <a href={`/signup?next=${encodeURIComponent(movieUrl)}`} class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this movie — free in beta</a>
             <a href="/signup" class="text-sm text-violet-400 hover:underline">Coming from TV Time? Import your export →</a>
           </div>
         )}
@@ -1120,10 +1140,9 @@ const airDateLabel = (iso: string): { label: string; today: boolean } => {
   if (iso === todayIso) return { label: "Today", today: true };
   const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
   if (iso === tomorrow) return { label: "Tomorrow", today: false };
-  return {
-    label: new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }),
-    today: false,
-  };
+  const date = new Date(iso + "T00:00:00Z").toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+  const days = Math.round((Date.parse(iso + "T00:00:00Z") - Date.parse(todayIso + "T00:00:00Z")) / 86400000);
+  return { label: days > 1 && days <= 30 ? `${date} · in ${days} days` : date, today: false };
 };
 
 export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEmail: boolean }> = ({ items, feedUrl, remindEmail }) => (
@@ -1352,6 +1371,11 @@ export interface UserStats {
   topGenres: { name: string; count: number }[];
   epsThisYear: number;
   moviesThisYear: number;
+  epsThisMonth: number;
+  moviesThisMonth: number;
+  topShowThisMonth: { title: string; eps: number } | null;
+  currentStreak: number;
+  bestStreak: number;
 }
 
 const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
@@ -1376,7 +1400,28 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
         <p class="mt-4 text-sm text-slate-400">
           So far in {new Date().getUTCFullYear()}: <span class="font-semibold text-violet-300">{stats.epsThisYear}</span> episode{stats.epsThisYear === 1 ? "" : "s"} and{" "}
           <span class="font-semibold text-violet-300">{stats.moviesThisYear}</span> movie{stats.moviesThisYear === 1 ? "" : "s"} watched.
+          {stats.currentStreak >= 2 && (
+            <> 🔥 <span class="font-semibold text-violet-300">{stats.currentStreak}-day</span> watching streak{stats.bestStreak > stats.currentStreak ? <> (best: {stats.bestStreak} days)</> : null}.</>
+          )}
+          {stats.currentStreak < 2 && stats.bestStreak >= 2 && (
+            <> Longest watching streak: <span class="font-semibold text-violet-300">{stats.bestStreak} days</span>.</>
+          )}
         </p>
+      )}
+      {(stats.epsThisMonth > 0 || stats.moviesThisMonth > 0) && (
+        <div class="mt-6 rounded-2xl border border-violet-900/60 bg-violet-950/30 p-5">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-violet-300">
+            {new Date().toLocaleDateString("en-US", { month: "long", timeZone: "UTC" })} in review
+          </h2>
+          <p class="mt-2 text-slate-300">
+            <span class="font-semibold text-violet-300">{stats.epsThisMonth}</span> episode{stats.epsThisMonth === 1 ? "" : "s"} and{" "}
+            <span class="font-semibold text-violet-300">{stats.moviesThisMonth}</span> movie{stats.moviesThisMonth === 1 ? "" : "s"} watched this month
+            {stats.topShowThisMonth ? (
+              <> — most watched: <span class="font-semibold text-violet-300">{stats.topShowThisMonth.title}</span> ({stats.topShowThisMonth.eps} eps)</>
+            ) : null}
+            .
+          </p>
+        </div>
       )}
       <div class="mt-8 grid gap-6 md:grid-cols-2">
         <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
@@ -1513,7 +1558,7 @@ export const TermsPage: FC = () => (
     <h1 class="text-2xl font-bold text-white">Terms of service</h1>
     <p class="text-sm text-slate-400">Last updated: August 5, 2026</p>
     <p>
-      WatchDeck is a free service for tracking TV shows and movies. By using it you agree to these terms.
+      WatchDeck is a service for tracking TV shows and movies, currently offered as a free beta trial. By using it you agree to these terms.
     </p>
     <h2 class="text-lg font-semibold text-white">Your account</h2>
     <p>
@@ -1643,6 +1688,28 @@ export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: n
                             : "Movie"}
                         </p>
                       </div>
+                      <form action="/api/history/date" method="post" class="hidden shrink-0 items-center gap-1.5 sm:flex">
+                        <input type="hidden" name="kind" value={it.mediaType} />
+                        <input type="hidden" name="tmdb_id" value={String(it.tmdbId)} />
+                        {it.mediaType === "tv" && it.season != null && it.episode != null && (
+                          <>
+                            <input type="hidden" name="season" value={String(it.season)} />
+                            <input type="hidden" name="episode" value={String(it.episode)} />
+                          </>
+                        )}
+                        <input type="hidden" name="orig" value={it.watchedAt} />
+                        <input type="hidden" name="redirect" value={`/history${page > 1 ? `?page=${page}` : ""}`} />
+                        <input
+                          type="date"
+                          name="date"
+                          value={it.watchedAt.slice(0, 10)}
+                          max={new Date().toISOString().slice(0, 10)}
+                          required
+                          aria-label={`Watched date for ${it.title}`}
+                          class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-300 focus:border-violet-500 focus:outline-none"
+                        />
+                        <button class="rounded-lg border border-slate-700 px-2.5 py-1 text-xs text-slate-400 hover:border-violet-500 hover:text-violet-300">Save</button>
+                      </form>
                       <form action={it.mediaType === "tv" ? "/api/watch" : "/api/watch-movie"} method="post" class="shrink-0">
                         <input type="hidden" name="tmdb_id" value={String(it.tmdbId)} />
                         {it.mediaType === "tv" && it.season != null && it.episode != null && (
@@ -1724,8 +1791,63 @@ export const PublicProfilePage: FC<{ stats: UserStats; name: string }> = ({ stat
     <StatsBody stats={stats} />
     <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6 text-center">
       <p class="text-slate-300">Want stats like these?</p>
-      <a href="/signup" class="mt-3 inline-block rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90">Start tracking free</a>
+      <a href="/signup" class="mt-3 inline-block rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90">Start tracking — free in beta</a>
     </div>
+  </div>
+);
+
+export const PricingPage: FC<{ loggedIn?: boolean }> = ({ loggedIn }) => (
+  <div class="mx-auto max-w-4xl">
+    <div class="py-10 text-center">
+      <p class="mb-3 inline-block rounded-full border border-violet-700 bg-violet-950/60 px-3 py-1 text-xs font-semibold text-violet-300">
+        BETA — everything below is free right now
+      </p>
+      <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Simple pricing, honest beta</h1>
+      <p class="mx-auto mt-3 max-w-xl text-slate-400">
+        These are the plans WatchDeck will offer after the beta. While we're in beta, <strong class="text-slate-200">every member gets the full Plus plan for free</strong> — no card, no charges, no catch.
+      </p>
+    </div>
+    <div class="grid gap-6 sm:grid-cols-2">
+      <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+        <h2 class="text-lg font-bold">Free</h2>
+        <p class="mt-1 text-sm text-slate-400">Everything you need to keep watching.</p>
+        <p class="mt-4 text-3xl font-extrabold">$0<span class="text-base font-normal text-slate-400"> / forever</span></p>
+        <ul class="mt-5 space-y-2 text-sm text-slate-300">
+          <li>✓ Track TV shows &amp; movies, episode by episode</li>
+          <li>✓ Next Up with episodes-left badges</li>
+          <li>✓ TV Time ZIP, Trakt/Serializd CSV &amp; Netflix import</li>
+          <li>✓ Airing calendar</li>
+          <li>✓ Ratings &amp; private notes</li>
+          <li>✓ Full data export (JSON &amp; CSV) — always free</li>
+        </ul>
+      </div>
+      <div class="relative rounded-2xl border border-violet-600 bg-violet-950/30 p-6">
+        <span class="absolute -top-3 left-6 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-3 py-0.5 text-xs font-semibold text-white">Free during beta</span>
+        <h2 class="text-lg font-bold">Plus</h2>
+        <p class="mt-1 text-sm text-slate-400">For serious trackers — keeps WatchDeck independent.</p>
+        <p class="mt-4 text-3xl font-extrabold">$1.99<span class="text-base font-normal text-slate-400"> / month</span></p>
+        <p class="text-sm text-slate-400">or $19 / year (save 20%)</p>
+        <ul class="mt-5 space-y-2 text-sm text-slate-300">
+          <li>✓ Everything in Free</li>
+          <li>✓ iCal calendar feeds for Google/Apple Calendar</li>
+          <li>✓ Email airing reminders</li>
+          <li>✓ Advanced statistics — hours, genres, by-year, ratings</li>
+          <li>✓ Public share page with stats card</li>
+          <li>✓ Priority support &amp; early access to new features</li>
+        </ul>
+      </div>
+    </div>
+    <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6 text-center">
+      <p class="text-slate-300">Payments aren't live yet — joining the beta gives you the full Plus plan at no cost.</p>
+      {!loggedIn && (
+        <a href="/signup" class="mt-4 inline-block rounded-xl bg-violet-600 px-6 py-3 font-semibold text-white hover:bg-violet-500">
+          Join the beta — free
+        </a>
+      )}
+    </div>
+    <p class="mt-6 text-center text-xs text-slate-500">
+      Beta members will be told well in advance before any plan change, and exporting your data stays free forever.
+    </p>
   </div>
 );
 

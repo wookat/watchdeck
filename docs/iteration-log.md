@@ -5,6 +5,24 @@
 
 ---
 
+## 专项 Rounds 104-107 — 2026-08-05（竞品优点复刻·第二批）
+
+**发现（来源：docs/competitor-deep-dive.md P1 清单）**
+- [竞品(Letterboxd/Trakt) / P1] 观看记录日期不可编辑——补录旧观看只能落在今天，日记/统计失真。
+- [竞品(Letterboxd/Trakt) / P1] 电影无法重看：`movie_watches` UNIQUE(user_id, tmdb_id) 使二刷丢失。
+- [竞品(Trakt VIP) / P1] 缺 Month in Review 月度统计（Trakt 该功能收 VIP 费）。
+- [竞品(Simkl) / P2] 注册表单无内联校验，密码不满 8 位要提交后才知道。
+
+**修复（已部署，Version 7b367e2f）**
+- R104 `/history` 每行新增日期编辑（date input + Save，POST `/api/history/date`；校验 YYYY-MM-DD 且不晚于今天，保留时间部分维持同日排序；电影行以原 watched_at 精确定位）。
+- R105 电影重看：D1 迁移重建 `movie_watches` 去掉 UNIQUE（4 行数据零丢失，加 `idx_mw_user_movie` 索引）；电影页新增「↺ Watched again」，按钮显示「✓ Watched N×」；undo 只删最近一次，全部删完才回退 watchlist；普通标记与导入用 NOT EXISTS 防重；stats 电影数改 COUNT(DISTINCT)（小时/年度按 play 计）。
+- R106 `/stats`（含公开分享页）新增「<Month> in review」卡：本月集数/电影数+本月最多观看剧集。
+- R107 注册页密码内联校验（还差 N 位/✓ Password looks good，aria-live）+邮箱格式即时琥珀边框提示。
+
+**证据**：线上回归见 PR #39 评论（R108 回归轮）。
+
+---
+
 ## Round 2 — 2026-08-05
 
 **发现**
@@ -1402,3 +1420,22 @@
 - 完整性：throwaway 删除后 users/feed_tokens/share_tokens 级联清零；基线与 r10 与既档一致。
 
 **结论**：R96-R99 无 P0/P1/P2/P3。100 轮持续迭代程序至此收官：100 轮全部完成并逐轮上线回归，未遗留任何 P0/P1/P2 缺陷；仅存两个凭据性待观察项（管理员 Cron 正向路径、90 天清理首跑）。
+
+---
+
+# 专项：多竞品深度调研 + 优点整合复刻（2026-08-07 起）
+
+## Round 101 — 扩面竞品调研与技术反推（驱动④）
+- 调研 11 家：Trakt、Letterboxd、Serializd、Simkl、TVmaze、BetaSeries、Reelgood、JustWatch、Hobi、Showly、Must/Watcharr（方法：公开页面抓取+Wayback 存档，不绕反爬）。
+- 产出 docs/competitor-deep-dive.md（功能/交互/技术反推/定价对照 + P0/P1/P2 整合复刻清单）与 docs/stack-assessment.md（结论：保持 Workers+Hono SSR 栈，SSR 是 pSEO 主轴的正确形态）。
+- 关键发现：Hobi 为「TV Time 官方迁移伙伴」直接竞对（无 Web 端=我们的差异化）；Trakt VIP $6/$5/$4 月费、Letterboxd Pro $19/年 为定价锚。
+
+## Round 102 — 定价口径改造（P0，老板指令）
+- 全站去「free forever」定位 → 「Beta 免费试用」：新增 /pricing（Free vs Plus $1.99/mo·$19/yr，Beta 期全员 Plus 免费、不收款）；导航 CTA「Join the beta」；FAQ、落地页、详情页 CTA、Terms、meta description 全部改口径；/pricing 入 sitemap 与页脚。
+- Version 476dd43d，线上验证 pricing 页与新文案生效。
+
+## Round 103 — 设计/交互复刻（P1）
+- 落地页：Hobi 式情感文案（"WatchDeck remembers everything"）+ 信任条（No app/No ads/数据可导出）+ 功能卡 3→6（补统计/多源导入/数据自主）。
+- 日历：TVmaze/Hobi 式相对倒计时「· in N days」（30 天内）。
+- 统计：Hobi 式 🔥 watching streak（当前连续天数+历史最佳，D1 distinct 日期 JS 折算）。
+- Version c1f59160，线上验证落地页新文案渲染。

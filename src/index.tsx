@@ -58,6 +58,7 @@ import {
   SettingsPage,
   PrivacyPage,
   TermsPage,
+  PricingPage,
   type WatchlistPreviewItem,
   type LibraryRow,
   type CalendarItem,
@@ -513,7 +514,7 @@ app.get("/movies/:idslug", async (c) => {
   const movieSlug = `${movie.id}-${slugify(movie.title)}`;
   if (c.req.param("idslug") !== movieSlug) return c.redirect(`/movies/${movieSlug}`, 301);
   const [watchedRow, tracked, recsRes, providers, cast, trailer] = await Promise.all([
-    user ? c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first() : Promise.resolve(null),
+    user ? c.env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first<{ n: number }>() : Promise.resolve(null),
     user
       ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
           .bind(user.id, id)
@@ -524,7 +525,7 @@ app.get("/movies/:idslug", async (c) => {
     topCast(c.env, "movie", id).catch(() => [] as CastMember[]),
     trailerUrl(c.env, "movie", id).catch(() => null),
   ]);
-  const watched = !!watchedRow;
+  const watchCount = watchedRow?.n ?? 0;
   const recs = recsRes.results;
   const movieCanonical = `${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`;
   return c.html(
@@ -560,7 +561,7 @@ app.get("/movies/:idslug", async (c) => {
         ],
       }}
     >
-      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} />
+      <MoviePage movie={movie} watchCount={watchCount} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} />
     </Layout>
   );
 });
@@ -735,7 +736,7 @@ app.get("/browse", async (c) => {
     <Layout
       user={c.get("user")}
       title="Browse TV shows & movies by genre"
-      description="Explore popular TV shows and movies by genre and start tracking them for free on WatchDeck."
+      description="Explore popular TV shows and movies by genre and start tracking them on WatchDeck."
       canonical={`${c.env.SITE_URL}/browse`}
     >
       <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} networks={NETWORKS} years={browseYears()} />
@@ -755,7 +756,7 @@ app.get("/browse/network/:idslug", async (c) => {
     <Layout
       user={c.get("user")}
       title={`${network.name} TV shows to watch`}
-      description={`Popular TV shows on ${network.name} to discover and track for free on WatchDeck.`}
+      description={`Popular TV shows on ${network.name} to discover and track on WatchDeck.`}
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
@@ -778,7 +779,7 @@ app.get("/browse/year/:type/:year", async (c) => {
     <Layout
       user={c.get("user")}
       title={`${type === "tv" ? "TV shows" : "Movies"} of ${year}`}
-      description={`The most popular ${type === "tv" ? `TV shows that premiered in ${year}` : `movies released in ${year}`} to discover and track for free on WatchDeck.`}
+      description={`The most popular ${type === "tv" ? `TV shows that premiered in ${year}` : `movies released in ${year}`} to discover and track on WatchDeck.`}
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
@@ -803,7 +804,7 @@ app.get("/browse/:type/:genreslug", async (c) => {
     <Layout
       user={c.get("user")}
       title={`${genre.name} ${type === "tv" ? "TV shows" : "movies"} to watch`}
-      description={`Popular ${genre.name.toLowerCase()} ${type === "tv" ? "TV shows" : "movies"} to discover and track for free on WatchDeck.`}
+      description={`Popular ${genre.name.toLowerCase()} ${type === "tv" ? "TV shows" : "movies"} to discover and track on WatchDeck.`}
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
@@ -876,9 +877,9 @@ async function hoursWatched(env: Env, userId: number): Promise<number> {
 }
 
 async function userStats(env: Env, userId: number): Promise<UserStats> {
-  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear, byYear, ratingRows] = await Promise.all([
+  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear, byYear, ratingRows, watchDays, epsMonth, moviesMonth, topShowMonth] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
-    env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
+    env.DB.prepare("SELECT COUNT(DISTINCT tmdb_id) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv' AND status = 'completed'").bind(userId).first<{ n: number }>(),
     env.DB.prepare(
@@ -903,8 +904,36 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     env.DB.prepare(
       "SELECT rating, COUNT(*) AS n FROM tracked WHERE user_id = ? AND rating IS NOT NULL GROUP BY rating"
     ).bind(userId).all<{ rating: number; n: number }>(),
+    env.DB.prepare(
+      `SELECT DISTINCT d FROM (
+         SELECT date(watched_at) AS d FROM episode_watches WHERE user_id = ?1
+         UNION
+         SELECT date(watched_at) AS d FROM movie_watches WHERE user_id = ?1
+       ) WHERE d IS NOT NULL ORDER BY d`
+    ).bind(userId).all<{ d: string }>(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ? AND watched_at >= strftime('%Y-%m-01', 'now')").bind(userId).first<{ n: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND watched_at >= strftime('%Y-%m-01', 'now')").bind(userId).first<{ n: number }>(),
+    env.DB.prepare(
+      `SELECT t.title, COUNT(*) AS eps FROM episode_watches w
+       JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
+       WHERE w.user_id = ? AND w.watched_at >= strftime('%Y-%m-01', 'now')
+       GROUP BY w.tmdb_id ORDER BY eps DESC, t.title LIMIT 1`
+    ).bind(userId).first<{ title: string; eps: number }>(),
   ]);
   const ratingCounts = [1, 2, 3, 4, 5].map((r) => ratingRows.results.find((row) => row.rating === r)?.n ?? 0);
+  const days = watchDays.results.map((r) => Math.round(Date.parse(r.d + "T00:00:00Z") / 86400000));
+  let bestStreak = 0;
+  let run = 0;
+  for (let i = 0; i < days.length; i++) {
+    run = i > 0 && days[i] === days[i - 1] + 1 ? run + 1 : 1;
+    if (run > bestStreak) bestStreak = run;
+  }
+  const todayNum = Math.floor(Date.now() / 86400000);
+  let currentStreak = 0;
+  if (days.length && days[days.length - 1] >= todayNum - 1) {
+    currentStreak = 1;
+    for (let i = days.length - 1; i > 0 && days[i - 1] === days[i] - 1; i--) currentStreak++;
+  }
   const items = await env.DB.prepare(
     "SELECT tmdb_id, media_type FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 40"
   )
@@ -936,8 +965,44 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     topGenres,
     epsThisYear: epsYear?.n ?? 0,
     moviesThisYear: moviesYear?.n ?? 0,
+    epsThisMonth: epsMonth?.n ?? 0,
+    moviesThisMonth: moviesMonth?.n ?? 0,
+    topShowThisMonth: topShowMonth ?? null,
+    currentStreak,
+    bestStreak,
   };
 }
+
+app.post("/api/history/date", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const date = String(form.date ?? "");
+  const orig = String(form.orig ?? "");
+  const back = safeNext(form.redirect) ?? "/history";
+  const today = new Date().toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date + "T00:00:00Z")) || date > today || !tmdbId) {
+    return c.redirect(back);
+  }
+  if (String(form.kind) === "tv") {
+    const season = parseInt(String(form.season), 10);
+    const episode = parseInt(String(form.episode), 10);
+    if (Number.isNaN(season) || Number.isNaN(episode)) return c.redirect(back);
+    await c.env.DB.prepare(
+      "UPDATE episode_watches SET watched_at = ? || substr(watched_at, 11) WHERE user_id = ? AND tmdb_id = ? AND season = ? AND episode = ?"
+    )
+      .bind(date, user.id, tmdbId, season, episode)
+      .run();
+  } else {
+    await c.env.DB.prepare(
+      "UPDATE movie_watches SET watched_at = ? || substr(watched_at, 11) WHERE id = (SELECT id FROM movie_watches WHERE user_id = ? AND tmdb_id = ? AND watched_at = ? LIMIT 1)"
+    )
+      .bind(date, user.id, tmdbId, orig)
+      .run();
+  }
+  return c.redirect(back);
+});
 
 app.get("/history", async (c) => {
   const user = c.get("user");
@@ -993,6 +1058,19 @@ app.get("/terms", (c) =>
   c.html(
     <Layout user={c.get("user")} title="Terms of service" canonical={`${c.env.SITE_URL}/terms`}>
       <TermsPage />
+    </Layout>
+  )
+);
+
+app.get("/pricing", (c) =>
+  c.html(
+    <Layout
+      user={c.get("user")}
+      title="Pricing"
+      description="WatchDeck pricing: a free plan plus a Plus plan from $1.99/month. Everything is free while WatchDeck is in beta — no payment required."
+      canonical={`${c.env.SITE_URL}/pricing`}
+    >
+      <PricingPage loggedIn={!!c.get("user")} />
     </Layout>
   )
 );
@@ -1168,7 +1246,7 @@ app.get("/u/:token", async (c) => {
     <Layout
       user={c.get("user")}
       title={`${profile.name}'s watch stats`}
-      description={`${profile.stats.hoursWatched} hours of TV & movies \u2014 ${profile.stats.epsWatched} episodes and ${profile.stats.moviesWatched} movies tracked free on WatchDeck.`}
+      description={`${profile.stats.hoursWatched} hours of TV & movies \u2014 ${profile.stats.epsWatched} episodes and ${profile.stats.moviesWatched} movies tracked on WatchDeck.`}
       canonical={`${c.env.SITE_URL}/u/${token}`}
       ogImage={`${c.env.SITE_URL}/u/${token}/og.png`}
     >
@@ -1408,14 +1486,31 @@ app.post("/api/watch-movie", async (c) => {
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   if (String(form.undo) === "1") {
-    await c.env.DB.prepare("DELETE FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, tmdbId).run();
     await c.env.DB.prepare(
-      "UPDATE tracked SET status = 'watchlist', updated_at = datetime('now') WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie' AND status = 'completed'"
+      "DELETE FROM movie_watches WHERE id = (SELECT id FROM movie_watches WHERE user_id = ? AND tmdb_id = ? ORDER BY watched_at DESC, id DESC LIMIT 1)"
     )
       .bind(user.id, tmdbId)
       .run();
+    const remaining = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND tmdb_id = ?")
+      .bind(user.id, tmdbId)
+      .first<{ n: number }>();
+    if ((remaining?.n ?? 0) === 0) {
+      await c.env.DB.prepare(
+        "UPDATE tracked SET status = 'watchlist', updated_at = datetime('now') WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie' AND status = 'completed'"
+      )
+        .bind(user.id, tmdbId)
+        .run();
+    }
   } else {
-    await c.env.DB.prepare("INSERT OR IGNORE INTO movie_watches (user_id, tmdb_id) VALUES (?, ?)").bind(user.id, tmdbId).run();
+    if (String(form.rewatch) === "1") {
+      await c.env.DB.prepare("INSERT INTO movie_watches (user_id, tmdb_id) VALUES (?, ?)").bind(user.id, tmdbId).run();
+    } else {
+      await c.env.DB.prepare(
+        "INSERT INTO movie_watches (user_id, tmdb_id) SELECT ?1, ?2 WHERE NOT EXISTS (SELECT 1 FROM movie_watches WHERE user_id = ?1 AND tmdb_id = ?2)"
+      )
+        .bind(user.id, tmdbId)
+        .run();
+    }
     const details = await movieDetails(c.env, tmdbId);
     await c.env.DB.prepare(
       `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status)
@@ -1515,7 +1610,7 @@ app.post("/api/import/batch", async (c) => {
            ON CONFLICT(user_id, tmdb_id, media_type) DO UPDATE SET rating = COALESCE(tracked.rating, excluded.rating)`
         ).bind(user.id, match.id, match.title ?? movie.name, match.poster_path, source, movieRating),
         c.env.DB.prepare(
-          "INSERT OR IGNORE INTO movie_watches (user_id, tmdb_id, watched_at) VALUES (?, ?, COALESCE(?, datetime('now')))"
+          "INSERT INTO movie_watches (user_id, tmdb_id, watched_at) SELECT ?1, ?2, COALESCE(?3, datetime('now')) WHERE NOT EXISTS (SELECT 1 FROM movie_watches WHERE user_id = ?1 AND tmdb_id = ?2)"
         ).bind(user.id, match.id, movie.watchedAt),
       ]);
       moviesImported++;
@@ -1543,7 +1638,7 @@ app.get("/robots.txt", (c) =>
 );
 
 app.get("/sitemap.xml", async (c) => {
-  const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`, `${c.env.SITE_URL}/privacy`, `${c.env.SITE_URL}/terms`];
+  const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`, `${c.env.SITE_URL}/pricing`, `${c.env.SITE_URL}/privacy`, `${c.env.SITE_URL}/terms`];
   try {
     const [shows, movies, tvGenres, movieGenres, ...popular] = await Promise.all([
       trendingTv(c.env),
