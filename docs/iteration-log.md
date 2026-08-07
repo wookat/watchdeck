@@ -5,6 +5,16 @@
 
 ---
 
+## 专项 Round 116 — 2026-08-05（竞品优点复刻·第五批）
+
+**发现（来源：docs/competitor-deep-dive.md P2 清单）**
+- [竞品(Letterboxd/Trakt) / P2] 自定义列表只能自用，无法公开分享——Letterboxd 列表分享是其增长飞轮核心。
+
+**修复**
+- R116 列表公开分享：`lists.share_token`（32 hex，可开关）；列表详情页「🔗 Share publicly / 🔒 Make private」切换+公开 URL 展示；只读公开页 `/list/:token`（海报网格+注册 CTA，canonical，可被索引）；公开列表同步出现在 `/u/:token` 公开档案页。
+
+**证据**：线上回归见 PR 评论（R117 回归轮）。
+
 ## 专项 Rounds 113-114 — 2026-08-05（竞品优点复刻·第四批）
 
 **发现（来源：docs/competitor-deep-dive.md P1/P2 清单）**

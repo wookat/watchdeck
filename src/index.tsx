@@ -67,6 +67,7 @@ import {
   type ListRow,
   ListsPage,
   ListDetailPage,
+  PublicListPage,
 } from "./views";
 
 const SERVICE_IDS = new Set(STREAMING_SERVICES.map(([id]) => id));
@@ -1237,7 +1238,7 @@ app.get("/lists/:id", async (c) => {
   if (!user) return c.redirect("/login");
   const id = parseInt(c.req.param("id"), 10);
   if (!Number.isFinite(id)) return c.notFound();
-  const list = await c.env.DB.prepare("SELECT id, name FROM lists WHERE id = ? AND user_id = ?").bind(id, user.id).first<{ id: number; name: string }>();
+  const list = await c.env.DB.prepare("SELECT id, name, share_token FROM lists WHERE id = ? AND user_id = ?").bind(id, user.id).first<{ id: number; name: string; share_token: string | null }>();
   if (!list) return c.notFound();
   const items = await c.env.DB.prepare(
     "SELECT tmdb_id, media_type, title, poster_path FROM list_items WHERE list_id = ? ORDER BY added_at DESC"
@@ -1246,7 +1247,53 @@ app.get("/lists/:id", async (c) => {
     .all<{ tmdb_id: number; media_type: string; title: string; poster_path: string | null }>();
   return c.html(
     <Layout user={user} title={list.name}>
-      <ListDetailPage list={list} items={items.results} />
+      <ListDetailPage list={list} items={items.results} shareUrl={list.share_token ? `${c.env.SITE_URL}/list/${list.share_token}` : null} />
+    </Layout>
+  );
+});
+
+app.post("/api/lists/share", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const listId = parseInt(String(form.list_id), 10);
+  if (!Number.isFinite(listId)) return c.redirect("/lists");
+  const owned = await c.env.DB.prepare("SELECT id FROM lists WHERE id = ? AND user_id = ?").bind(listId, user.id).first();
+  if (!owned) return c.redirect("/lists");
+  if (form.enabled === "1") {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    await c.env.DB.prepare("UPDATE lists SET share_token = ? WHERE id = ?").bind(token, listId).run();
+  } else {
+    await c.env.DB.prepare("UPDATE lists SET share_token = NULL WHERE id = ?").bind(listId).run();
+  }
+  return c.redirect(`/lists/${listId}`);
+});
+
+app.get("/list/:token", async (c) => {
+  const token = c.req.param("token");
+  if (!/^[0-9a-f]{32}$/.test(token)) return c.notFound();
+  const list = await c.env.DB.prepare(
+    "SELECT l.id, l.name, u.display_name, u.email FROM lists l JOIN users u ON u.id = l.user_id WHERE l.share_token = ?"
+  )
+    .bind(token)
+    .first<{ id: number; name: string; display_name: string | null; email: string }>();
+  if (!list) return c.notFound();
+  const items = await c.env.DB.prepare(
+    "SELECT tmdb_id, media_type, title, poster_path FROM list_items WHERE list_id = ? ORDER BY added_at DESC"
+  )
+    .bind(list.id)
+    .all<{ tmdb_id: number; media_type: string; title: string; poster_path: string | null }>();
+  const owner = list.display_name || list.email.split("@")[0];
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={`${list.name} \u2014 a list by ${owner}`}
+      description={`${items.results.length} shows & movies picked by ${owner} on WatchDeck.`}
+      canonical={`${c.env.SITE_URL}/list/${token}`}
+    >
+      <PublicListPage name={list.name} owner={owner} items={items.results} />
     </Layout>
   );
 });
@@ -1403,13 +1450,21 @@ app.post("/api/share", async (c) => {
   return c.redirect("/stats");
 });
 
-async function shareProfile(env: Env, token: string): Promise<{ name: string; stats: UserStats } | null> {
+async function shareProfile(env: Env, token: string): Promise<{ name: string; stats: UserStats; lists: { name: string; share_token: string; item_count: number }[] } | null> {
   if (!/^[0-9a-f]{32}$/.test(token)) return null;
   const row = await env.DB.prepare(
     "SELECT u.id, u.display_name, u.email FROM share_tokens s JOIN users u ON u.id = s.user_id WHERE s.token = ?"
   ).bind(token).first<{ id: number; display_name: string | null; email: string }>();
   if (!row) return null;
-  return { name: row.display_name || row.email.split("@")[0], stats: await userStats(env, row.id) };
+  const [stats, lists] = await Promise.all([
+    userStats(env, row.id),
+    env.DB.prepare(
+      "SELECT name, share_token, (SELECT COUNT(*) FROM list_items li WHERE li.list_id = l.id) AS item_count FROM lists l WHERE user_id = ? AND share_token IS NOT NULL ORDER BY created_at DESC"
+    )
+      .bind(row.id)
+      .all<{ name: string; share_token: string; item_count: number }>(),
+  ]);
+  return { name: row.display_name || row.email.split("@")[0], stats, lists: lists.results };
 }
 
 app.get("/u/:token", async (c) => {
@@ -1424,7 +1479,7 @@ app.get("/u/:token", async (c) => {
       canonical={`${c.env.SITE_URL}/u/${token}`}
       ogImage={`${c.env.SITE_URL}/u/${token}/og.png`}
     >
-      <PublicProfilePage stats={profile.stats} name={profile.name} />
+      <PublicProfilePage stats={profile.stats} name={profile.name} lists={profile.lists} />
     </Layout>
   );
 });

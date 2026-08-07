@@ -127,7 +127,8 @@ CREATE TABLE IF NOT EXISTS lists (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  share_token TEXT
 );
 CREATE TABLE IF NOT EXISTS list_items (
   list_id INTEGER NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
