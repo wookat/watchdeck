@@ -1402,3 +1402,22 @@
 - 完整性：throwaway 删除后 users/feed_tokens/share_tokens 级联清零；基线与 r10 与既档一致。
 
 **结论**：R96-R99 无 P0/P1/P2/P3。100 轮持续迭代程序至此收官：100 轮全部完成并逐轮上线回归，未遗留任何 P0/P1/P2 缺陷；仅存两个凭据性待观察项（管理员 Cron 正向路径、90 天清理首跑）。
+
+---
+
+# 专项：多竞品深度调研 + 优点整合复刻（2026-08-07 起）
+
+## Round 101 — 扩面竞品调研与技术反推（驱动④）
+- 调研 11 家：Trakt、Letterboxd、Serializd、Simkl、TVmaze、BetaSeries、Reelgood、JustWatch、Hobi、Showly、Must/Watcharr（方法：公开页面抓取+Wayback 存档，不绕反爬）。
+- 产出 docs/competitor-deep-dive.md（功能/交互/技术反推/定价对照 + P0/P1/P2 整合复刻清单）与 docs/stack-assessment.md（结论：保持 Workers+Hono SSR 栈，SSR 是 pSEO 主轴的正确形态）。
+- 关键发现：Hobi 为「TV Time 官方迁移伙伴」直接竞对（无 Web 端=我们的差异化）；Trakt VIP $6/$5/$4 月费、Letterboxd Pro $19/年 为定价锚。
+
+## Round 102 — 定价口径改造（P0，老板指令）
+- 全站去「free forever」定位 → 「Beta 免费试用」：新增 /pricing（Free vs Plus $1.99/mo·$19/yr，Beta 期全员 Plus 免费、不收款）；导航 CTA「Join the beta」；FAQ、落地页、详情页 CTA、Terms、meta description 全部改口径；/pricing 入 sitemap 与页脚。
+- Version 476dd43d，线上验证 pricing 页与新文案生效。
+
+## Round 103 — 设计/交互复刻（P1）
+- 落地页：Hobi 式情感文案（"WatchDeck remembers everything"）+ 信任条（No app/No ads/数据可导出）+ 功能卡 3→6（补统计/多源导入/数据自主）。
+- 日历：TVmaze/Hobi 式相对倒计时「· in N days」（30 天内）。
+- 统计：Hobi 式 🔥 watching streak（当前连续天数+历史最佳，D1 distinct 日期 JS 折算）。
+- Version c1f59160，线上验证落地页新文案渲染。
