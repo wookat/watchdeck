@@ -5,6 +5,16 @@
 
 ---
 
+## 专项 Round 120 — 2026-08-05（竞品优点复刻·第七批）
+
+**发现（竞品调研 / P1 复刻清单最后一项）**
+- 剧集级 rewatch：TV Time/Trakt 支持同一集多次观看计数；我们 episode_watches 唯一约束只能记一次。
+
+**修复**
+- R120 episode_watches 加 `plays` 列（默认 1，保留唯一约束——最小迁移，所有既有 COUNT 语义不变）；已看集新增「↺ again」按钮（POST /api/watch-again：plays+1 并刷新 watched_at）；按钮显示「✓ Watched N×」；/history 行加「· watched N×」；小时统计按 SUM(plays) 计；JSON 导出含 plays。
+
+**证据**：线上回归见 PR 评论。
+
 ## 专项 Round 118 — 2026-08-05（竞品优点复刻·第六批）
 
 **发现（UX 走查 / P2）**

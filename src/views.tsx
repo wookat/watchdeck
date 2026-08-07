@@ -729,6 +729,7 @@ export const ShowPage: FC<{
   show: TvDetails;
   season: SeasonDetails | null;
   watched: Set<string>;
+  plays?: Map<string, number>;
   tracked: { status: string; rating: number | null; notes: string | null } | null;
   user: User | null;
   recs: SearchResult[];
@@ -737,7 +738,7 @@ export const ShowPage: FC<{
   trailer?: string | null;
   myServices?: Set<number>;
   lists?: ListRef[];
-}> = ({ show, season, watched, tracked, user, recs, providers, cast, trailer, myServices, lists }) => {
+}> = ({ show, season, watched, plays, tracked, user, recs, providers, cast, trailer, myServices, lists }) => {
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
@@ -861,6 +862,7 @@ export const ShowPage: FC<{
           <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
             {season.episodes.map((ep) => {
               const isWatched = watched.has(`${ep.season_number}x${ep.episode_number}`);
+              const playCount = plays?.get(`${ep.season_number}x${ep.episode_number}`) ?? 1;
               return (
                 <li class="flex items-center gap-4 bg-slate-900/40 px-4 py-3">
                   <span class="w-14 shrink-0 text-sm text-slate-400">
@@ -887,6 +889,21 @@ export const ShowPage: FC<{
                           </button>
                         </form>
                       )}
+                      {isWatched && (
+                        <form action="/api/watch-again" method="post">
+                          <input type="hidden" name="tmdb_id" value={String(show.id)} />
+                          <input type="hidden" name="season" value={String(ep.season_number)} />
+                          <input type="hidden" name="episode" value={String(ep.episode_number)} />
+                          <input type="hidden" name="redirect" value={`${showUrl}?season=${season.season_number}`} />
+                          <button
+                            class="rounded-lg px-2 py-1.5 text-sm text-slate-400 hover:text-violet-300"
+                            title="Watched this episode again"
+                            aria-label={`Log a rewatch of season ${ep.season_number} episode ${ep.episode_number}`}
+                          >
+                            ↺ again
+                          </button>
+                        </form>
+                      )}
                       <form action="/api/watch" method="post">
                         <input type="hidden" name="tmdb_id" value={String(show.id)} />
                         <input type="hidden" name="season" value={String(ep.season_number)} />
@@ -900,7 +917,7 @@ export const ShowPage: FC<{
                               : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500"
                           }
                         >
-                          {isWatched ? "✓ Watched" : "Mark watched"}
+                          {isWatched ? (playCount > 1 ? `✓ Watched ${playCount}\u00d7` : "✓ Watched") : "Mark watched"}
                         </button>
                       </form>
                     </div>
@@ -1731,6 +1748,7 @@ export interface HistoryItem {
   season: number | null;
   episode: number | null;
   watchedAt: string;
+  plays?: number;
 }
 
 export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: number }> = ({ items, page = 1, lastPage = 1 }) => (
@@ -1774,6 +1792,7 @@ export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: n
                           {it.mediaType === "tv" && it.season != null && it.episode != null
                             ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}`
                             : "Movie"}
+                          {(it.plays ?? 1) > 1 ? ` · watched ${it.plays}\u00d7` : ""}
                         </p>
                       </div>
                       <form action="/api/history/date" method="post" class="hidden shrink-0 items-center gap-1.5 sm:flex">

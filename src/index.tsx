@@ -467,9 +467,9 @@ app.get("/shows/:idslug", async (c) => {
   const [season, watchedRows, tracked, recsRes, providers, cast, trailer, services, listsRes] = await Promise.all([
     seasonDetails(c.env, id, seasonNum).catch(() => null),
     user
-      ? c.env.DB.prepare("SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
+      ? c.env.DB.prepare("SELECT season, episode, plays FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
           .bind(user.id, id)
-          .all<{ season: number; episode: number }>()
+          .all<{ season: number; episode: number; plays: number }>()
       : Promise.resolve(null),
     user
       ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
@@ -484,6 +484,7 @@ app.get("/shows/:idslug", async (c) => {
     user ? userLists(c.env, user.id, id, "tv") : Promise.resolve(null),
   ]);
   const watched = new Set((watchedRows?.results ?? []).map((r) => `${r.season}x${r.episode}`));
+  const plays = new Map((watchedRows?.results ?? []).map((r) => [`${r.season}x${r.episode}`, r.plays]));
   const recs = recsRes.results;
   const showCanonical = `${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`;
   return c.html(
@@ -520,7 +521,7 @@ app.get("/shows/:idslug", async (c) => {
         ],
       }}
     >
-      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
+      <ShowPage show={show} season={season} watched={watched} plays={plays} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
     </Layout>
   );
 });
@@ -882,7 +883,7 @@ async function hoursWatched(env: Env, userId: number): Promise<number> {
   const cached = await env.CACHE.get(cacheKey);
   if (cached !== null) return parseInt(cached, 10);
   const [showEps, movieIds] = await Promise.all([
-    env.DB.prepare("SELECT tmdb_id, COUNT(*) AS n FROM episode_watches WHERE user_id = ? GROUP BY tmdb_id")
+    env.DB.prepare("SELECT tmdb_id, SUM(plays) AS n FROM episode_watches WHERE user_id = ? GROUP BY tmdb_id")
       .bind(userId)
       .all<{ tmdb_id: number; n: number }>(),
     env.DB.prepare("SELECT tmdb_id FROM movie_watches WHERE user_id = ?").bind(userId).all<{ tmdb_id: number }>(),
@@ -1055,19 +1056,19 @@ app.get("/history", async (c) => {
   const page = Math.min(lastPage, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
   const rows = await c.env.DB.prepare(
     `SELECT * FROM (
-       SELECT 'tv' AS kind, w.tmdb_id, w.season, w.episode, w.watched_at, t.title, t.poster_path
+       SELECT 'tv' AS kind, w.tmdb_id, w.season, w.episode, w.watched_at, w.plays, t.title, t.poster_path
        FROM episode_watches w
        LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
        WHERE w.user_id = ?1
        UNION ALL
-       SELECT 'movie' AS kind, w.tmdb_id, NULL AS season, NULL AS episode, w.watched_at, t.title, t.poster_path
+       SELECT 'movie' AS kind, w.tmdb_id, NULL AS season, NULL AS episode, w.watched_at, 1 AS plays, t.title, t.poster_path
        FROM movie_watches w
        LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'movie'
        WHERE w.user_id = ?1
      ) ORDER BY watched_at DESC LIMIT ${perPage} OFFSET ${(page - 1) * perPage}`
   )
     .bind(user.id)
-    .all<{ kind: "tv" | "movie"; tmdb_id: number; season: number | null; episode: number | null; watched_at: string; title: string | null; poster_path: string | null }>();
+    .all<{ kind: "tv" | "movie"; tmdb_id: number; season: number | null; episode: number | null; watched_at: string; plays: number; title: string | null; poster_path: string | null }>();
   const items: HistoryItem[] = rows.results.map((r) => ({
     tmdbId: r.tmdb_id,
     mediaType: r.kind,
@@ -1076,6 +1077,7 @@ app.get("/history", async (c) => {
     season: r.season,
     episode: r.episode,
     watchedAt: r.watched_at,
+    plays: r.plays,
   }));
   return c.html(
     <Layout user={user} title="History">
@@ -1131,7 +1133,7 @@ app.get("/api/export", async (c) => {
   if (!user) return c.redirect("/login");
   const [tracked, episodes, movies] = await c.env.DB.batch([
     c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating, notes, created_at, updated_at FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
-    c.env.DB.prepare("SELECT tmdb_id, season, episode, watched_at FROM episode_watches WHERE user_id = ? ORDER BY tmdb_id, season, episode").bind(user.id),
+    c.env.DB.prepare("SELECT tmdb_id, season, episode, watched_at, plays FROM episode_watches WHERE user_id = ? ORDER BY tmdb_id, season, episode").bind(user.id),
     c.env.DB.prepare("SELECT tmdb_id, watched_at FROM movie_watches WHERE user_id = ? ORDER BY tmdb_id").bind(user.id),
   ]);
   const payload = {
@@ -1637,6 +1639,22 @@ app.post("/api/watch", async (c) => {
       .run();
     await maybeAutoComplete(c.env, user.id, tmdbId, details);
   }
+  invalidateHours(c, user.id);
+  return c.redirect(safeNext(form.redirect) ?? "/home");
+});
+
+app.post("/api/watch-again", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const season = parseInt(String(form.season), 10);
+  const episode = parseInt(String(form.episode), 10);
+  await c.env.DB.prepare(
+    "UPDATE episode_watches SET plays = plays + 1, watched_at = datetime('now') WHERE user_id = ? AND tmdb_id = ? AND season = ? AND episode = ?"
+  )
+    .bind(user.id, tmdbId, season, episode)
+    .run();
   invalidateHours(c, user.id);
   return c.redirect(safeNext(form.redirect) ?? "/home");
 });
