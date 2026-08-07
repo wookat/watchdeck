@@ -55,7 +55,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <nav id="site-nav" class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
         <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-3">
           <a href={user ? "/home" : "/"} data-logo class="flex items-center gap-2 text-lg font-bold tracking-tight">
-            <span class="inline-block h-6 w-6 rounded bg-gradient-to-br from-violet-500 to-fuchsia-500" />
+            <img src="/favicon.svg" alt="" width="24" height="24" class="h-6 w-6" />
             WatchDeck
           </a>
           <form action="/search" method="get" class="ml-2 hidden flex-1 sm:block">
@@ -126,11 +126,11 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
 
 export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
   <div>
-    <section class="py-14 text-center">
-      <p class="mb-3 inline-block rounded-full border border-violet-700 bg-violet-950/60 px-3 py-1 text-xs text-violet-300">
+    <section class="hero-cinema -mx-4 rounded-b-3xl px-4 py-14 text-center">
+      <p class="rise-in mb-3 inline-block rounded-full border border-violet-700 bg-violet-950/60 px-3 py-1 text-xs text-violet-300">
         TV Time shut down July 15 — your data still has a home
       </p>
-      <h1 class="mx-auto max-w-3xl text-4xl font-extrabold tracking-tight sm:text-5xl">
+      <h1 class="rise-in mx-auto max-w-3xl text-4xl font-extrabold tracking-tight sm:text-5xl">
         Drop in your TV Time export.
         <br />
         <span class="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">
@@ -345,7 +345,7 @@ export const MediaCard: FC<{ item: SearchResult; type: "tv" | "movie"; inLibrary
         src={poster(item.poster_path)}
         alt={title}
         loading="lazy"
-        class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
+        class="aspect-[2/3] w-full rounded-xl border object-cover poster-fx"
       />
       <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{title}</p>
       <p class="text-xs text-slate-400">
@@ -413,7 +413,7 @@ export const HomePage: FC<{
                         src={poster(w.poster_path)}
                         alt={w.title}
                         loading="lazy"
-                        class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
+                        class="aspect-[2/3] w-full rounded-xl border object-cover poster-fx"
                       />
                       <p class="mt-2 line-clamp-1 text-sm group-hover:text-violet-400">{w.title}</p>
                     </a>
@@ -742,8 +742,13 @@ export const ShowPage: FC<{
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
-      <div class="flex flex-col gap-6 sm:flex-row">
-        <img src={poster(show.poster_path)} alt={show.name} class="aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover sm:w-52" />
+      <div class="backdrop-hero flex flex-col gap-6 rounded-3xl p-4 sm:flex-row sm:p-6">
+        {show.backdrop_path && (
+          <div class="backdrop-img" aria-hidden="true">
+            <img src={`https://image.tmdb.org/t/p/w1280${show.backdrop_path}`} alt="" loading="eager" fetchpriority="low" />
+          </div>
+        )}
+        <img src={poster(show.poster_path)} alt={show.name} class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
         <div class="min-w-0 flex-1">
           <h1 class="text-3xl font-bold">{show.name}</h1>
           <p class="mt-1 text-sm text-slate-400">
@@ -950,8 +955,13 @@ export const MoviePage: FC<{
   const watched = watchCount > 0;
   return (
     <div>
-    <div class="flex flex-col gap-6 sm:flex-row">
-      <img src={poster(movie.poster_path)} alt={movie.title} class="aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover sm:w-52" />
+    <div class="backdrop-hero flex flex-col gap-6 rounded-3xl p-4 sm:flex-row sm:p-6">
+      {movie.backdrop_path && (
+        <div class="backdrop-img" aria-hidden="true">
+          <img src={`https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`} alt="" loading="eager" fetchpriority="low" />
+        </div>
+      )}
+      <img src={poster(movie.poster_path)} alt={movie.title} class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
       <div class="min-w-0 flex-1">
         <h1 class="text-3xl font-bold">{movie.title}</h1>
         <p class="mt-1 text-sm text-slate-400">
@@ -1146,7 +1156,7 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
                 src={poster(r.poster_path)}
                 alt={r.title}
                 loading="lazy"
-                class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
+                class="aspect-[2/3] w-full rounded-xl border object-cover poster-fx"
               />
               <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{r.title}</p>
               <p class="text-xs text-slate-400">
@@ -2103,7 +2113,7 @@ export const ListDetailPage: FC<{ list: { id: number; name: string }; items: { t
                 src={poster(it.poster_path)}
                 alt={it.title}
                 loading="lazy"
-                class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
+                class="aspect-[2/3] w-full rounded-xl border object-cover poster-fx"
               />
               <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{it.title}</p>
             </a>
@@ -2137,7 +2147,7 @@ export const PublicListPage: FC<{ name: string; owner: string; items: { tmdb_id:
               src={poster(it.poster_path)}
               alt={it.title}
               loading="lazy"
-              class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
+              class="aspect-[2/3] w-full rounded-xl border object-cover poster-fx"
             />
             <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{it.title}</p>
           </a>
