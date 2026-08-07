@@ -5,6 +5,36 @@
 
 ---
 
+## 专项 Round 120 — 2026-08-05（竞品优点复刻·第七批）
+
+**发现（竞品调研 / P1 复刻清单最后一项）**
+- 剧集级 rewatch：TV Time/Trakt 支持同一集多次观看计数；我们 episode_watches 唯一约束只能记一次。
+
+**修复**
+- R120 episode_watches 加 `plays` 列（默认 1，保留唯一约束——最小迁移，所有既有 COUNT 语义不变）；已看集新增「↺ again」按钮（POST /api/watch-again：plays+1 并刷新 watched_at）；按钮显示「✓ Watched N×」；/history 行加「· watched N×」；小时统计按 SUM(plays) 计；JSON 导出含 plays。
+
+**证据**：线上回归见 PR 评论。
+
+## 专项 Round 118 — 2026-08-05（竞品优点复刻·第六批）
+
+**发现（UX 走查 / P2）**
+- 公开列表页分享到社交平台无预览卡（个人 stats 分享页已有 OG 卡，列表页缺失，分享转化受损）。
+
+**修复**
+- R118 `/list/:token/og.png` 动态 OG 卡（workers-og：列表名+「a list by <owner> — N items」+最近 5 张海报，1h 缓存）；公开列表页注入 og:image。
+
+**证据**：线上回归见 PR 评论（R119 回归轮）。
+
+## 专项 Round 116 — 2026-08-05（竞品优点复刻·第五批）
+
+**发现（来源：docs/competitor-deep-dive.md P2 清单）**
+- [竞品(Letterboxd/Trakt) / P2] 自定义列表只能自用，无法公开分享——Letterboxd 列表分享是其增长飞轮核心。
+
+**修复**
+- R116 列表公开分享：`lists.share_token`（32 hex，可开关）；列表详情页「🔗 Share publicly / 🔒 Make private」切换+公开 URL 展示；只读公开页 `/list/:token`（海报网格+注册 CTA，canonical，可被索引）；公开列表同步出现在 `/u/:token` 公开档案页。
+
+**证据**：线上回归见 PR 评论（R117 回归轮）。
+
 ## 专项 Rounds 113-114 — 2026-08-05（竞品优点复刻·第四批）
 
 **发现（来源：docs/competitor-deep-dive.md P1/P2 清单）**

@@ -30,7 +30,7 @@ import {
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, isNetflixCsv, parseNetflixCsv, type ParsedImport } from "./importer";
 import { sendEmail, welcomeEmail, resetEmail } from "./email";
-import { shareOgImage } from "./og";
+import { shareOgImage, listOgImage } from "./og";
 import {
   Layout,
   Landing,
@@ -67,6 +67,7 @@ import {
   type ListRow,
   ListsPage,
   ListDetailPage,
+  PublicListPage,
 } from "./views";
 
 const SERVICE_IDS = new Set(STREAMING_SERVICES.map(([id]) => id));
@@ -466,9 +467,9 @@ app.get("/shows/:idslug", async (c) => {
   const [season, watchedRows, tracked, recsRes, providers, cast, trailer, services, listsRes] = await Promise.all([
     seasonDetails(c.env, id, seasonNum).catch(() => null),
     user
-      ? c.env.DB.prepare("SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
+      ? c.env.DB.prepare("SELECT season, episode, plays FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
           .bind(user.id, id)
-          .all<{ season: number; episode: number }>()
+          .all<{ season: number; episode: number; plays: number }>()
       : Promise.resolve(null),
     user
       ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
@@ -483,6 +484,7 @@ app.get("/shows/:idslug", async (c) => {
     user ? userLists(c.env, user.id, id, "tv") : Promise.resolve(null),
   ]);
   const watched = new Set((watchedRows?.results ?? []).map((r) => `${r.season}x${r.episode}`));
+  const plays = new Map((watchedRows?.results ?? []).map((r) => [`${r.season}x${r.episode}`, r.plays]));
   const recs = recsRes.results;
   const showCanonical = `${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`;
   return c.html(
@@ -519,7 +521,7 @@ app.get("/shows/:idslug", async (c) => {
         ],
       }}
     >
-      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
+      <ShowPage show={show} season={season} watched={watched} plays={plays} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
     </Layout>
   );
 });
@@ -881,7 +883,7 @@ async function hoursWatched(env: Env, userId: number): Promise<number> {
   const cached = await env.CACHE.get(cacheKey);
   if (cached !== null) return parseInt(cached, 10);
   const [showEps, movieIds] = await Promise.all([
-    env.DB.prepare("SELECT tmdb_id, COUNT(*) AS n FROM episode_watches WHERE user_id = ? GROUP BY tmdb_id")
+    env.DB.prepare("SELECT tmdb_id, SUM(plays) AS n FROM episode_watches WHERE user_id = ? GROUP BY tmdb_id")
       .bind(userId)
       .all<{ tmdb_id: number; n: number }>(),
     env.DB.prepare("SELECT tmdb_id FROM movie_watches WHERE user_id = ?").bind(userId).all<{ tmdb_id: number }>(),
@@ -1054,19 +1056,19 @@ app.get("/history", async (c) => {
   const page = Math.min(lastPage, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
   const rows = await c.env.DB.prepare(
     `SELECT * FROM (
-       SELECT 'tv' AS kind, w.tmdb_id, w.season, w.episode, w.watched_at, t.title, t.poster_path
+       SELECT 'tv' AS kind, w.tmdb_id, w.season, w.episode, w.watched_at, w.plays, t.title, t.poster_path
        FROM episode_watches w
        LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
        WHERE w.user_id = ?1
        UNION ALL
-       SELECT 'movie' AS kind, w.tmdb_id, NULL AS season, NULL AS episode, w.watched_at, t.title, t.poster_path
+       SELECT 'movie' AS kind, w.tmdb_id, NULL AS season, NULL AS episode, w.watched_at, 1 AS plays, t.title, t.poster_path
        FROM movie_watches w
        LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'movie'
        WHERE w.user_id = ?1
      ) ORDER BY watched_at DESC LIMIT ${perPage} OFFSET ${(page - 1) * perPage}`
   )
     .bind(user.id)
-    .all<{ kind: "tv" | "movie"; tmdb_id: number; season: number | null; episode: number | null; watched_at: string; title: string | null; poster_path: string | null }>();
+    .all<{ kind: "tv" | "movie"; tmdb_id: number; season: number | null; episode: number | null; watched_at: string; plays: number; title: string | null; poster_path: string | null }>();
   const items: HistoryItem[] = rows.results.map((r) => ({
     tmdbId: r.tmdb_id,
     mediaType: r.kind,
@@ -1075,6 +1077,7 @@ app.get("/history", async (c) => {
     season: r.season,
     episode: r.episode,
     watchedAt: r.watched_at,
+    plays: r.plays,
   }));
   return c.html(
     <Layout user={user} title="History">
@@ -1130,7 +1133,7 @@ app.get("/api/export", async (c) => {
   if (!user) return c.redirect("/login");
   const [tracked, episodes, movies] = await c.env.DB.batch([
     c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating, notes, created_at, updated_at FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
-    c.env.DB.prepare("SELECT tmdb_id, season, episode, watched_at FROM episode_watches WHERE user_id = ? ORDER BY tmdb_id, season, episode").bind(user.id),
+    c.env.DB.prepare("SELECT tmdb_id, season, episode, watched_at, plays FROM episode_watches WHERE user_id = ? ORDER BY tmdb_id, season, episode").bind(user.id),
     c.env.DB.prepare("SELECT tmdb_id, watched_at FROM movie_watches WHERE user_id = ? ORDER BY tmdb_id").bind(user.id),
   ]);
   const payload = {
@@ -1237,7 +1240,7 @@ app.get("/lists/:id", async (c) => {
   if (!user) return c.redirect("/login");
   const id = parseInt(c.req.param("id"), 10);
   if (!Number.isFinite(id)) return c.notFound();
-  const list = await c.env.DB.prepare("SELECT id, name FROM lists WHERE id = ? AND user_id = ?").bind(id, user.id).first<{ id: number; name: string }>();
+  const list = await c.env.DB.prepare("SELECT id, name, share_token FROM lists WHERE id = ? AND user_id = ?").bind(id, user.id).first<{ id: number; name: string; share_token: string | null }>();
   if (!list) return c.notFound();
   const items = await c.env.DB.prepare(
     "SELECT tmdb_id, media_type, title, poster_path FROM list_items WHERE list_id = ? ORDER BY added_at DESC"
@@ -1246,9 +1249,82 @@ app.get("/lists/:id", async (c) => {
     .all<{ tmdb_id: number; media_type: string; title: string; poster_path: string | null }>();
   return c.html(
     <Layout user={user} title={list.name}>
-      <ListDetailPage list={list} items={items.results} />
+      <ListDetailPage list={list} items={items.results} shareUrl={list.share_token ? `${c.env.SITE_URL}/list/${list.share_token}` : null} />
     </Layout>
   );
+});
+
+app.post("/api/lists/share", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const listId = parseInt(String(form.list_id), 10);
+  if (!Number.isFinite(listId)) return c.redirect("/lists");
+  const owned = await c.env.DB.prepare("SELECT id FROM lists WHERE id = ? AND user_id = ?").bind(listId, user.id).first();
+  if (!owned) return c.redirect("/lists");
+  if (form.enabled === "1") {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    await c.env.DB.prepare("UPDATE lists SET share_token = ? WHERE id = ?").bind(token, listId).run();
+  } else {
+    await c.env.DB.prepare("UPDATE lists SET share_token = NULL WHERE id = ?").bind(listId).run();
+  }
+  return c.redirect(`/lists/${listId}`);
+});
+
+app.get("/list/:token", async (c) => {
+  const token = c.req.param("token");
+  if (!/^[0-9a-f]{32}$/.test(token)) return c.notFound();
+  const list = await c.env.DB.prepare(
+    "SELECT l.id, l.name, u.display_name, u.email FROM lists l JOIN users u ON u.id = l.user_id WHERE l.share_token = ?"
+  )
+    .bind(token)
+    .first<{ id: number; name: string; display_name: string | null; email: string }>();
+  if (!list) return c.notFound();
+  const items = await c.env.DB.prepare(
+    "SELECT tmdb_id, media_type, title, poster_path FROM list_items WHERE list_id = ? ORDER BY added_at DESC"
+  )
+    .bind(list.id)
+    .all<{ tmdb_id: number; media_type: string; title: string; poster_path: string | null }>();
+  const owner = list.display_name || list.email.split("@")[0];
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={`${list.name} \u2014 a list by ${owner}`}
+      description={`${items.results.length} shows & movies picked by ${owner} on WatchDeck.`}
+      canonical={`${c.env.SITE_URL}/list/${token}`}
+      ogImage={`${c.env.SITE_URL}/list/${token}/og.png`}
+    >
+      <PublicListPage name={list.name} owner={owner} items={items.results} />
+    </Layout>
+  );
+});
+
+app.get("/list/:token/og.png", async (c) => {
+  const token = c.req.param("token");
+  if (!/^[0-9a-f]{32}$/.test(token)) return c.notFound();
+  const list = await c.env.DB.prepare(
+    "SELECT l.id, l.name, u.display_name, u.email FROM lists l JOIN users u ON u.id = l.user_id WHERE l.share_token = ?"
+  )
+    .bind(token)
+    .first<{ id: number; name: string; display_name: string | null; email: string }>();
+  if (!list) return c.notFound();
+  const items = await c.env.DB.prepare(
+    "SELECT poster_path FROM list_items WHERE list_id = ? AND poster_path IS NOT NULL AND poster_path != '' ORDER BY added_at DESC LIMIT 5"
+  )
+    .bind(list.id)
+    .all<{ poster_path: string }>();
+  const count = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM list_items WHERE list_id = ?").bind(list.id).first<{ n: number }>();
+  const res = await listOgImage(
+    c.env,
+    list.name,
+    list.display_name || list.email.split("@")[0],
+    count?.n ?? 0,
+    items.results.map((r) => r.poster_path)
+  );
+  res.headers.set("cache-control", "public, max-age=3600");
+  return res;
 });
 
 app.post("/api/lists", async (c) => {
@@ -1403,13 +1479,21 @@ app.post("/api/share", async (c) => {
   return c.redirect("/stats");
 });
 
-async function shareProfile(env: Env, token: string): Promise<{ name: string; stats: UserStats } | null> {
+async function shareProfile(env: Env, token: string): Promise<{ name: string; stats: UserStats; lists: { name: string; share_token: string; item_count: number }[] } | null> {
   if (!/^[0-9a-f]{32}$/.test(token)) return null;
   const row = await env.DB.prepare(
     "SELECT u.id, u.display_name, u.email FROM share_tokens s JOIN users u ON u.id = s.user_id WHERE s.token = ?"
   ).bind(token).first<{ id: number; display_name: string | null; email: string }>();
   if (!row) return null;
-  return { name: row.display_name || row.email.split("@")[0], stats: await userStats(env, row.id) };
+  const [stats, lists] = await Promise.all([
+    userStats(env, row.id),
+    env.DB.prepare(
+      "SELECT name, share_token, (SELECT COUNT(*) FROM list_items li WHERE li.list_id = l.id) AS item_count FROM lists l WHERE user_id = ? AND share_token IS NOT NULL ORDER BY created_at DESC"
+    )
+      .bind(row.id)
+      .all<{ name: string; share_token: string; item_count: number }>(),
+  ]);
+  return { name: row.display_name || row.email.split("@")[0], stats, lists: lists.results };
 }
 
 app.get("/u/:token", async (c) => {
@@ -1424,7 +1508,7 @@ app.get("/u/:token", async (c) => {
       canonical={`${c.env.SITE_URL}/u/${token}`}
       ogImage={`${c.env.SITE_URL}/u/${token}/og.png`}
     >
-      <PublicProfilePage stats={profile.stats} name={profile.name} />
+      <PublicProfilePage stats={profile.stats} name={profile.name} lists={profile.lists} />
     </Layout>
   );
 });
@@ -1555,6 +1639,22 @@ app.post("/api/watch", async (c) => {
       .run();
     await maybeAutoComplete(c.env, user.id, tmdbId, details);
   }
+  invalidateHours(c, user.id);
+  return c.redirect(safeNext(form.redirect) ?? "/home");
+});
+
+app.post("/api/watch-again", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const season = parseInt(String(form.season), 10);
+  const episode = parseInt(String(form.episode), 10);
+  await c.env.DB.prepare(
+    "UPDATE episode_watches SET plays = plays + 1, watched_at = datetime('now') WHERE user_id = ? AND tmdb_id = ? AND season = ? AND episode = ?"
+  )
+    .bind(user.id, tmdbId, season, episode)
+    .run();
   invalidateHours(c, user.id);
   return c.redirect(safeNext(form.redirect) ?? "/home");
 });

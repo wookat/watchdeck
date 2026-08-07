@@ -729,6 +729,7 @@ export const ShowPage: FC<{
   show: TvDetails;
   season: SeasonDetails | null;
   watched: Set<string>;
+  plays?: Map<string, number>;
   tracked: { status: string; rating: number | null; notes: string | null } | null;
   user: User | null;
   recs: SearchResult[];
@@ -737,7 +738,7 @@ export const ShowPage: FC<{
   trailer?: string | null;
   myServices?: Set<number>;
   lists?: ListRef[];
-}> = ({ show, season, watched, tracked, user, recs, providers, cast, trailer, myServices, lists }) => {
+}> = ({ show, season, watched, plays, tracked, user, recs, providers, cast, trailer, myServices, lists }) => {
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
@@ -861,6 +862,7 @@ export const ShowPage: FC<{
           <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
             {season.episodes.map((ep) => {
               const isWatched = watched.has(`${ep.season_number}x${ep.episode_number}`);
+              const playCount = plays?.get(`${ep.season_number}x${ep.episode_number}`) ?? 1;
               return (
                 <li class="flex items-center gap-4 bg-slate-900/40 px-4 py-3">
                   <span class="w-14 shrink-0 text-sm text-slate-400">
@@ -887,6 +889,21 @@ export const ShowPage: FC<{
                           </button>
                         </form>
                       )}
+                      {isWatched && (
+                        <form action="/api/watch-again" method="post">
+                          <input type="hidden" name="tmdb_id" value={String(show.id)} />
+                          <input type="hidden" name="season" value={String(ep.season_number)} />
+                          <input type="hidden" name="episode" value={String(ep.episode_number)} />
+                          <input type="hidden" name="redirect" value={`${showUrl}?season=${season.season_number}`} />
+                          <button
+                            class="rounded-lg px-2 py-1.5 text-sm text-slate-400 hover:text-violet-300"
+                            title="Watched this episode again"
+                            aria-label={`Log a rewatch of season ${ep.season_number} episode ${ep.episode_number}`}
+                          >
+                            ↺ again
+                          </button>
+                        </form>
+                      )}
                       <form action="/api/watch" method="post">
                         <input type="hidden" name="tmdb_id" value={String(show.id)} />
                         <input type="hidden" name="season" value={String(ep.season_number)} />
@@ -900,7 +917,7 @@ export const ShowPage: FC<{
                               : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500"
                           }
                         >
-                          {isWatched ? "✓ Watched" : "Mark watched"}
+                          {isWatched ? (playCount > 1 ? `✓ Watched ${playCount}\u00d7` : "✓ Watched") : "Mark watched"}
                         </button>
                       </form>
                     </div>
@@ -1731,6 +1748,7 @@ export interface HistoryItem {
   season: number | null;
   episode: number | null;
   watchedAt: string;
+  plays?: number;
 }
 
 export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: number }> = ({ items, page = 1, lastPage = 1 }) => (
@@ -1774,6 +1792,7 @@ export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: n
                           {it.mediaType === "tv" && it.season != null && it.episode != null
                             ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}`
                             : "Movie"}
+                          {(it.plays ?? 1) > 1 ? ` · watched ${it.plays}\u00d7` : ""}
                         </p>
                       </div>
                       <form action="/api/history/date" method="post" class="hidden shrink-0 items-center gap-1.5 sm:flex">
@@ -1870,13 +1889,26 @@ export const StatsPage: FC<{ stats: UserStats; shareUrl: string | null }> = ({ s
   </div>
 );
 
-export const PublicProfilePage: FC<{ stats: UserStats; name: string }> = ({ stats, name }) => (
+export const PublicProfilePage: FC<{ stats: UserStats; name: string; lists?: { name: string; share_token: string; item_count: number }[] }> = ({ stats, name, lists }) => (
   <div>
     <h1 class="mb-1 text-2xl font-bold">{name}'s watch stats</h1>
     <p class="mb-6 text-sm text-slate-400">
       Shared from <a href="/" class="text-violet-400 hover:underline">WatchDeck</a> — track your shows &amp; movies on the web.
     </p>
     <StatsBody stats={stats} />
+    {lists && lists.length > 0 && (
+      <section class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+        <h2 class="font-semibold">{name}'s public lists</h2>
+        <ul class="mt-3 space-y-2">
+          {lists.map((l) => (
+            <li>
+              <a href={`/list/${l.share_token}`} class="text-violet-400 hover:underline">{l.name}</a>
+              <span class="ml-2 text-xs text-slate-400">{l.item_count} item{l.item_count === 1 ? "" : "s"}</span>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
     <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6 text-center">
       <p class="text-slate-300">Want stats like these?</p>
       <a href="/signup" class="mt-3 inline-block rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90">Start tracking — free in beta</a>
@@ -2041,11 +2073,23 @@ export const ListsPage: FC<{ lists: ListRow[]; error?: string }> = ({ lists, err
   </div>
 );
 
-export const ListDetailPage: FC<{ list: { id: number; name: string }; items: { tmdb_id: number; media_type: string; title: string; poster_path: string | null }[] }> = ({ list, items }) => (
+export const ListDetailPage: FC<{ list: { id: number; name: string }; items: { tmdb_id: number; media_type: string; title: string; poster_path: string | null }[]; shareUrl?: string | null }> = ({ list, items, shareUrl }) => (
   <div>
     <p class="mb-1 text-sm"><a href="/lists" class="text-violet-400 hover:underline">← Your lists</a></p>
     <h1 class="mb-1 text-2xl font-bold">{list.name}</h1>
-    <p class="mb-6 text-sm text-slate-400">{items.length} item{items.length === 1 ? "" : "s"}</p>
+    <p class="mb-4 text-sm text-slate-400">{items.length} item{items.length === 1 ? "" : "s"}</p>
+    <div class="mb-6 flex flex-wrap items-center gap-3">
+      <form action="/api/lists/share" method="post">
+        <input type="hidden" name="list_id" value={String(list.id)} />
+        <input type="hidden" name="enabled" value={shareUrl ? "0" : "1"} />
+        <button class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:border-violet-500">
+          {shareUrl ? "🔒 Make private" : "🔗 Share publicly"}
+        </button>
+      </form>
+      {shareUrl && (
+        <a href={shareUrl} class="break-all text-sm text-violet-400 hover:underline">{shareUrl}</a>
+      )}
+    </div>
     {items.length === 0 ? (
       <p class="text-slate-400">
         Nothing here yet. Open any show or movie page and use the <span class="text-slate-300">☰ Lists</span> button to add it.
@@ -2074,5 +2118,35 @@ export const ListDetailPage: FC<{ list: { id: number; name: string }; items: { t
         ))}
       </div>
     )}
+  </div>
+);
+
+export const PublicListPage: FC<{ name: string; owner: string; items: { tmdb_id: number; media_type: string; title: string; poster_path: string | null }[] }> = ({ name, owner, items }) => (
+  <div>
+    <h1 class="mb-1 text-2xl font-bold">{name}</h1>
+    <p class="mb-6 text-sm text-slate-400">
+      A list by {owner}, shared from <a href="/" class="text-violet-400 hover:underline">WatchDeck</a> · {items.length} item{items.length === 1 ? "" : "s"}
+    </p>
+    {items.length === 0 ? (
+      <p class="text-slate-400">This list is empty right now.</p>
+    ) : (
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        {items.map((it) => (
+          <a href={`/${it.media_type === "tv" ? "shows" : "movies"}/${it.tmdb_id}-${slugify(it.title)}`} class="group block">
+            <img
+              src={poster(it.poster_path)}
+              alt={it.title}
+              loading="lazy"
+              class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
+            />
+            <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{it.title}</p>
+          </a>
+        ))}
+      </div>
+    )}
+    <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6 text-center">
+      <p class="text-slate-300">Make lists like this for your own shows &amp; movies.</p>
+      <a href="/signup" class="mt-3 inline-block rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90">Start tracking — free in beta</a>
+    </div>
   </div>
 );

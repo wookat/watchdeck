@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS episode_watches (
   season INTEGER NOT NULL,
   episode INTEGER NOT NULL,
   watched_at TEXT NOT NULL DEFAULT (datetime('now')),
+  plays INTEGER NOT NULL DEFAULT 1,
   UNIQUE(user_id, tmdb_id, season, episode)
 );
 CREATE INDEX IF NOT EXISTS idx_epw_user_show ON episode_watches(user_id, tmdb_id);
@@ -127,7 +128,8 @@ CREATE TABLE IF NOT EXISTS lists (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  share_token TEXT
 );
 CREATE TABLE IF NOT EXISTS list_items (
   list_id INTEGER NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
