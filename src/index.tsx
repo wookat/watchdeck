@@ -1960,7 +1960,7 @@ app.post("/api/import/batch", async (c) => {
 // ---------- seo ----------
 app.get("/robots.txt", (c) =>
   c.text(
-    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /calendar\nDisallow: /import\nDisallow: /stats\nDisallow: /history\nDisallow: /settings\nDisallow: /forgot\nDisallow: /reset\nDisallow: /u/\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`
+    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /lists\nDisallow: /roulette\nDisallow: /calendar\nDisallow: /import\nDisallow: /stats\nDisallow: /history\nDisallow: /settings\nDisallow: /forgot\nDisallow: /reset\nDisallow: /unsubscribe/\nDisallow: /confirm-email/\nDisallow: /u/\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`
   )
 );
 
@@ -1974,12 +1974,20 @@ app.get("/sitemap.xml", async (c) => {
       genreList(c.env, "movie"),
       discoverPopular(c.env, "tv", 1),
       discoverPopular(c.env, "tv", 2),
+      discoverPopular(c.env, "tv", 3),
+      discoverPopular(c.env, "tv", 4),
       discoverPopular(c.env, "movie", 1),
       discoverPopular(c.env, "movie", 2),
+      discoverPopular(c.env, "movie", 3),
+      discoverPopular(c.env, "movie", 4),
       topRated(c.env, "tv", 1),
       topRated(c.env, "tv", 2),
+      topRated(c.env, "tv", 3),
+      topRated(c.env, "tv", 4),
       topRated(c.env, "movie", 1),
       topRated(c.env, "movie", 2),
+      topRated(c.env, "movie", 3),
+      topRated(c.env, "movie", 4),
     ]);
     const seen = new Set<string>();
     const pushTitle = (type: "tv" | "movie", id: number, title: string) => {
@@ -1991,7 +1999,7 @@ app.get("/sitemap.xml", async (c) => {
     for (const s of shows.results) pushTitle("tv", s.id, s.name ?? "");
     for (const m of movies.results) pushTitle("movie", m.id, m.title ?? "");
     for (const [i, p] of popular.entries()) {
-      const type = i < 2 || (i >= 4 && i < 6) ? "tv" : "movie";
+      const type = i < 4 || (i >= 8 && i < 12) ? "tv" : "movie";
       for (const r of p.results) pushTitle(type, r.id, (type === "tv" ? r.name : r.title) ?? "");
     }
     for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
@@ -2114,6 +2122,22 @@ app.notFound((c) =>
     404
   )
 );
+
+app.onError((err, c) => {
+  console.error(err);
+  return c.html(
+    <Layout user={c.get("user")} title="Something went wrong">
+      <div class="mx-auto max-w-md py-20 text-center">
+        <h1 class="text-3xl font-bold">Something went wrong</h1>
+        <p class="mt-2 text-slate-400">A temporary hiccup on our end — your data is safe. Try again in a moment.</p>
+        <p class="mt-6 text-sm text-slate-400">
+          <a href={c.req.path} class="text-violet-400 hover:underline">Reload this page</a> · <a href="/home" class="text-violet-400 hover:underline">go to your deck</a> · <a href="/" class="text-violet-400 hover:underline">home</a>
+        </p>
+      </div>
+    </Layout>,
+    500
+  );
+});
 
 async function newlyStreamable(env: Env, userId: number): Promise<{ title: string; tmdbId: number; mediaType: "tv" | "movie"; services: string[] }[]> {
   const services = await userServices(env, userId);

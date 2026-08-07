@@ -19,6 +19,20 @@
 
 ---
 
+## Rounds 131-133 — 2026-08-08（SEO 扩容 + robots 对齐 + 500 错误页）
+
+**发现（SEO/数据 + 合规走查 + 错误处理审查）**
+- sitemap 仅 254 URL（popular/top-rated 各只取 2 页）；robots.txt 未覆盖 /lists、/roulette 及新增退订/确认路由（与 noindex 头不一致）；无 app.onError——未捕获异常返回 Hono 默认纯文本 "Internal Server Error"。
+
+**修复**
+- R131 sitemap 扩容：discoverPopular/topRated 各取 4 页，URL 254→401（shows 167 / movies 149），周一 IndexNow Cron 自动提交新 URL。
+- R132 robots.txt 对齐：补 Disallow /lists、/roulette、/unsubscribe/、/confirm-email/。
+- R133 品牌化 500 页：app.onError 输出与 404 同风格的深色错误页（重载/回 deck/回首页出路），并 console.error 保留日志。
+
+**证据**：线上 sitemap 计数与 robots.txt 实测，见 PR。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**
