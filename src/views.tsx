@@ -854,7 +854,15 @@ export const ShowPage: FC<{
                   }
                 >
                   Season {s.season_number}
-                  <span class={s.episode_count > 0 && seen >= s.episode_count ? "ml-1.5 text-xs text-emerald-300" : "ml-1.5 text-xs text-slate-300"}>
+                  <span
+                    class={`ml-1.5 text-xs ${
+                      s.episode_count > 0 && seen >= s.episode_count
+                        ? "text-emerald-300"
+                        : season?.season_number === s.season_number
+                          ? "text-violet-100"
+                          : "text-slate-300"
+                    }`}
+                  >
                     {seen}/{s.episode_count}
                   </span>
                 </a>
