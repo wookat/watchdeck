@@ -173,7 +173,7 @@ export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
       <p class="mt-1 text-sm text-slate-400">Leave your email and we'll let you know as WatchDeck grows.</p>
       {subscribed && (
         <p class="mt-3 rounded-lg border border-emerald-800 bg-emerald-950/50 px-3 py-2 text-sm text-emerald-300">
-          You're on the list — thanks! 💌
+          Almost there — check your inbox and confirm your subscription. 💌
         </p>
       )}
       <form action="/api/waitlist" method="post" class="mt-4 flex gap-2">

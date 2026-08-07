@@ -1,12 +1,24 @@
 import type { Env } from "./types";
 
-export async function sendEmail(env: Env, to: string, subject: string, html: string): Promise<void> {
+export async function sendEmail(env: Env, to: string, subject: string, html: string, headers?: Record<string, string>): Promise<void> {
   if (!env.RESEND_API_KEY) return;
   await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ from: "WatchDeck <watchdeck@zalize.com>", to: [to], subject, html }),
+    body: JSON.stringify({ from: "WatchDeck <watchdeck@zalize.com>", to: [to], subject, html, ...(headers ? { headers } : {}) }),
   }).catch(() => {});
+}
+
+export function confirmSignupEmail(siteUrl: string, token: string): [string, string] {
+  const link = `${siteUrl}/confirm-email/${token}`;
+  const html = `
+<div style="font-family:system-ui,sans-serif;max-width:520px;margin:0 auto;color:#1f2937">
+  <h2 style="color:#7c3aed">Confirm your WatchDeck updates subscription</h2>
+  <p>You (or someone using your address) asked for WatchDeck product updates. Click below to confirm — we won't email you otherwise.</p>
+  <p><a href="${link}" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none">Confirm subscription</a></p>
+  <p style="color:#6b7280;font-size:13px">If you didn't request this, ignore this email and you won't hear from us again.</p>
+</div>`;
+  return ["Confirm your WatchDeck updates subscription", html];
 }
 
 export function welcomeEmail(siteUrl: string): [string, string] {
