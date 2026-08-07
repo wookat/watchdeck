@@ -5,6 +5,19 @@
 
 ---
 
+## 专项 Rounds 109-111 — 2026-08-05（竞品优点复刻·第三批）
+
+**发现（来源：docs/competitor-deep-dive.md P1/P2 清单）**
+- [竞品(Reelgood/Letterboxd Pro) / P1] 无「我的流媒体服务」偏好：用户不知道自己订阅的服务上有什么可看（Reelgood 核心卖点、Letterboxd 收 Pro 费）。
+- [竞品(Trakt/Letterboxd) / P2] 无自定义列表：无法按主题组织内容（Trakt 免费档限 2 个个人列表）。
+
+**修复（已部署，Version 73dcec53）**
+- R109 /settings 新增「My streaming services」偏好（10 个美区主流服务复选，`user_services` 表存 TMDB provider id）。
+- R110 详情页 Where to stream 徽标高亮自己订阅的服务（绿色描边 + ✓ On your services）；/library 新增「📺 On my services」过滤（按 KV 缓存的 JustWatch/TMDB flatrate 匹配，本页前 30 条内过滤并明示上限）。
+- R111 自定义列表：`lists`/`list_items` 表；/lists 创建/删除（上限 50 单/500 项）；列表卡显示海报叠层+条目数；详情页「☰ Lists」下拉一键加/移除；导航加 Lists 入口；删除账号级联清理。
+
+**证据**：线上回归见 PR 评论（R112 回归轮）。
+
 ## 专项 Rounds 104-107 — 2026-08-05（竞品优点复刻·第二批）
 
 **发现（来源：docs/competitor-deep-dive.md P1 清单）**

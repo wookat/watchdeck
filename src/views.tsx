@@ -1,6 +1,12 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
-import { poster, slugify, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember } from "./tmdb";
+import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember } from "./tmdb";
+
+export interface ListRef {
+  id: number;
+  name: string;
+  has: number;
+}
 
 export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; jsonLd?: object; prev?: string; next?: string }>> = ({
   children,
@@ -69,6 +75,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
               <>
                 <a href="/home" class="px-1 py-2 hover:text-violet-400">Next Up</a>
                 <a href="/library" class="px-1 py-2 hover:text-violet-400">Library</a>
+                <a href="/lists" class="px-1 py-2 hover:text-violet-400">Lists</a>
                 <a href="/calendar" class="px-1 py-2 hover:text-violet-400">Calendar</a>
                 <a href="/import" class="px-1 py-2 hover:text-violet-400">Import</a>
                 <a href="/history" class="px-1 py-2 hover:text-violet-400">History</a>
@@ -661,20 +668,23 @@ export const NotesBox: FC<{ tmdbId: number; mediaType: "tv" | "movie"; notes: st
   </details>
 );
 
-export const WhereToWatch: FC<{ providers: WatchProviders | null }> = ({ providers }) =>
+export const WhereToWatch: FC<{ providers: WatchProviders | null; mine?: Set<number> }> = ({ providers, mine }) =>
   !providers?.flatrate?.length ? null : (
     <div class="mt-4">
-      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">Where to stream (US)</p>
+      <p class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
+        Where to stream (US)
+        {mine?.size && providers.flatrate.some((p) => mine.has(p.provider_id)) ? <span class="ml-2 normal-case tracking-normal text-emerald-400">✓ On your services</span> : null}
+      </p>
       <div class="flex flex-wrap items-center gap-2">
         {providers.flatrate.slice(0, 6).map((p) => (
-          <a href={providers.link} rel="noopener" title={`Stream on ${p.provider_name}`} class="block">
+          <a href={providers.link} rel="noopener" title={mine?.has(p.provider_id) ? `On your service: ${p.provider_name}` : `Stream on ${p.provider_name}`} class="block">
             <img
               src={`https://image.tmdb.org/t/p/w45${p.logo_path}`}
               alt={p.provider_name}
               width={32}
               height={32}
               loading="lazy"
-              class="rounded-lg border border-slate-800"
+              class={mine?.has(p.provider_id) ? "rounded-lg border-2 border-emerald-500" : "rounded-lg border border-slate-800"}
             />
           </a>
         ))}
@@ -684,6 +694,36 @@ export const WhereToWatch: FC<{ providers: WatchProviders | null }> = ({ provide
       </div>
     </div>
   );
+
+export const AddToList: FC<{ lists: ListRef[]; tmdbId: number; mediaType: "tv" | "movie"; title: string; posterPath: string | null; redirect: string }> = ({ lists, tmdbId, mediaType, title, posterPath, redirect }) => (
+  <details class="relative">
+    <summary class="cursor-pointer list-none rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500">☰ Lists</summary>
+    <div class="absolute z-30 mt-1 w-56 rounded-xl border border-slate-700 bg-slate-900 p-2 shadow-xl">
+      {lists.length === 0 && (
+        <p class="px-2 py-1 text-xs text-slate-400">
+          No lists yet. <a href="/lists" class="text-violet-400 hover:underline">Create one →</a>
+        </p>
+      )}
+      {lists.map((l) => (
+        <form action={l.has ? "/api/lists/remove" : "/api/lists/add"} method="post">
+          <input type="hidden" name="list_id" value={String(l.id)} />
+          <input type="hidden" name="tmdb_id" value={String(tmdbId)} />
+          <input type="hidden" name="media_type" value={mediaType} />
+          <input type="hidden" name="title" value={title} />
+          <input type="hidden" name="poster_path" value={posterPath ?? ""} />
+          <input type="hidden" name="redirect" value={redirect} />
+          <button class="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-slate-800">
+            <span class={l.has ? "text-emerald-400" : "text-slate-500"}>{l.has ? "✓" : "+"}</span>
+            <span class="line-clamp-1">{l.name}</span>
+          </button>
+        </form>
+      ))}
+      {lists.length > 0 && (
+        <a href="/lists" class="block px-2 py-1.5 text-xs text-violet-400 hover:underline">Manage lists →</a>
+      )}
+    </div>
+  </details>
+);
 
 export const ShowPage: FC<{
   show: TvDetails;
@@ -695,7 +735,9 @@ export const ShowPage: FC<{
   providers?: WatchProviders | null;
   cast?: CastMember[];
   trailer?: string | null;
-}> = ({ show, season, watched, tracked, user, recs, providers, cast, trailer }) => {
+  myServices?: Set<number>;
+  lists?: ListRef[];
+}> = ({ show, season, watched, tracked, user, recs, providers, cast, trailer, myServices, lists }) => {
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
@@ -725,7 +767,7 @@ export const ShowPage: FC<{
             </p>
           )}
           <p class="mt-4 max-w-2xl text-slate-300">{show.overview}</p>
-          <WhereToWatch providers={providers ?? null} />
+          <WhereToWatch providers={providers ?? null} mine={myServices} />
           {user ? (
             <div class="mt-5 flex flex-wrap gap-2">
               {(["watching", "watchlist", "completed", "dropped"] as const).map((s) => (
@@ -745,6 +787,7 @@ export const ShowPage: FC<{
                   </button>
                 </form>
               ))}
+              <AddToList lists={lists ?? []} tmdbId={show.id} mediaType="tv" title={show.name} posterPath={show.poster_path} redirect={showUrl} />
               {tracked && (
                 <form action="/api/untrack" method="post">
                   <input type="hidden" name="tmdb_id" value={String(show.id)} />
@@ -883,7 +926,9 @@ export const MoviePage: FC<{
   providers?: WatchProviders | null;
   cast?: CastMember[];
   trailer?: string | null;
-}> = ({ movie, watchCount, tracked, user, recs, providers, cast, trailer }) => {
+  myServices?: Set<number>;
+  lists?: ListRef[];
+}> = ({ movie, watchCount, tracked, user, recs, providers, cast, trailer, myServices, lists }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
   const watched = watchCount > 0;
   return (
@@ -905,7 +950,7 @@ export const MoviePage: FC<{
           )}
         </p>
         <p class="mt-4 max-w-2xl text-slate-300">{movie.overview}</p>
-        <WhereToWatch providers={providers ?? null} />
+        <WhereToWatch providers={providers ?? null} mine={myServices} />
         {user ? (
           <div class="mt-5 flex flex-wrap gap-2">
             <form action="/api/watch-movie" method="post">
@@ -947,6 +992,7 @@ export const MoviePage: FC<{
                 + Watchlist
               </button>
             </form>
+            <AddToList lists={lists ?? []} tmdbId={movie.id} mediaType="movie" title={movie.title} posterPath={movie.poster_path} redirect={movieUrl} />
             {tracked && (
               <form action="/api/untrack" method="post">
                 <input type="hidden" name="tmdb_id" value={String(movie.id)} />
@@ -986,7 +1032,7 @@ export interface LibraryRow {
   rating: number | null;
 }
 
-export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string; q?: string; counts?: Record<string, number>; page?: number; lastPage?: number }> = ({ rows, status, sort, q, counts, page = 1, lastPage = 1 }) => (
+export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string; q?: string; counts?: Record<string, number>; page?: number; lastPage?: number; avail?: boolean; hasServices?: boolean; availCapped?: boolean }> = ({ rows, status, sort, q, counts, page = 1, lastPage = 1, avail, hasServices, availCapped }) => (
   <div>
     <h1 class="mb-4 text-2xl font-bold">Library</h1>
     <form action="/library" method="get" class="mb-3 max-w-xs">
@@ -1037,9 +1083,27 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
           {label}
         </a>
       ))}
+      {hasServices && (
+        <a
+          href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}${q ? `&q=${encodeURIComponent(q)}` : ""}${avail ? "" : "&avail=mine"}`}
+          class={avail ? "rounded-lg bg-emerald-700 px-2.5 py-1 text-white" : "rounded-lg border border-slate-700 px-2.5 py-1 text-slate-300 hover:border-emerald-500"}
+          title="Only items streamable on the services you picked in Settings"
+        >
+          📺 On my services
+        </a>
+      )}
     </div>
+    {avail && availCapped && (
+      <p class="mb-4 text-xs text-slate-400">Availability is checked for the first 30 items on this page.</p>
+    )}
     {rows.length === 0 ? (
-      q ? (
+      avail ? (
+        <p class="text-slate-400">
+          Nothing here is streamable on your services right now.{" "}
+          <a href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}`} class="text-violet-400 hover:underline">Show everything</a> or{" "}
+          <a href="/settings" class="text-violet-400 hover:underline">update your services</a>.
+        </p>
+      ) : q ? (
         <p class="text-slate-400">
           Nothing in your library matches “{q}”. <a href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}`} class="text-violet-400 hover:underline">Clear filter</a>
         </p>
@@ -1578,7 +1642,7 @@ export const TermsPage: FC = () => (
   </div>
 );
 
-export const SettingsPage: FC<{ user: User; saved?: string; error?: string }> = ({ user, saved, error }) => (
+export const SettingsPage: FC<{ user: User; saved?: string; error?: string; services?: Set<number> }> = ({ user, saved, error, services }) => (
   <div class="mx-auto max-w-lg">
     <h1 class="mb-6 text-2xl font-bold">Settings</h1>
     {saved && <p class="mb-4 rounded-lg border border-emerald-800 bg-emerald-950/50 px-4 py-2 text-sm text-emerald-300">{saved}</p>}
@@ -1599,6 +1663,23 @@ export const SettingsPage: FC<{ user: User; saved?: string; error?: string }> = 
         <button class="shrink-0 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Save</button>
       </form>
       <p class="mt-2 text-xs text-slate-400">Shown on your public share page instead of a generic label.</p>
+    </section>
+    <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+      <h2 class="font-semibold">My streaming services</h2>
+      <p class="mt-1 text-sm text-slate-400">
+        Pick the services you subscribe to. Shows and movies streamable on them get a ✓ badge, and your library gains an “On my services” filter.
+      </p>
+      <form action="/api/settings/services" method="post" class="mt-4">
+        <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {STREAMING_SERVICES.map(([id, name]) => (
+            <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm hover:border-violet-500">
+              <input type="checkbox" name="service" value={String(id)} checked={services?.has(id)} class="accent-violet-600" />
+              {name}
+            </label>
+          ))}
+        </div>
+        <button class="mt-3 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Save services</button>
+      </form>
     </section>
     <section class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
       <h2 class="font-semibold">Change password</h2>
@@ -1898,5 +1979,93 @@ export const ImportPage: FC = () => (
       </a>
     </div>
     <script src="/import.js" />
+  </div>
+);
+
+export interface ListRow {
+  id: number;
+  name: string;
+  created_at: string;
+  item_count: number;
+  posters: string;
+}
+
+export const ListsPage: FC<{ lists: ListRow[]; error?: string }> = ({ lists, error }) => (
+  <div class="mx-auto max-w-3xl">
+    <h1 class="mb-2 text-2xl font-bold">Your lists</h1>
+    <p class="mb-6 text-sm text-slate-400">Group anything however you like — "Cozy autumn rewatches", "Watch with Sam", "Best of 2025". Add items from any show or movie page.</p>
+    {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-4 py-2 text-sm text-red-300">{error}</p>}
+    <form action="/api/lists" method="post" class="mb-8 flex gap-2">
+      <input
+        type="text"
+        name="name"
+        required
+        maxlength={60}
+        placeholder="New list name…"
+        aria-label="New list name"
+        class="w-full max-w-sm rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
+      />
+      <button class="shrink-0 rounded-lg bg-violet-600 px-4 py-2 text-sm font-medium text-white hover:bg-violet-500">Create list</button>
+    </form>
+    {lists.length === 0 ? (
+      <p class="text-slate-400">No lists yet — create your first one above.</p>
+    ) : (
+      <ul class="space-y-3">
+        {lists.map((l) => (
+          <li class="flex items-center gap-4 rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
+            <div class="flex shrink-0 -space-x-3">
+              {(l.posters ? l.posters.split(",").filter(Boolean) : []).slice(0, 4).map((p) => (
+                <img src={poster(p)} alt="" width={36} height={54} loading="lazy" class="h-[54px] w-9 rounded border border-slate-700 object-cover" />
+              ))}
+              {!l.posters && <span class="flex h-[54px] w-9 items-center justify-center rounded border border-dashed border-slate-700 text-slate-600">·</span>}
+            </div>
+            <div class="min-w-0 flex-1">
+              <a href={`/lists/${l.id}`} class="font-medium hover:text-violet-400">{l.name}</a>
+              <p class="text-xs text-slate-400">{l.item_count} item{l.item_count === 1 ? "" : "s"}</p>
+            </div>
+            <form action="/api/lists/delete" method="post" data-confirm={`Delete list "${l.name}"?`}>
+              <input type="hidden" name="list_id" value={String(l.id)} />
+              <button class="rounded-lg px-3 py-1.5 text-sm text-slate-400 hover:text-red-400">Delete</button>
+            </form>
+          </li>
+        ))}
+      </ul>
+    )}
+  </div>
+);
+
+export const ListDetailPage: FC<{ list: { id: number; name: string }; items: { tmdb_id: number; media_type: string; title: string; poster_path: string | null }[] }> = ({ list, items }) => (
+  <div>
+    <p class="mb-1 text-sm"><a href="/lists" class="text-violet-400 hover:underline">← Your lists</a></p>
+    <h1 class="mb-1 text-2xl font-bold">{list.name}</h1>
+    <p class="mb-6 text-sm text-slate-400">{items.length} item{items.length === 1 ? "" : "s"}</p>
+    {items.length === 0 ? (
+      <p class="text-slate-400">
+        Nothing here yet. Open any show or movie page and use the <span class="text-slate-300">☰ Lists</span> button to add it.
+      </p>
+    ) : (
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        {items.map((it) => (
+          <div>
+            <a href={`/${it.media_type === "tv" ? "shows" : "movies"}/${it.tmdb_id}-${slugify(it.title)}`} class="group block">
+              <img
+                src={poster(it.poster_path)}
+                alt={it.title}
+                loading="lazy"
+                class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover transition group-hover:border-violet-600"
+              />
+              <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{it.title}</p>
+            </a>
+            <form action="/api/lists/remove" method="post" class="mt-1">
+              <input type="hidden" name="list_id" value={String(list.id)} />
+              <input type="hidden" name="tmdb_id" value={String(it.tmdb_id)} />
+              <input type="hidden" name="media_type" value={it.media_type} />
+              <input type="hidden" name="redirect" value={`/lists/${list.id}`} />
+              <button class="text-xs text-slate-500 hover:text-red-400">Remove</button>
+            </form>
+          </div>
+        ))}
+      </div>
+    )}
   </div>
 );

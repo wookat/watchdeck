@@ -20,6 +20,7 @@ import {
   NETWORKS,
   recommendations,
   watchProviders,
+  STREAMING_SERVICES,
   trailerUrl,
   slugify,
   metaDescription,
@@ -62,7 +63,27 @@ import {
   type WatchlistPreviewItem,
   type LibraryRow,
   type CalendarItem,
+  type ListRef,
+  type ListRow,
+  ListsPage,
+  ListDetailPage,
 } from "./views";
+
+const SERVICE_IDS = new Set(STREAMING_SERVICES.map(([id]) => id));
+
+async function userServices(env: Env, userId: number): Promise<Set<number>> {
+  const rows = await env.DB.prepare("SELECT provider_id FROM user_services WHERE user_id = ?").bind(userId).all<{ provider_id: number }>();
+  return new Set(rows.results.map((r) => r.provider_id));
+}
+
+function userLists(env: Env, userId: number, tmdbId: number, mediaType: "tv" | "movie") {
+  return env.DB.prepare(
+    `SELECT l.id, l.name, EXISTS(SELECT 1 FROM list_items li WHERE li.list_id = l.id AND li.tmdb_id = ? AND li.media_type = ?) AS has
+     FROM lists l WHERE l.user_id = ? ORDER BY l.name COLLATE NOCASE`
+  )
+    .bind(tmdbId, mediaType, userId)
+    .all<ListRef>();
+}
 
 const app = new Hono<AppContext>();
 
@@ -79,7 +100,7 @@ app.use("*", async (c, next) => {
   h.set("referrer-policy", "strict-origin-when-cross-origin");
   h.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
   const path = new URL(c.req.url).pathname;
-  if (/^\/(home|library|calendar|import|stats|history|settings|forgot|reset|u)(\/|$)/.test(path)) {
+  if (/^\/(home|library|lists|calendar|import|stats|history|settings|forgot|reset|u)(\/|$)/.test(path)) {
     h.set("x-robots-tag", "noindex");
   }
   if (c.res.headers.get("content-type")?.includes("text/html")) {
@@ -442,7 +463,7 @@ app.get("/shows/:idslug", async (c) => {
     return c.redirect(`/shows/${showSlug}${qs}`, 301);
   }
   const seasonNum = parseInt(c.req.query("season") ?? "1", 10) || 1;
-  const [season, watchedRows, tracked, recsRes, providers, cast, trailer] = await Promise.all([
+  const [season, watchedRows, tracked, recsRes, providers, cast, trailer, services, listsRes] = await Promise.all([
     seasonDetails(c.env, id, seasonNum).catch(() => null),
     user
       ? c.env.DB.prepare("SELECT season, episode FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
@@ -458,6 +479,8 @@ app.get("/shows/:idslug", async (c) => {
     watchProviders(c.env, "tv", id).catch(() => null),
     topCast(c.env, "tv", id).catch(() => [] as CastMember[]),
     trailerUrl(c.env, "tv", id).catch(() => null),
+    user ? userServices(c.env, user.id) : Promise.resolve(new Set<number>()),
+    user ? userLists(c.env, user.id, id, "tv") : Promise.resolve(null),
   ]);
   const watched = new Set((watchedRows?.results ?? []).map((r) => `${r.season}x${r.episode}`));
   const recs = recsRes.results;
@@ -496,7 +519,7 @@ app.get("/shows/:idslug", async (c) => {
         ],
       }}
     >
-      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} />
+      <ShowPage show={show} season={season} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
     </Layout>
   );
 });
@@ -513,7 +536,7 @@ app.get("/movies/:idslug", async (c) => {
   }
   const movieSlug = `${movie.id}-${slugify(movie.title)}`;
   if (c.req.param("idslug") !== movieSlug) return c.redirect(`/movies/${movieSlug}`, 301);
-  const [watchedRow, tracked, recsRes, providers, cast, trailer] = await Promise.all([
+  const [watchedRow, tracked, recsRes, providers, cast, trailer, services, listsRes] = await Promise.all([
     user ? c.env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first<{ n: number }>() : Promise.resolve(null),
     user
       ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
@@ -524,6 +547,8 @@ app.get("/movies/:idslug", async (c) => {
     watchProviders(c.env, "movie", id).catch(() => null),
     topCast(c.env, "movie", id).catch(() => [] as CastMember[]),
     trailerUrl(c.env, "movie", id).catch(() => null),
+    user ? userServices(c.env, user.id) : Promise.resolve(new Set<number>()),
+    user ? userLists(c.env, user.id, id, "movie") : Promise.resolve(null),
   ]);
   const watchCount = watchedRow?.n ?? 0;
   const recs = recsRes.results;
@@ -561,7 +586,7 @@ app.get("/movies/:idslug", async (c) => {
         ],
       }}
     >
-      <MoviePage movie={movie} watchCount={watchCount} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} />
+      <MoviePage movie={movie} watchCount={watchCount} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
     </Layout>
   );
 });
@@ -602,15 +627,27 @@ app.get("/library", async (c) => {
   const total = filteredTotal?.n ?? 0;
   const lastPage = Math.max(1, Math.ceil(total / perPage));
   const page = Math.min(lastPage, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
-  const rows = await c.env.DB.prepare(
-    `SELECT ${cols} FROM tracked WHERE ${conds.join(" AND ")} ORDER BY ${orderBy} LIMIT ${perPage} OFFSET ${(page - 1) * perPage}`
-  )
-    .bind(...binds)
-    .all<LibraryRow>();
+  const [rows, services] = await Promise.all([
+    c.env.DB.prepare(
+      `SELECT ${cols} FROM tracked WHERE ${conds.join(" AND ")} ORDER BY ${orderBy} LIMIT ${perPage} OFFSET ${(page - 1) * perPage}`
+    )
+      .bind(...binds)
+      .all<LibraryRow>(),
+    userServices(c.env, user.id),
+  ]);
   const counts = Object.fromEntries(countRows.results.map((r) => [r.status, r.n]));
+  const avail = c.req.query("avail") === "mine" && services.size > 0;
+  let shown = rows.results;
+  let availCapped = false;
+  if (avail) {
+    const capped = shown.slice(0, 30);
+    availCapped = shown.length > 30;
+    const provs = await Promise.all(capped.map((r) => watchProviders(c.env, r.media_type, r.tmdb_id).catch(() => null)));
+    shown = capped.filter((_, i) => provs[i]?.flatrate?.some((p) => services.has(p.provider_id)));
+  }
   return c.html(
     <Layout user={user} title="Library">
-      <LibraryPage rows={rows.results} status={status} sort={sort} q={q} counts={counts} page={page} lastPage={lastPage} />
+      <LibraryPage rows={shown} status={status} sort={sort} q={q} counts={counts} page={page} lastPage={avail ? 1 : lastPage} avail={avail} hasServices={services.size > 0} availCapped={availCapped} />
     </Layout>
   );
 });
@@ -1080,9 +1117,10 @@ app.get("/settings", async (c) => {
   if (!user) return c.redirect("/login");
   const saved = c.req.query("saved") ?? undefined;
   const error = c.req.query("error") ?? undefined;
+  const services = await userServices(c.env, user.id);
   return c.html(
     <Layout user={user} title="Settings">
-      <SettingsPage user={user} saved={saved} error={error} />
+      <SettingsPage user={user} saved={saved} error={error} services={services} />
     </Layout>
   );
 });
@@ -1147,6 +1185,125 @@ app.get("/api/export.csv", async (c) => {
   });
 });
 
+app.post("/api/settings/services", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody({ all: true });
+  const raw = form.service;
+  const picked = (Array.isArray(raw) ? raw : raw != null ? [raw] : [])
+    .map((v) => parseInt(String(v), 10))
+    .filter((id) => SERVICE_IDS.has(id));
+  await c.env.DB.batch([
+    c.env.DB.prepare("DELETE FROM user_services WHERE user_id = ?").bind(user.id),
+    ...picked.map((id) => c.env.DB.prepare("INSERT OR IGNORE INTO user_services (user_id, provider_id) VALUES (?, ?)").bind(user.id, id)),
+  ]);
+  return c.redirect("/settings?saved=" + encodeURIComponent(picked.length ? `Saved ${picked.length} service${picked.length === 1 ? "" : "s"}.` : "Services cleared."));
+});
+
+app.get("/lists", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const lists = await c.env.DB.prepare(
+    `SELECT l.id, l.name, l.created_at,
+       (SELECT COUNT(*) FROM list_items li WHERE li.list_id = l.id) AS item_count,
+       (SELECT GROUP_CONCAT(poster_path) FROM (SELECT poster_path FROM list_items li WHERE li.list_id = l.id AND li.poster_path != '' ORDER BY li.added_at DESC LIMIT 4)) AS posters
+     FROM lists l WHERE l.user_id = ? ORDER BY l.created_at DESC`
+  )
+    .bind(user.id)
+    .all<ListRow>();
+  return c.html(
+    <Layout user={user} title="Your lists">
+      <ListsPage lists={lists.results} error={c.req.query("error")} />
+    </Layout>
+  );
+});
+
+app.get("/lists/:id", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const id = parseInt(c.req.param("id"), 10);
+  if (!Number.isFinite(id)) return c.notFound();
+  const list = await c.env.DB.prepare("SELECT id, name FROM lists WHERE id = ? AND user_id = ?").bind(id, user.id).first<{ id: number; name: string }>();
+  if (!list) return c.notFound();
+  const items = await c.env.DB.prepare(
+    "SELECT tmdb_id, media_type, title, poster_path FROM list_items WHERE list_id = ? ORDER BY added_at DESC"
+  )
+    .bind(id)
+    .all<{ tmdb_id: number; media_type: string; title: string; poster_path: string | null }>();
+  return c.html(
+    <Layout user={user} title={list.name}>
+      <ListDetailPage list={list} items={items.results} />
+    </Layout>
+  );
+});
+
+app.post("/api/lists", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const name = String(form.name ?? "").trim().slice(0, 60);
+  if (!name) return c.redirect("/lists");
+  const count = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM lists WHERE user_id = ?").bind(user.id).first<{ n: number }>();
+  if ((count?.n ?? 0) >= 50) return c.redirect("/lists?error=" + encodeURIComponent("You've reached the 50-list limit."));
+  await c.env.DB.prepare("INSERT INTO lists (user_id, name) VALUES (?, ?)").bind(user.id, name).run();
+  return c.redirect("/lists");
+});
+
+app.post("/api/lists/delete", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const listId = parseInt(String(form.list_id), 10);
+  if (Number.isFinite(listId)) {
+    await c.env.DB.batch([
+      c.env.DB.prepare("DELETE FROM list_items WHERE list_id = (SELECT id FROM lists WHERE id = ? AND user_id = ?)").bind(listId, user.id),
+      c.env.DB.prepare("DELETE FROM lists WHERE id = ? AND user_id = ?").bind(listId, user.id),
+    ]);
+  }
+  return c.redirect("/lists");
+});
+
+app.post("/api/lists/add", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const listId = parseInt(String(form.list_id), 10);
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const mediaType = String(form.media_type);
+  const title = String(form.title ?? "").trim().slice(0, 200);
+  const posterPath = String(form.poster_path ?? "").slice(0, 100);
+  const back = safeNext(form.redirect) ?? "/lists";
+  if (!Number.isFinite(listId) || !tmdbId || !title || (mediaType !== "tv" && mediaType !== "movie")) return c.redirect(back);
+  const owned = await c.env.DB.prepare("SELECT id FROM lists WHERE id = ? AND user_id = ?").bind(listId, user.id).first();
+  if (!owned) return c.redirect(back);
+  const size = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM list_items WHERE list_id = ?").bind(listId).first<{ n: number }>();
+  if ((size?.n ?? 0) >= 500) return c.redirect(back);
+  await c.env.DB.prepare(
+    "INSERT OR IGNORE INTO list_items (list_id, tmdb_id, media_type, title, poster_path) VALUES (?, ?, ?, ?, ?)"
+  )
+    .bind(listId, tmdbId, mediaType, title, posterPath || null)
+    .run();
+  return c.redirect(back);
+});
+
+app.post("/api/lists/remove", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const listId = parseInt(String(form.list_id), 10);
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const mediaType = String(form.media_type);
+  const back = safeNext(form.redirect) ?? "/lists";
+  if (Number.isFinite(listId) && tmdbId) {
+    await c.env.DB.prepare(
+      "DELETE FROM list_items WHERE list_id = (SELECT id FROM lists WHERE id = ? AND user_id = ?) AND tmdb_id = ? AND media_type = ?"
+    )
+      .bind(listId, user.id, tmdbId, mediaType)
+      .run();
+  }
+  return c.redirect(back);
+});
+
 app.post("/api/settings/profile", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
@@ -1193,6 +1350,9 @@ app.post("/api/settings/delete", async (c) => {
     c.env.DB.prepare("DELETE FROM feed_tokens WHERE user_id = ?").bind(user.id),
     c.env.DB.prepare("DELETE FROM password_resets WHERE user_id = ?").bind(user.id),
     c.env.DB.prepare("DELETE FROM imports WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("DELETE FROM user_services WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("DELETE FROM list_items WHERE list_id IN (SELECT id FROM lists WHERE user_id = ?)").bind(user.id),
+    c.env.DB.prepare("DELETE FROM lists WHERE user_id = ?").bind(user.id),
     c.env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id),
     c.env.DB.prepare("DELETE FROM users WHERE id = ?").bind(user.id),
   ]);
