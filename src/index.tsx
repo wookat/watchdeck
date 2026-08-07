@@ -30,7 +30,7 @@ import {
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, isNetflixCsv, parseNetflixCsv, type ParsedImport } from "./importer";
 import { sendEmail, welcomeEmail, resetEmail } from "./email";
-import { shareOgImage } from "./og";
+import { shareOgImage, listOgImage } from "./og";
 import {
   Layout,
   Landing,
@@ -1292,10 +1292,37 @@ app.get("/list/:token", async (c) => {
       title={`${list.name} \u2014 a list by ${owner}`}
       description={`${items.results.length} shows & movies picked by ${owner} on WatchDeck.`}
       canonical={`${c.env.SITE_URL}/list/${token}`}
+      ogImage={`${c.env.SITE_URL}/list/${token}/og.png`}
     >
       <PublicListPage name={list.name} owner={owner} items={items.results} />
     </Layout>
   );
+});
+
+app.get("/list/:token/og.png", async (c) => {
+  const token = c.req.param("token");
+  if (!/^[0-9a-f]{32}$/.test(token)) return c.notFound();
+  const list = await c.env.DB.prepare(
+    "SELECT l.id, l.name, u.display_name, u.email FROM lists l JOIN users u ON u.id = l.user_id WHERE l.share_token = ?"
+  )
+    .bind(token)
+    .first<{ id: number; name: string; display_name: string | null; email: string }>();
+  if (!list) return c.notFound();
+  const items = await c.env.DB.prepare(
+    "SELECT poster_path FROM list_items WHERE list_id = ? AND poster_path IS NOT NULL AND poster_path != '' ORDER BY added_at DESC LIMIT 5"
+  )
+    .bind(list.id)
+    .all<{ poster_path: string }>();
+  const count = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM list_items WHERE list_id = ?").bind(list.id).first<{ n: number }>();
+  const res = await listOgImage(
+    c.env,
+    list.name,
+    list.display_name || list.email.split("@")[0],
+    count?.n ?? 0,
+    items.results.map((r) => r.poster_path)
+  );
+  res.headers.set("cache-control", "public, max-age=3600");
+  return res;
 });
 
 app.post("/api/lists", async (c) => {
