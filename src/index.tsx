@@ -29,7 +29,7 @@ import {
   type CastMember,
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, isNetflixCsv, parseNetflixCsv, type ParsedImport } from "./importer";
-import { sendEmail, welcomeEmail, resetEmail } from "./email";
+import { sendEmail, welcomeEmail, resetEmail, confirmSignupEmail } from "./email";
 import { shareOgImage, listOgImage } from "./og";
 import {
   Layout,
@@ -101,7 +101,7 @@ app.use("*", async (c, next) => {
   h.set("referrer-policy", "strict-origin-when-cross-origin");
   h.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
   const path = new URL(c.req.url).pathname;
-  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|forgot|reset|u)(\/|$)/.test(path)) {
+  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|forgot|reset|unsubscribe|confirm-email|u)(\/|$)/.test(path)) {
     h.set("x-robots-tag", "noindex");
   }
   if (c.res.headers.get("content-type")?.includes("text/html")) {
@@ -1534,12 +1534,65 @@ app.get("/import", (c) => {
 
 // ---------- api ----------
 app.post("/api/waitlist", async (c) => {
+  if (!(await rateLimit(c, "waitlist", 5))) return c.redirect("/?subscribed=1");
   const form = await c.req.parseBody();
   const email = String(form.email ?? "").trim().toLowerCase();
   if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-    await c.env.DB.prepare("INSERT OR IGNORE INTO email_signups (email, source) VALUES (?, 'landing')").bind(email).run();
+    const token = crypto.randomUUID();
+    const res = await c.env.DB.prepare("INSERT OR IGNORE INTO email_signups (email, source, confirm_token) VALUES (?, 'landing', ?)")
+      .bind(email, token)
+      .run();
+    if (res.meta.changes > 0) {
+      c.executionCtx.waitUntil(sendEmail(c.env, email, ...confirmSignupEmail(c.env.SITE_URL, token)));
+    }
   }
   return c.redirect("/?subscribed=1");
+});
+
+app.get("/confirm-email/:token", async (c) => {
+  const token = c.req.param("token");
+  const res = await c.env.DB.prepare("UPDATE email_signups SET confirmed = 1 WHERE confirm_token = ?").bind(token).run();
+  return c.html(
+    <Layout user={c.get("user")} title="Subscription confirmed">
+      <div class="mx-auto max-w-md py-16 text-center">
+        <h1 class="text-2xl font-bold">{res.meta.changes > 0 ? "You're subscribed \u2713" : "Link not recognized"}</h1>
+        <p class="mt-3 text-slate-400">
+          {res.meta.changes > 0
+            ? "Thanks for confirming \u2014 we'll send occasional product updates. You can unsubscribe from any email we send."
+            : "This confirmation link is invalid or was already used."}
+        </p>
+        <a href="/" class="mt-6 inline-block rounded-xl bg-violet-600 px-5 py-2.5 font-semibold text-white hover:bg-violet-500">Back to WatchDeck</a>
+      </div>
+    </Layout>
+  );
+});
+
+async function unsubscribeByToken(env: Env, token: string): Promise<boolean> {
+  const res = await env.DB.prepare("UPDATE users SET remind_email = 0 WHERE unsub_token = ?").bind(token).run();
+  return res.meta.changes > 0;
+}
+
+app.get("/unsubscribe/:token", async (c) => {
+  const ok = await unsubscribeByToken(c.env, c.req.param("token"));
+  return c.html(
+    <Layout user={c.get("user")} title="Unsubscribed">
+      <div class="mx-auto max-w-md py-16 text-center">
+        <h1 class="text-2xl font-bold">{ok ? "You're unsubscribed" : "Link not recognized"}</h1>
+        <p class="mt-3 text-slate-400">
+          {ok
+            ? "Email airing reminders are now off. You can turn them back on any time from your calendar page."
+            : "This unsubscribe link is invalid \u2014 you may already be unsubscribed."}
+        </p>
+        <a href="/calendar" class="mt-6 inline-block rounded-xl bg-violet-600 px-5 py-2.5 font-semibold text-white hover:bg-violet-500">Calendar settings</a>
+      </div>
+    </Layout>
+  );
+});
+
+// RFC 8058 one-click unsubscribe (mailbox providers POST here)
+app.post("/unsubscribe/:token", async (c) => {
+  await unsubscribeByToken(c.env, c.req.param("token"));
+  return c.text("OK");
 });
 
 app.post("/api/rate", async (c) => {
@@ -2086,8 +2139,14 @@ async function newlyStreamable(env: Env, userId: number): Promise<{ title: strin
 async function sendAiringDigests(env: Env): Promise<void> {
   if (!env.RESEND_API_KEY) return;
   const today = new Date().toISOString().slice(0, 10);
-  const users = await env.DB.prepare("SELECT id, email FROM users WHERE remind_email = 1").all<{ id: number; email: string }>();
+  const users = await env.DB.prepare("SELECT id, email, unsub_token FROM users WHERE remind_email = 1").all<{ id: number; email: string; unsub_token: string | null }>();
   for (const u of users.results) {
+    let unsubToken = u.unsub_token;
+    if (!unsubToken) {
+      unsubToken = crypto.randomUUID();
+      await env.DB.prepare("UPDATE users SET unsub_token = ? WHERE id = ?").bind(unsubToken, u.id).run();
+    }
+    const unsubUrl = `${env.SITE_URL}/unsubscribe/${unsubToken}`;
     const items = (await upcomingItems(env, u.id)).filter((it) => it.airDate === today);
     const streamable = await newlyStreamable(env, u.id).catch(() => []);
     if (items.length === 0 && streamable.length === 0) continue;
@@ -2113,7 +2172,11 @@ async function sendAiringDigests(env: Env): Promise<void> {
       env,
       u.email,
       subject,
-      `${airingBlock}${streamBlock}<p style=\"color:#64748b;font-size:13px\">You get this because email reminders are on \u2014 turn them off any time on your <a href=\"${env.SITE_URL}/calendar\">calendar page</a>.</p>`
+      `${airingBlock}${streamBlock}<p style=\"color:#64748b;font-size:13px\">You get this because email reminders are on \u2014 <a href=\"${unsubUrl}\" style=\"color:#64748b\">unsubscribe</a> or manage them on your <a href=\"${env.SITE_URL}/calendar\" style=\"color:#64748b\">calendar page</a>.</p>`,
+      {
+        "List-Unsubscribe": `<${unsubUrl}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      }
     );
   }
 }

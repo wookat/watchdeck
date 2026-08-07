@@ -5,6 +5,20 @@
 
 ---
 
+## Round 130 — 2026-08-08（发信链路验证与邮件合规）
+
+**发现（合规审计 + 老板指令）**
+- 发信域名/管线未验证；落地页邮件意向收集为单次 opt-in（无确认环节）；每日提醒摘要邮件无 List-Unsubscribe 头与一键退订链接。
+
+**修复**
+- 发信验证：Resend API 实测 watchdeck@zalize.com 发送成功（200 + id），域名已验证可发。
+- Double opt-in：/api/waitlist 只写入未确认记录并发确认邮件（confirm_token），/confirm-email/:token 确认后 confirmed=1；落地页文案改为「查收邮箱确认订阅」；加速率限制（5/10min）。
+- 一键退订：摘要邮件加 List-Unsubscribe + List-Unsubscribe-Post: One-Click 头与页脚退订链接（users.unsub_token 按需生成），GET/POST /unsubscribe/:token 关闭 remind_email；新路由 noindex。
+
+**证据**：线上实测确认/退订路由与 D1 状态变更，详见 PR 评论。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**

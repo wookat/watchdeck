@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS users (
   salt TEXT NOT NULL,
   display_name TEXT,
   remind_email INTEGER NOT NULL DEFAULT 0,
+  unsub_token TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
@@ -60,6 +61,8 @@ CREATE TABLE IF NOT EXISTS email_signups (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   email TEXT NOT NULL UNIQUE,
   source TEXT,
+  confirmed INTEGER NOT NULL DEFAULT 0,
+  confirm_token TEXT,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
