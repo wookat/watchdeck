@@ -38,7 +38,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <meta property="og:image" content={ogImage ?? "https://watchdeck.zalize.com/og-default.png"} />
       <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
-      <link rel="stylesheet" href="/styles.css?v=125" />
+      <link rel="stylesheet" href="/styles.css?v=130" />
       <script src="/app.js" defer></script>
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -100,11 +100,11 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <footer class="mt-16 border-t border-slate-800 py-8 text-sm text-slate-400">
         <div class="mx-auto max-w-6xl space-y-3 px-4">
           <p>
-            WatchDeck — web-first TV & movie tracking, free while in beta. <a href="/import" class="text-violet-400 hover:underline">Import from TV Time</a>.
+            WatchDeck — web-first TV & movie tracking, free while in beta. <a href="/import" class="text-violet-400 underline underline-offset-2">Import from TV Time</a>.
           </p>
           <p>
             Data by{" "}
-            <a href="https://www.themoviedb.org/" rel="noopener" class="text-violet-400 hover:underline">
+            <a href="https://www.themoviedb.org/" rel="noopener" class="text-violet-400 underline underline-offset-2">
               TMDB
             </a>
             . This product uses the TMDB API but is not endorsed or certified by TMDB.
@@ -553,9 +553,9 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
         })}
       </div>
       {q && filtered.length === 0 && (
-        <p class="text-slate-400">
-          Nothing found{type !== "all" ? ` in ${type === "tv" ? "TV shows" : "movies"} — try All` : " — check the spelling, or browse what's trending below"}.
-        </p>
+        <EmptyState title="Nothing found">
+          {type !== "all" ? `No ${type === "tv" ? "TV shows" : "movies"} matched — try the All tab.` : "Check the spelling, or browse what's trending below."}
+        </EmptyState>
       )}
     </div>
   );
@@ -643,6 +643,26 @@ export const RatingStars: FC<{ tmdbId: number; mediaType: "tv" | "movie"; title:
         </button>
       </form>
     ))}
+  </div>
+);
+
+export const EmptyState: FC<PropsWithChildren<{ title: string }>> = ({ title, children }) => (
+  <div class="mx-auto max-w-md rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-10 text-center">
+    <svg viewBox="0 0 96 72" width="96" height="72" aria-hidden="true" class="mx-auto mb-4 opacity-90">
+      <defs>
+        <linearGradient id="esg" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#8b5cf6" />
+          <stop offset="1" stop-color="#d946ef" />
+        </linearGradient>
+      </defs>
+      <ellipse cx="48" cy="66" rx="30" ry="4" fill="#1e293b" />
+      <rect x="24" y="26" width="48" height="34" rx="4" fill="#0f172a" stroke="#334155" />
+      <path d="M24 30a4 4 0 0 1 4-4h44a4 4 0 0 1 4 4v8H24z" fill="url(#esg)" transform="rotate(-8 24 34)" />
+      <path d="M30 22l6 8m8-10l6 8m8-10l6 8" stroke="#020617" stroke-width="2" transform="rotate(-8 24 34)" />
+      <path d="M44 40l12 7-12 7z" fill="#e2e8f0" />
+    </svg>
+    <p class="font-semibold text-slate-200">{title}</p>
+    <p class="mt-1 text-sm text-slate-400">{children}</p>
   </div>
 );
 
@@ -834,7 +854,7 @@ export const ShowPage: FC<{
                   }
                 >
                   Season {s.season_number}
-                  <span class={s.episode_count > 0 && seen >= s.episode_count ? "ml-1.5 text-xs text-emerald-300" : "ml-1.5 text-xs opacity-70"}>
+                  <span class={s.episode_count > 0 && seen >= s.episode_count ? "ml-1.5 text-xs text-emerald-300" : "ml-1.5 text-xs text-slate-300"}>
                     {seen}/{s.episode_count}
                   </span>
                 </a>
@@ -1142,10 +1162,10 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
           Nothing in your library matches “{q}”. <a href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}`} class="text-violet-400 hover:underline">Clear filter</a>
         </p>
       ) : (
-      <p class="text-slate-400">
-        Nothing here yet. <a href="/import" class="text-violet-400 hover:underline">Import from TV Time</a> or{" "}
-        <a href="/search" class="text-violet-400 hover:underline">search</a>.
-      </p>
+      <EmptyState title="Your library is waiting">
+        <a href="/import" class="text-violet-400 hover:underline">Import from TV Time</a> or{" "}
+        <a href="/search" class="text-violet-400 hover:underline">search</a> for your first show.
+      </EmptyState>
       )
     ) : (
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
@@ -1269,9 +1289,9 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
       </form>
     </div>
     {items.length === 0 ? (
-      <p class="text-slate-400">
-        No scheduled air dates right now — the shows you track have no announced upcoming episodes. New dates show up here (and in your iCal feed) automatically. Looking for something new? <a href="/browse" class="text-violet-400 hover:underline">Browse by genre</a>.
-      </p>
+      <EmptyState title="No scheduled air dates right now">
+        The shows you track have no announced upcoming episodes — new dates show up here (and in your iCal feed) automatically. Looking for something new? <a href="/browse" class="text-violet-400 hover:underline">Browse by genre</a>.
+      </EmptyState>
     ) : (
       <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
         {items.map((it) => {
@@ -1765,9 +1785,9 @@ export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: n
   <div>
     <h1 class="mb-6 text-2xl font-bold">History</h1>
     {items.length === 0 ? (
-      <p class="text-slate-400">
-        Nothing watched yet. <a href="/home" class="text-violet-400 hover:underline">Mark an episode watched</a> and it shows up here.
-      </p>
+      <EmptyState title="No watch history yet">
+        <a href="/home" class="text-violet-400 hover:underline">Mark an episode watched</a> and it shows up here.
+      </EmptyState>
     ) : (
       (() => {
         const groups: { day: string; rows: HistoryItem[] }[] = [];
@@ -2101,9 +2121,9 @@ export const ListDetailPage: FC<{ list: { id: number; name: string }; items: { t
       )}
     </div>
     {items.length === 0 ? (
-      <p class="text-slate-400">
-        Nothing here yet. Open any show or movie page and use the <span class="text-slate-300">☰ Lists</span> button to add it.
-      </p>
+      <EmptyState title="This list is empty">
+        Open any show or movie page and use the <span class="text-slate-300">☰ Lists</span> button to add it.
+      </EmptyState>
     ) : (
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {items.map((it) => (
@@ -2138,7 +2158,7 @@ export const PublicListPage: FC<{ name: string; owner: string; items: { tmdb_id:
       A list by {owner}, shared from <a href="/" class="text-violet-400 hover:underline">WatchDeck</a> · {items.length} item{items.length === 1 ? "" : "s"}
     </p>
     {items.length === 0 ? (
-      <p class="text-slate-400">This list is empty right now.</p>
+      <EmptyState title="This list is empty right now">Check back later — the owner may still be adding titles.</EmptyState>
     ) : (
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {items.map((it) => (
