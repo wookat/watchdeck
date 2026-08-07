@@ -5,6 +5,19 @@
 
 ---
 
+## 视觉专项 Rounds 122-125 — 2026-08-05（视觉/品牌/特效升级·第一批）
+
+**发现（竞品视觉调研，见 docs/visual-research.md）**
+- 详情页缺 backdrop hero（TMDB/Trakt/Plex 行业标准结构）；海报 hover 仅描边无质感；落地页 hero 平淡；logo 为无语义渐变方块。
+
+**修复**
+- R122 竞品视觉调研：Trakt（SvelteKit）/Mubi（Next.js）/TMDB 截图+源码结构分析，Letterboxd 等有盾站按红线跳过；输出 docs/visual-research.md（含技术栈决定：不迁框架、不引 GSAP，CSS 动效+reduced-motion 降级）。
+- R123 详情页 backdrop hero：TMDB w1280 剧照压暗+双向渐变入底，海报悬浮加深阴影+rise-in。
+- R124 海报墙 hover 动效（poster-fx：上浮 scale+violet 辉光，`prefers-reduced-motion`/触屏降级为纯描边）；落地页影院 hero（聚光灯径向渐变+CSS 胶片颗粒）；按钮/链接统一过渡与按压反馈。
+- R125 品牌素材：logo/favicon 重绘（场记板+播放三角，violet 渐变）、PWA 192/512/apple-touch 图标重生成、OG 默认卡重设计（新 logo+聚光灯+功能行）、导航 logo 换新标。
+
+**证据**：线上回归见 PR 评论（视觉批回归轮）。
+
 ## 专项 Round 120 — 2026-08-05（竞品优点复刻·第七批）
 
 **发现（竞品调研 / P1 复刻清单最后一项）**
