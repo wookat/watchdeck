@@ -1092,6 +1092,13 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
           📺 On my services
         </a>
       )}
+      <a
+        href="/roulette"
+        class="rounded-lg border border-slate-700 px-2.5 py-1 text-slate-300 hover:border-violet-500"
+        title="Jump to a random title from your watchlist"
+      >
+        🎲 Surprise me
+      </a>
     </div>
     {avail && availCapped && (
       <p class="mb-4 text-xs text-slate-400">Availability is checked for the first 30 items on this page.</p>

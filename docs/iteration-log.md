@@ -5,6 +5,18 @@
 
 ---
 
+## 专项 Rounds 113-114 — 2026-08-05（竞品优点复刻·第四批）
+
+**发现（来源：docs/competitor-deep-dive.md P1/P2 清单）**
+- [竞品(Reelgood/JustWatch) / P1] watchlist 条目在自己订阅的服务上架后无任何通知，用户不知道「可以看了」。
+- [竞品(Trakt/TV Time) / P2] 选择困难无出口：无「随机挑一部」快捷入口（Trakt VIP 有 discover shuffle）。
+
+**修复**
+- R113 每日提醒邮件（remind_email 已 opt-in 用户）新增「Now streamable on your services」段：watchlist 前 15 条 × 已选服务匹配 flatrate，KV `avnote:` 90 天去重防重复通知；无播出条目但有新可看条目时也发信，主题相应切换。
+- R114 `/roulette` 随机跳转 watchlist（空则 watching）一条的详情页；/library 过滤条加「🎲 Surprise me」按钮；noindex 覆盖。
+
+**证据**：线上回归见 PR 评论（R115 回归轮）。
+
 ## 专项 Rounds 109-111 — 2026-08-05（竞品优点复刻·第三批）
 
 **发现（来源：docs/competitor-deep-dive.md P1/P2 清单）**

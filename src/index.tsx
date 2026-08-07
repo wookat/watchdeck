@@ -100,7 +100,7 @@ app.use("*", async (c, next) => {
   h.set("referrer-policy", "strict-origin-when-cross-origin");
   h.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
   const path = new URL(c.req.url).pathname;
-  if (/^\/(home|library|lists|calendar|import|stats|history|settings|forgot|reset|u)(\/|$)/.test(path)) {
+  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|forgot|reset|u)(\/|$)/.test(path)) {
     h.set("x-robots-tag", "noindex");
   }
   if (c.res.headers.get("content-type")?.includes("text/html")) {
@@ -1200,6 +1200,20 @@ app.post("/api/settings/services", async (c) => {
   return c.redirect("/settings?saved=" + encodeURIComponent(picked.length ? `Saved ${picked.length} service${picked.length === 1 ? "" : "s"}.` : "Services cleared."));
 });
 
+app.get("/roulette", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const pick =
+    (await c.env.DB.prepare("SELECT tmdb_id, media_type, title FROM tracked WHERE user_id = ? AND status = 'watchlist' ORDER BY RANDOM() LIMIT 1")
+      .bind(user.id)
+      .first<{ tmdb_id: number; media_type: string; title: string }>()) ??
+    (await c.env.DB.prepare("SELECT tmdb_id, media_type, title FROM tracked WHERE user_id = ? AND status = 'watching' ORDER BY RANDOM() LIMIT 1")
+      .bind(user.id)
+      .first<{ tmdb_id: number; media_type: string; title: string }>());
+  if (!pick) return c.redirect("/library?status=watchlist");
+  return c.redirect(`/${pick.media_type === "tv" ? "shows" : "movies"}/${pick.tmdb_id}-${slugify(pick.title)}`);
+});
+
 app.get("/lists", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
@@ -1948,13 +1962,35 @@ app.notFound((c) =>
   )
 );
 
+async function newlyStreamable(env: Env, userId: number): Promise<{ title: string; tmdbId: number; mediaType: "tv" | "movie"; services: string[] }[]> {
+  const services = await userServices(env, userId);
+  if (services.size === 0) return [];
+  const rows = await env.DB.prepare(
+    "SELECT tmdb_id, media_type, title FROM tracked WHERE user_id = ? AND status = 'watchlist' ORDER BY updated_at DESC LIMIT 15"
+  )
+    .bind(userId)
+    .all<{ tmdb_id: number; media_type: "tv" | "movie"; title: string }>();
+  const out: { title: string; tmdbId: number; mediaType: "tv" | "movie"; services: string[] }[] = [];
+  for (const r of rows.results) {
+    const key = `avnote:${userId}:${r.media_type}:${r.tmdb_id}`;
+    if (await env.CACHE.get(key)) continue;
+    const prov = await watchProviders(env, r.media_type, r.tmdb_id).catch(() => null);
+    const mine = prov?.flatrate?.filter((p) => services.has(p.provider_id)) ?? [];
+    if (mine.length === 0) continue;
+    await env.CACHE.put(key, "1", { expirationTtl: 90 * 24 * 3600 });
+    out.push({ title: r.title, tmdbId: r.tmdb_id, mediaType: r.media_type, services: mine.map((p) => p.provider_name) });
+  }
+  return out;
+}
+
 async function sendAiringDigests(env: Env): Promise<void> {
   if (!env.RESEND_API_KEY) return;
   const today = new Date().toISOString().slice(0, 10);
   const users = await env.DB.prepare("SELECT id, email FROM users WHERE remind_email = 1").all<{ id: number; email: string }>();
   for (const u of users.results) {
     const items = (await upcomingItems(env, u.id)).filter((it) => it.airDate === today);
-    if (items.length === 0) continue;
+    const streamable = await newlyStreamable(env, u.id).catch(() => []);
+    if (items.length === 0 && streamable.length === 0) continue;
     const lines = items.map((it) => {
       const isTv = it.mediaType === "tv" && it.season != null && it.episode != null;
       const label = isTv
@@ -1962,11 +1998,22 @@ async function sendAiringDigests(env: Env): Promise<void> {
         : " \u2014 movie release";
       return `<li style=\"margin:6px 0\"><a href=\"${env.SITE_URL}/${isTv ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}\" style=\"color:#7c3aed\">${it.title}</a>${label}</li>`;
     });
+    const streamLines = streamable.map(
+      (s) =>
+        `<li style=\"margin:6px 0\"><a href=\"${env.SITE_URL}/${s.mediaType === "tv" ? "shows" : "movies"}/${s.tmdbId}-${slugify(s.title)}\" style=\"color:#7c3aed\">${s.title}</a> \u2014 on ${s.services.join(", ")}</li>`
+    );
+    const airingBlock = items.length ? `<p>These titles you track air or release today:</p><ul>${lines.join("")}</ul>` : "";
+    const streamBlock = streamable.length
+      ? `<p>From your watchlist, now streamable on your services:</p><ul>${streamLines.join("")}</ul>`
+      : "";
+    const subject = items.length
+      ? `Airing today: ${items[0].title}${items.length > 1 ? ` and ${items.length - 1} more` : ""}`
+      : `Now streamable: ${streamable[0].title}${streamable.length > 1 ? ` and ${streamable.length - 1} more` : ""}`;
     await sendEmail(
       env,
       u.email,
-      `Airing today: ${items[0].title}${items.length > 1 ? ` and ${items.length - 1} more` : ""}`,
-      `<p>These titles you track air or release today:</p><ul>${lines.join("")}</ul><p style=\"color:#64748b;font-size:13px\">You get this because email reminders are on \u2014 turn them off any time on your <a href=\"${env.SITE_URL}/calendar\">calendar page</a>.</p>`
+      subject,
+      `${airingBlock}${streamBlock}<p style=\"color:#64748b;font-size:13px\">You get this because email reminders are on \u2014 turn them off any time on your <a href=\"${env.SITE_URL}/calendar\">calendar page</a>.</p>`
     );
   }
 }
