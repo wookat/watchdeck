@@ -38,6 +38,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <meta property="og:image" content={ogImage ?? "https://watchdeck.zalize.com/og-default.png"} />
       <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
+      <link rel="preconnect" href="https://image.tmdb.org" />
       <link rel="stylesheet" href="/styles.css?v=130" />
       <script src="/app.js" defer></script>
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -768,7 +769,7 @@ export const ShowPage: FC<{
             <img src={`https://image.tmdb.org/t/p/w1280${show.backdrop_path}`} alt="" loading="eager" fetchpriority="low" />
           </div>
         )}
-        <img src={poster(show.poster_path)} alt={show.name} class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
+        <img src={poster(show.poster_path)} alt={show.name} fetchpriority="high" class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
         <div class="min-w-0 flex-1">
           <h1 class="text-3xl font-bold">{show.name}</h1>
           <p class="mt-1 text-sm text-slate-400">
@@ -989,7 +990,7 @@ export const MoviePage: FC<{
           <img src={`https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`} alt="" loading="eager" fetchpriority="low" />
         </div>
       )}
-      <img src={poster(movie.poster_path)} alt={movie.title} class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
+      <img src={poster(movie.poster_path)} alt={movie.title} fetchpriority="high" class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
       <div class="min-w-0 flex-1">
         <h1 class="text-3xl font-bold">{movie.title}</h1>
         <p class="mt-1 text-sm text-slate-400">

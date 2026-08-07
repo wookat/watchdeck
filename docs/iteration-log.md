@@ -33,6 +33,18 @@
 
 ---
 
+## Round 134 — 2026-08-08（Core Web Vitals：海报加载优先级）
+
+**发现（性能走查）**
+- 全站海报均来自 image.tmdb.org 但无 preconnect（首图请求多付 DNS+TLS 往返）；详情页主海报（LCP 元素）未标记 fetchpriority。
+
+**修复**
+- Layout head 加 `<link rel="preconnect" href="https://image.tmdb.org">`；剧集/电影详情页主海报加 `fetchpriority="high"`（backdrop 维持 low、网格图维持 lazy）。
+
+**证据**：线上 HTML 标记实测，见 PR。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**
