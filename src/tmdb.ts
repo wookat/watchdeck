@@ -160,6 +160,20 @@ export interface WatchProviders {
   flatrate?: { provider_id: number; provider_name: string; logo_path: string }[];
 }
 
+// curated US streaming services users can pick as "my services" (TMDB provider ids)
+export const STREAMING_SERVICES: [number, string][] = [
+  [8, "Netflix"],
+  [9, "Prime Video"],
+  [337, "Disney+"],
+  [15, "Hulu"],
+  [1899, "HBO Max"],
+  [350, "Apple TV+"],
+  [531, "Paramount+"],
+  [386, "Peacock Premium"],
+  [283, "Crunchyroll"],
+  [43, "Starz"],
+];
+
 export async function watchProviders(env: Env, type: "tv" | "movie", id: number, region = "US"): Promise<WatchProviders | null> {
   const res = await tmdb<{ results: Record<string, WatchProviders | undefined> }>(env, `/${type}/${id}/watch/providers`, 24 * 3600);
   return res.results[region] ?? null;

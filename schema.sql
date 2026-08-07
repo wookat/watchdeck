@@ -114,3 +114,27 @@ CREATE TABLE IF NOT EXISTS imports (
   unmatched INTEGER NOT NULL DEFAULT 0,
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- streaming service preferences (TMDB watch-provider ids)
+CREATE TABLE IF NOT EXISTS user_services (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider_id INTEGER NOT NULL,
+  PRIMARY KEY (user_id, provider_id)
+);
+
+-- custom lists
+CREATE TABLE IF NOT EXISTS lists (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS list_items (
+  list_id INTEGER NOT NULL REFERENCES lists(id) ON DELETE CASCADE,
+  tmdb_id INTEGER NOT NULL,
+  media_type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  poster_path TEXT,
+  added_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (list_id, tmdb_id, media_type)
+);
