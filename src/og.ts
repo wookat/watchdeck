@@ -2,6 +2,12 @@ import { ImageResponse, loadGoogleFont } from "workers-og";
 import type { Env } from "./types";
 import type { UserStats } from "./views";
 
+// workers-og renders text nodes verbatim (no entity decoding), so strip markup
+// characters instead of entity-escaping them
+function ogText(s: string): string {
+  return s.replace(/[<>&]/g, " ").replace(/\s+/g, " ").trim();
+}
+
 async function interFont(env: Env, weight: number): Promise<ArrayBuffer> {
   const key = `font:inter:${weight}`;
   const cached = await env.CACHE.get(key, "arrayBuffer");
@@ -18,12 +24,11 @@ export async function shareOgImage(env: Env, name: string, stats: UserStats): Pr
       <span style="font-size:56px;font-weight:700;color:#c4b5fd;">${n}</span>
       <span style="font-size:22px;color:#94a3b8;">${label}</span>
     </div>`;
-  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const html = `
   <div style="display:flex;flex-direction:column;width:1200px;height:630px;background:#020617;color:#f1f5f9;font-family:Inter;padding:64px;justify-content:space-between;">
     <div style="display:flex;flex-direction:column;">
       <span style="font-size:28px;color:#a78bfa;font-weight:700;">WatchDeck</span>
-      <span style="font-size:52px;font-weight:700;margin-top:16px;">${esc(name)}'s watch stats</span>
+      <span style="font-size:52px;font-weight:700;margin-top:16px;">${ogText(name)}'s watch stats</span>
     </div>
     <div style="display:flex;gap:24px;">
       ${stat(stats.hoursWatched, "hours watched")}
@@ -51,7 +56,6 @@ export async function listOgImage(
   posterPaths: string[]
 ): Promise<Response> {
   const [regular, bold] = await Promise.all([interFont(env, 400), interFont(env, 700)]);
-  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const posters = posterPaths
     .slice(0, 5)
     .map(
@@ -63,8 +67,8 @@ export async function listOgImage(
   <div style="display:flex;flex-direction:column;width:1200px;height:630px;background:#020617;color:#f1f5f9;font-family:Inter;padding:64px;justify-content:space-between;">
     <div style="display:flex;flex-direction:column;">
       <span style="font-size:28px;color:#a78bfa;font-weight:700;">WatchDeck</span>
-      <span style="font-size:52px;font-weight:700;margin-top:16px;">${esc(listName)}</span>
-      <span style="font-size:26px;color:#94a3b8;margin-top:8px;">a list by ${esc(owner)} — ${itemCount} item${itemCount === 1 ? "" : "s"}</span>
+      <span style="font-size:52px;font-weight:700;margin-top:16px;">${ogText(listName)}</span>
+      <span style="font-size:26px;color:#94a3b8;margin-top:8px;">a list by ${ogText(owner)} — ${itemCount} item${itemCount === 1 ? "" : "s"}</span>
     </div>
     <div style="display:flex;gap:20px;">${posters}</div>
     <span style="font-size:24px;color:#64748b;">watchdeck.zalize.com — track your TV shows and movies on the web</span>
