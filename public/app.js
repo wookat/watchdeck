@@ -38,7 +38,9 @@ document.addEventListener("input", (e) => {
       hint.className = "mt-1.5 text-xs text-emerald-400";
     }
   } else if (el.id === "auth-email" && el.value.length > 3) {
-    el.classList.toggle("border-amber-500", !el.checkValidity());
+    const invalid = !el.checkValidity();
+    el.classList.toggle("border-amber-500", invalid);
+    el.classList.toggle("border-slate-700", !invalid);
   }
 });
 document.addEventListener("submit", (e) => {
