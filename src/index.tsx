@@ -58,6 +58,7 @@ import {
   SettingsPage,
   PrivacyPage,
   TermsPage,
+  PricingPage,
   type WatchlistPreviewItem,
   type LibraryRow,
   type CalendarItem,
@@ -735,7 +736,7 @@ app.get("/browse", async (c) => {
     <Layout
       user={c.get("user")}
       title="Browse TV shows & movies by genre"
-      description="Explore popular TV shows and movies by genre and start tracking them for free on WatchDeck."
+      description="Explore popular TV shows and movies by genre and start tracking them on WatchDeck."
       canonical={`${c.env.SITE_URL}/browse`}
     >
       <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} networks={NETWORKS} years={browseYears()} />
@@ -755,7 +756,7 @@ app.get("/browse/network/:idslug", async (c) => {
     <Layout
       user={c.get("user")}
       title={`${network.name} TV shows to watch`}
-      description={`Popular TV shows on ${network.name} to discover and track for free on WatchDeck.`}
+      description={`Popular TV shows on ${network.name} to discover and track on WatchDeck.`}
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
@@ -778,7 +779,7 @@ app.get("/browse/year/:type/:year", async (c) => {
     <Layout
       user={c.get("user")}
       title={`${type === "tv" ? "TV shows" : "Movies"} of ${year}`}
-      description={`The most popular ${type === "tv" ? `TV shows that premiered in ${year}` : `movies released in ${year}`} to discover and track for free on WatchDeck.`}
+      description={`The most popular ${type === "tv" ? `TV shows that premiered in ${year}` : `movies released in ${year}`} to discover and track on WatchDeck.`}
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
@@ -803,7 +804,7 @@ app.get("/browse/:type/:genreslug", async (c) => {
     <Layout
       user={c.get("user")}
       title={`${genre.name} ${type === "tv" ? "TV shows" : "movies"} to watch`}
-      description={`Popular ${genre.name.toLowerCase()} ${type === "tv" ? "TV shows" : "movies"} to discover and track for free on WatchDeck.`}
+      description={`Popular ${genre.name.toLowerCase()} ${type === "tv" ? "TV shows" : "movies"} to discover and track on WatchDeck.`}
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
@@ -876,7 +877,7 @@ async function hoursWatched(env: Env, userId: number): Promise<number> {
 }
 
 async function userStats(env: Env, userId: number): Promise<UserStats> {
-  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear, byYear, ratingRows] = await Promise.all([
+  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear, byYear, ratingRows, watchDays] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(userId).first<{ n: number }>(),
@@ -903,8 +904,28 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     env.DB.prepare(
       "SELECT rating, COUNT(*) AS n FROM tracked WHERE user_id = ? AND rating IS NOT NULL GROUP BY rating"
     ).bind(userId).all<{ rating: number; n: number }>(),
+    env.DB.prepare(
+      `SELECT DISTINCT d FROM (
+         SELECT date(watched_at) AS d FROM episode_watches WHERE user_id = ?1
+         UNION
+         SELECT date(watched_at) AS d FROM movie_watches WHERE user_id = ?1
+       ) WHERE d IS NOT NULL ORDER BY d`
+    ).bind(userId).all<{ d: string }>(),
   ]);
   const ratingCounts = [1, 2, 3, 4, 5].map((r) => ratingRows.results.find((row) => row.rating === r)?.n ?? 0);
+  const days = watchDays.results.map((r) => Math.round(Date.parse(r.d + "T00:00:00Z") / 86400000));
+  let bestStreak = 0;
+  let run = 0;
+  for (let i = 0; i < days.length; i++) {
+    run = i > 0 && days[i] === days[i - 1] + 1 ? run + 1 : 1;
+    if (run > bestStreak) bestStreak = run;
+  }
+  const todayNum = Math.floor(Date.now() / 86400000);
+  let currentStreak = 0;
+  if (days.length && days[days.length - 1] >= todayNum - 1) {
+    currentStreak = 1;
+    for (let i = days.length - 1; i > 0 && days[i - 1] === days[i] - 1; i--) currentStreak++;
+  }
   const items = await env.DB.prepare(
     "SELECT tmdb_id, media_type FROM tracked WHERE user_id = ? ORDER BY updated_at DESC LIMIT 40"
   )
@@ -936,6 +957,8 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     topGenres,
     epsThisYear: epsYear?.n ?? 0,
     moviesThisYear: moviesYear?.n ?? 0,
+    currentStreak,
+    bestStreak,
   };
 }
 
@@ -993,6 +1016,19 @@ app.get("/terms", (c) =>
   c.html(
     <Layout user={c.get("user")} title="Terms of service" canonical={`${c.env.SITE_URL}/terms`}>
       <TermsPage />
+    </Layout>
+  )
+);
+
+app.get("/pricing", (c) =>
+  c.html(
+    <Layout
+      user={c.get("user")}
+      title="Pricing"
+      description="WatchDeck pricing: a free plan plus a Plus plan from $1.99/month. Everything is free while WatchDeck is in beta — no payment required."
+      canonical={`${c.env.SITE_URL}/pricing`}
+    >
+      <PricingPage loggedIn={!!c.get("user")} />
     </Layout>
   )
 );
@@ -1168,7 +1204,7 @@ app.get("/u/:token", async (c) => {
     <Layout
       user={c.get("user")}
       title={`${profile.name}'s watch stats`}
-      description={`${profile.stats.hoursWatched} hours of TV & movies \u2014 ${profile.stats.epsWatched} episodes and ${profile.stats.moviesWatched} movies tracked free on WatchDeck.`}
+      description={`${profile.stats.hoursWatched} hours of TV & movies \u2014 ${profile.stats.epsWatched} episodes and ${profile.stats.moviesWatched} movies tracked on WatchDeck.`}
       canonical={`${c.env.SITE_URL}/u/${token}`}
       ogImage={`${c.env.SITE_URL}/u/${token}/og.png`}
     >
@@ -1543,7 +1579,7 @@ app.get("/robots.txt", (c) =>
 );
 
 app.get("/sitemap.xml", async (c) => {
-  const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`, `${c.env.SITE_URL}/privacy`, `${c.env.SITE_URL}/terms`];
+  const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`, `${c.env.SITE_URL}/pricing`, `${c.env.SITE_URL}/privacy`, `${c.env.SITE_URL}/terms`];
   try {
     const [shows, movies, tvGenres, movieGenres, ...popular] = await Promise.all([
       trendingTv(c.env),
