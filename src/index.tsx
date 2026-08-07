@@ -514,7 +514,7 @@ app.get("/movies/:idslug", async (c) => {
   const movieSlug = `${movie.id}-${slugify(movie.title)}`;
   if (c.req.param("idslug") !== movieSlug) return c.redirect(`/movies/${movieSlug}`, 301);
   const [watchedRow, tracked, recsRes, providers, cast, trailer] = await Promise.all([
-    user ? c.env.DB.prepare("SELECT 1 FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first() : Promise.resolve(null),
+    user ? c.env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first<{ n: number }>() : Promise.resolve(null),
     user
       ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
           .bind(user.id, id)
@@ -525,7 +525,7 @@ app.get("/movies/:idslug", async (c) => {
     topCast(c.env, "movie", id).catch(() => [] as CastMember[]),
     trailerUrl(c.env, "movie", id).catch(() => null),
   ]);
-  const watched = !!watchedRow;
+  const watchCount = watchedRow?.n ?? 0;
   const recs = recsRes.results;
   const movieCanonical = `${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`;
   return c.html(
@@ -561,7 +561,7 @@ app.get("/movies/:idslug", async (c) => {
         ],
       }}
     >
-      <MoviePage movie={movie} watched={watched} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} />
+      <MoviePage movie={movie} watchCount={watchCount} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} />
     </Layout>
   );
 });
@@ -877,9 +877,9 @@ async function hoursWatched(env: Env, userId: number): Promise<number> {
 }
 
 async function userStats(env: Env, userId: number): Promise<UserStats> {
-  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear, byYear, ratingRows, watchDays] = await Promise.all([
+  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear, byYear, ratingRows, watchDays, epsMonth, moviesMonth, topShowMonth] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
-    env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
+    env.DB.prepare("SELECT COUNT(DISTINCT tmdb_id) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv' AND status = 'completed'").bind(userId).first<{ n: number }>(),
     env.DB.prepare(
@@ -911,6 +911,14 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
          SELECT date(watched_at) AS d FROM movie_watches WHERE user_id = ?1
        ) WHERE d IS NOT NULL ORDER BY d`
     ).bind(userId).all<{ d: string }>(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ? AND watched_at >= strftime('%Y-%m-01', 'now')").bind(userId).first<{ n: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND watched_at >= strftime('%Y-%m-01', 'now')").bind(userId).first<{ n: number }>(),
+    env.DB.prepare(
+      `SELECT t.title, COUNT(*) AS eps FROM episode_watches w
+       JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
+       WHERE w.user_id = ? AND w.watched_at >= strftime('%Y-%m-01', 'now')
+       GROUP BY w.tmdb_id ORDER BY eps DESC, t.title LIMIT 1`
+    ).bind(userId).first<{ title: string; eps: number }>(),
   ]);
   const ratingCounts = [1, 2, 3, 4, 5].map((r) => ratingRows.results.find((row) => row.rating === r)?.n ?? 0);
   const days = watchDays.results.map((r) => Math.round(Date.parse(r.d + "T00:00:00Z") / 86400000));
@@ -957,10 +965,44 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     topGenres,
     epsThisYear: epsYear?.n ?? 0,
     moviesThisYear: moviesYear?.n ?? 0,
+    epsThisMonth: epsMonth?.n ?? 0,
+    moviesThisMonth: moviesMonth?.n ?? 0,
+    topShowThisMonth: topShowMonth ?? null,
     currentStreak,
     bestStreak,
   };
 }
+
+app.post("/api/history/date", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const date = String(form.date ?? "");
+  const orig = String(form.orig ?? "");
+  const back = safeNext(form.redirect) ?? "/history";
+  const today = new Date().toISOString().slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date + "T00:00:00Z")) || date > today || !tmdbId) {
+    return c.redirect(back);
+  }
+  if (String(form.kind) === "tv") {
+    const season = parseInt(String(form.season), 10);
+    const episode = parseInt(String(form.episode), 10);
+    if (Number.isNaN(season) || Number.isNaN(episode)) return c.redirect(back);
+    await c.env.DB.prepare(
+      "UPDATE episode_watches SET watched_at = ? || substr(watched_at, 11) WHERE user_id = ? AND tmdb_id = ? AND season = ? AND episode = ?"
+    )
+      .bind(date, user.id, tmdbId, season, episode)
+      .run();
+  } else {
+    await c.env.DB.prepare(
+      "UPDATE movie_watches SET watched_at = ? || substr(watched_at, 11) WHERE id = (SELECT id FROM movie_watches WHERE user_id = ? AND tmdb_id = ? AND watched_at = ? LIMIT 1)"
+    )
+      .bind(date, user.id, tmdbId, orig)
+      .run();
+  }
+  return c.redirect(back);
+});
 
 app.get("/history", async (c) => {
   const user = c.get("user");
@@ -1444,14 +1486,31 @@ app.post("/api/watch-movie", async (c) => {
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   if (String(form.undo) === "1") {
-    await c.env.DB.prepare("DELETE FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, tmdbId).run();
     await c.env.DB.prepare(
-      "UPDATE tracked SET status = 'watchlist', updated_at = datetime('now') WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie' AND status = 'completed'"
+      "DELETE FROM movie_watches WHERE id = (SELECT id FROM movie_watches WHERE user_id = ? AND tmdb_id = ? ORDER BY watched_at DESC, id DESC LIMIT 1)"
     )
       .bind(user.id, tmdbId)
       .run();
+    const remaining = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND tmdb_id = ?")
+      .bind(user.id, tmdbId)
+      .first<{ n: number }>();
+    if ((remaining?.n ?? 0) === 0) {
+      await c.env.DB.prepare(
+        "UPDATE tracked SET status = 'watchlist', updated_at = datetime('now') WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie' AND status = 'completed'"
+      )
+        .bind(user.id, tmdbId)
+        .run();
+    }
   } else {
-    await c.env.DB.prepare("INSERT OR IGNORE INTO movie_watches (user_id, tmdb_id) VALUES (?, ?)").bind(user.id, tmdbId).run();
+    if (String(form.rewatch) === "1") {
+      await c.env.DB.prepare("INSERT INTO movie_watches (user_id, tmdb_id) VALUES (?, ?)").bind(user.id, tmdbId).run();
+    } else {
+      await c.env.DB.prepare(
+        "INSERT INTO movie_watches (user_id, tmdb_id) SELECT ?1, ?2 WHERE NOT EXISTS (SELECT 1 FROM movie_watches WHERE user_id = ?1 AND tmdb_id = ?2)"
+      )
+        .bind(user.id, tmdbId)
+        .run();
+    }
     const details = await movieDetails(c.env, tmdbId);
     await c.env.DB.prepare(
       `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status)
@@ -1551,7 +1610,7 @@ app.post("/api/import/batch", async (c) => {
            ON CONFLICT(user_id, tmdb_id, media_type) DO UPDATE SET rating = COALESCE(tracked.rating, excluded.rating)`
         ).bind(user.id, match.id, match.title ?? movie.name, match.poster_path, source, movieRating),
         c.env.DB.prepare(
-          "INSERT OR IGNORE INTO movie_watches (user_id, tmdb_id, watched_at) VALUES (?, ?, COALESCE(?, datetime('now')))"
+          "INSERT INTO movie_watches (user_id, tmdb_id, watched_at) SELECT ?1, ?2, COALESCE(?3, datetime('now')) WHERE NOT EXISTS (SELECT 1 FROM movie_watches WHERE user_id = ?1 AND tmdb_id = ?2)"
         ).bind(user.id, match.id, movie.watchedAt),
       ]);
       moviesImported++;

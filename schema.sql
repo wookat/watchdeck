@@ -46,14 +46,14 @@ CREATE TABLE IF NOT EXISTS episode_watches (
 );
 CREATE INDEX IF NOT EXISTS idx_epw_user_show ON episode_watches(user_id, tmdb_id);
 
--- movie watch records
+-- movie watch records (one row per watch; rewatches allowed)
 CREATE TABLE IF NOT EXISTS movie_watches (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   tmdb_id INTEGER NOT NULL,
-  watched_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(user_id, tmdb_id)
+  watched_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_mw_user_movie ON movie_watches(user_id, tmdb_id);
 
 CREATE TABLE IF NOT EXISTS email_signups (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

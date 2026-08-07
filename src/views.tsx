@@ -250,6 +250,9 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
           autocomplete={mode === "signup" ? "new-password" : "current-password"}
           class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
         />
+        {mode === "signup" && (
+          <p id="pw-hint" class="mt-1.5 hidden text-xs" aria-live="polite"></p>
+        )}
       </div>
       <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">
         {mode === "login" ? "Log in" : "Sign up"}
@@ -873,15 +876,16 @@ export const ShowPage: FC<{
 
 export const MoviePage: FC<{
   movie: MovieDetails;
-  watched: boolean;
+  watchCount: number;
   tracked: { status: string; rating: number | null; notes: string | null } | null;
   user: User | null;
   recs: SearchResult[];
   providers?: WatchProviders | null;
   cast?: CastMember[];
   trailer?: string | null;
-}> = ({ movie, watched, tracked, user, recs, providers, cast, trailer }) => {
+}> = ({ movie, watchCount, tracked, user, recs, providers, cast, trailer }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
+  const watched = watchCount > 0;
   return (
     <div>
     <div class="flex flex-col gap-6 sm:flex-row">
@@ -915,9 +919,19 @@ export const MoviePage: FC<{
                     : "rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-500"
                 }
               >
-                {watched ? "✓ Watched" : "Mark watched"}
+                {watched ? (watchCount > 1 ? `✓ Watched ${watchCount}×` : "✓ Watched") : "Mark watched"}
               </button>
             </form>
+            {watched && (
+              <form action="/api/watch-movie" method="post">
+                <input type="hidden" name="tmdb_id" value={String(movie.id)} />
+                <input type="hidden" name="rewatch" value="1" />
+                <input type="hidden" name="redirect" value={movieUrl} />
+                <button class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500" title="Log another watch of this movie">
+                  ↺ Watched again
+                </button>
+              </form>
+            )}
             <form action="/api/track" method="post">
               <input type="hidden" name="tmdb_id" value={String(movie.id)} />
               <input type="hidden" name="media_type" value="movie" />
@@ -1357,6 +1371,9 @@ export interface UserStats {
   topGenres: { name: string; count: number }[];
   epsThisYear: number;
   moviesThisYear: number;
+  epsThisMonth: number;
+  moviesThisMonth: number;
+  topShowThisMonth: { title: string; eps: number } | null;
   currentStreak: number;
   bestStreak: number;
 }
@@ -1390,6 +1407,21 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
             <> Longest watching streak: <span class="font-semibold text-violet-300">{stats.bestStreak} days</span>.</>
           )}
         </p>
+      )}
+      {(stats.epsThisMonth > 0 || stats.moviesThisMonth > 0) && (
+        <div class="mt-6 rounded-2xl border border-violet-900/60 bg-violet-950/30 p-5">
+          <h2 class="text-sm font-semibold uppercase tracking-wide text-violet-300">
+            {new Date().toLocaleDateString("en-US", { month: "long", timeZone: "UTC" })} in review
+          </h2>
+          <p class="mt-2 text-slate-300">
+            <span class="font-semibold text-violet-300">{stats.epsThisMonth}</span> episode{stats.epsThisMonth === 1 ? "" : "s"} and{" "}
+            <span class="font-semibold text-violet-300">{stats.moviesThisMonth}</span> movie{stats.moviesThisMonth === 1 ? "" : "s"} watched this month
+            {stats.topShowThisMonth ? (
+              <> — most watched: <span class="font-semibold text-violet-300">{stats.topShowThisMonth.title}</span> ({stats.topShowThisMonth.eps} eps)</>
+            ) : null}
+            .
+          </p>
+        </div>
       )}
       <div class="mt-8 grid gap-6 md:grid-cols-2">
         <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
@@ -1656,6 +1688,28 @@ export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: n
                             : "Movie"}
                         </p>
                       </div>
+                      <form action="/api/history/date" method="post" class="hidden shrink-0 items-center gap-1.5 sm:flex">
+                        <input type="hidden" name="kind" value={it.mediaType} />
+                        <input type="hidden" name="tmdb_id" value={String(it.tmdbId)} />
+                        {it.mediaType === "tv" && it.season != null && it.episode != null && (
+                          <>
+                            <input type="hidden" name="season" value={String(it.season)} />
+                            <input type="hidden" name="episode" value={String(it.episode)} />
+                          </>
+                        )}
+                        <input type="hidden" name="orig" value={it.watchedAt} />
+                        <input type="hidden" name="redirect" value={`/history${page > 1 ? `?page=${page}` : ""}`} />
+                        <input
+                          type="date"
+                          name="date"
+                          value={it.watchedAt.slice(0, 10)}
+                          max={new Date().toISOString().slice(0, 10)}
+                          required
+                          aria-label={`Watched date for ${it.title}`}
+                          class="rounded-lg border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-300 focus:border-violet-500 focus:outline-none"
+                        />
+                        <button class="rounded-lg border border-slate-700 px-2.5 py-1 text-xs text-slate-400 hover:border-violet-500 hover:text-violet-300">Save</button>
+                      </form>
                       <form action={it.mediaType === "tv" ? "/api/watch" : "/api/watch-movie"} method="post" class="shrink-0">
                         <input type="hidden" name="tmdb_id" value={String(it.tmdbId)} />
                         {it.mediaType === "tv" && it.season != null && it.episode != null && (

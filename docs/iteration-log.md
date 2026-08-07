@@ -5,6 +5,24 @@
 
 ---
 
+## 专项 Rounds 104-107 — 2026-08-05（竞品优点复刻·第二批）
+
+**发现（来源：docs/competitor-deep-dive.md P1 清单）**
+- [竞品(Letterboxd/Trakt) / P1] 观看记录日期不可编辑——补录旧观看只能落在今天，日记/统计失真。
+- [竞品(Letterboxd/Trakt) / P1] 电影无法重看：`movie_watches` UNIQUE(user_id, tmdb_id) 使二刷丢失。
+- [竞品(Trakt VIP) / P1] 缺 Month in Review 月度统计（Trakt 该功能收 VIP 费）。
+- [竞品(Simkl) / P2] 注册表单无内联校验，密码不满 8 位要提交后才知道。
+
+**修复（已部署，Version 7b367e2f）**
+- R104 `/history` 每行新增日期编辑（date input + Save，POST `/api/history/date`；校验 YYYY-MM-DD 且不晚于今天，保留时间部分维持同日排序；电影行以原 watched_at 精确定位）。
+- R105 电影重看：D1 迁移重建 `movie_watches` 去掉 UNIQUE（4 行数据零丢失，加 `idx_mw_user_movie` 索引）；电影页新增「↺ Watched again」，按钮显示「✓ Watched N×」；undo 只删最近一次，全部删完才回退 watchlist；普通标记与导入用 NOT EXISTS 防重；stats 电影数改 COUNT(DISTINCT)（小时/年度按 play 计）。
+- R106 `/stats`（含公开分享页）新增「<Month> in review」卡：本月集数/电影数+本月最多观看剧集。
+- R107 注册页密码内联校验（还差 N 位/✓ Password looks good，aria-live）+邮箱格式即时琥珀边框提示。
+
+**证据**：线上回归见 PR #39 评论（R108 回归轮）。
+
+---
+
 ## Round 2 — 2026-08-05
 
 **发现**
