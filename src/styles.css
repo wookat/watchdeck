@@ -73,6 +73,20 @@ a:hover > .poster-fx {
     linear-gradient(to right, rgb(2 6 23 / 0.65), transparent 45%);
 }
 
+/* modern form controls: custom chevron on selects, dark-scheme native pickers */
+select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 4.5 6 8l3.5-3.5' fill='none' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.4rem center;
+  padding-right: 1.6rem;
+}
+input[type="date"],
+input[type="search"],
+select {
+  color-scheme: dark;
+}
+
 /* consistent interactive feedback across buttons and links */
 @media (prefers-reduced-motion: no-preference) {
   button,

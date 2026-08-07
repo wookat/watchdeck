@@ -5,6 +5,18 @@
 
 ---
 
+## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
+
+**发现（R126 回归 axe + 组件走查）**
+- 两个既有 axe serious：footer 正文内链接仅靠颜色区分（link-in-text-block）、季徽章计数 `opacity-70` 对比度不足；原生 select/date 控件无定制样式；六处空状态为纯文字，缺插画与视觉层次。
+
+**修复**
+- R127 axe 修复：footer 正文链接加常显下划线（underline-offset-2）；季徽章计数 opacity-70 → text-slate-300 满足对比度。
+- R128 表单控件现代化：select 去原生箭头换自绘 chevron（data URI SVG，slate-400）、统一 dark color-scheme（select/date/search 原生弹层跟随深色）。
+- R129 空状态插画：新增 EmptyState 组件（自绘场记板+播放三角 SVG 插画，violet 渐变），应用到搜索无结果/Library 空/History 空/Calendar 空/自建列表空/公开列表空六处。
+
+**证据**：线上回归见 PR 评论（视觉批 2 回归轮）。
+
 ## 视觉专项 Rounds 122-125 — 2026-08-05（视觉/品牌/特效升级·第一批）
 
 **发现（竞品视觉调研，见 docs/visual-research.md）**
