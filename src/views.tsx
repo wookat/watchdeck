@@ -38,7 +38,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <meta property="og:image" content={ogImage ?? "https://watchdeck.zalize.com/og-default.png"} />
       <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
-      <link rel="stylesheet" href="/styles.css" />
+      <link rel="stylesheet" href="/styles.css?v=125" />
       <script src="/app.js" defer></script>
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
