@@ -911,10 +911,10 @@ export const ShowPage: FC<{
                   </span>
                   <div class="min-w-0 flex-1">
                     <p class="line-clamp-1 font-medium">{ep.name}</p>
-                    <p class="text-xs text-slate-400">{ep.air_date ?? "TBA"}</p>
+                    <p class="whitespace-nowrap text-xs text-slate-400">{ep.air_date ?? "TBA"}</p>
                   </div>
                   {user && (
-                    <div class="flex shrink-0 items-center gap-2">
+                    <div class="flex max-w-[60%] flex-wrap items-center justify-end gap-2">
                       {!isWatched && (
                         <form action="/api/watch-up-to" method="post">
                           <input type="hidden" name="tmdb_id" value={String(show.id)} />
@@ -1538,6 +1538,7 @@ export interface UserStats {
   topShowThisMonth: { title: string; eps: number } | null;
   currentStreak: number;
   bestStreak: number;
+  topEpisodes: { title: string; tmdb_id: number; season: number; episode: number; rating: number }[];
 }
 
 const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
@@ -1657,6 +1658,21 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
                 </li>
               );
             })}
+          </ul>
+        </div>
+      )}
+      {stats.topEpisodes.length > 0 && (
+        <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h2 class="mb-4 font-semibold">Top episodes</h2>
+          <ul class="space-y-1.5">
+            {stats.topEpisodes.map((e) => (
+              <li class="flex items-center gap-2 text-sm">
+                <span class="w-16 shrink-0 text-amber-300">{"★".repeat(e.rating)}</span>
+                <a href={`/shows/${e.tmdb_id}-${slugify(e.title)}?season=${e.season}`} class="min-w-0 truncate hover:text-violet-400">
+                  {e.title} · S{String(e.season).padStart(2, "0")}E{String(e.episode).padStart(2, "0")}
+                </a>
+              </li>
+            ))}
           </ul>
         </div>
       )}
