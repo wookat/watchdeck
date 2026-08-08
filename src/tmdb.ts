@@ -270,6 +270,11 @@ export async function personCredits(env: Env, id: number, limit = 24): Promise<P
     .slice(0, limit);
 }
 
+export async function movieDirectors(env: Env, id: number): Promise<{ id: number; name: string }[]> {
+  const res = await tmdb<{ crew?: { id: number; name: string; job?: string }[] }>(env, `/movie/${id}/credits`, 7 * 24 * 3600);
+  return (res.crew ?? []).filter((m) => m.job === "Director").map((m) => ({ id: m.id, name: m.name }));
+}
+
 export async function topCast(env: Env, type: "tv" | "movie", id: number, limit = 8): Promise<CastMember[]> {
   const res = await tmdb<{ cast: CastMember[] }>(env, `/${type}/${id}/${type === "tv" ? "aggregate_credits" : "credits"}`, 7 * 24 * 3600);
   return (res.cast ?? []).slice(0, limit).map((m) => ({

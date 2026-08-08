@@ -47,6 +47,8 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <meta property="og:site_name" content="WatchDeck" />
       <meta property="og:type" content={ogType ?? "website"} />
       <meta property="og:image" content={ogImage ?? "https://watchdeck.zalize.com/og-default.png"} />
+      <meta property="og:image:alt" content={title ? `${title} — WatchDeck` : "WatchDeck — Track your TV shows & movies on the web"} />
+      <meta property="og:locale" content="en_US" />
       <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <link rel="preconnect" href="https://image.tmdb.org" />
@@ -1324,7 +1326,8 @@ export const MoviePage: FC<{
   trailer?: string | null;
   myServices?: Set<number>;
   lists?: ListRef[];
-}> = ({ movie, watchCount, tracked, user, recs, providers, cast, trailer, myServices, lists }) => {
+  directors?: { id: number; name: string }[];
+}> = ({ movie, watchCount, tracked, user, recs, providers, cast, trailer, myServices, lists, directors }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
   const watched = watchCount > 0;
   return (
@@ -1341,6 +1344,19 @@ export const MoviePage: FC<{
         <p class="mt-1 text-sm text-slate-400">
           {movie.release_date?.slice(0, 4)} {movie.runtime ? `· ${movie.runtime} min` : ""} · ★ {movie.vote_average?.toFixed(1)}
         </p>
+        {(directors?.length ?? 0) > 0 && (
+          <p class="mt-1 text-sm text-slate-400">
+            Directed by{" "}
+            {directors!.map((p, i) => (
+              <>
+                {i > 0 && ", "}
+                <a href={`/person/${p.id}-${slugify(p.name)}`} class="text-violet-400 hover:underline">
+                  {p.name}
+                </a>
+              </>
+            ))}
+          </p>
+        )}
         <p class="mt-1 text-sm text-slate-400">
           {movie.genres.map((g) => g.name).join(", ")}
           {trailer && (
