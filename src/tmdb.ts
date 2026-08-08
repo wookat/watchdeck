@@ -175,6 +175,14 @@ export const STREAMING_SERVICES: [number, string][] = [
   [43, "Starz"],
 ];
 
+export function popularPeople(env: Env, page = 1) {
+  return tmdb<{ results: { id: number; name: string; profile_path: string | null }[] }>(
+    env,
+    `/person/popular?page=${Math.min(Math.max(page, 1), 10)}`,
+    24 * 3600
+  );
+}
+
 export async function watchProviders(env: Env, type: "tv" | "movie", id: number, region = "US"): Promise<WatchProviders | null> {
   const res = await tmdb<{ results: Record<string, WatchProviders | undefined> }>(env, `/${type}/${id}/watch/providers`, 24 * 3600);
   return res.results[region] ?? null;

@@ -650,27 +650,35 @@ export const PersonPage: FC<{ person: PersonDetails; credits: PersonCredit[] }> 
         {person.biography && <p class="mt-4 line-clamp-[8] max-w-2xl whitespace-pre-line text-slate-300">{person.biography}</p>}
       </div>
     </div>
-    {credits.length > 0 && (
-      <div class="mt-12">
-        <h2 class="mb-4 text-xl font-semibold">Known for</h2>
-        <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-          {credits.map((cr) => {
-            const title = cr.title ?? cr.name ?? "";
-            return (
-              <a href={`/${cr.media_type === "tv" ? "shows" : "movies"}/${cr.id}-${slugify(title)}`} class="poster-card group block">
-                <img
-                  src={poster(cr.poster_path)}
-                  alt={title}
-                  loading="lazy"
-                  class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover"
-                />
-                <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{title}</p>
-                {cr.character && <p class="line-clamp-1 text-xs text-slate-400">as {cr.character}</p>}
-              </a>
-            );
-          })}
-        </div>
-      </div>
+    {(
+      [
+        ["TV shows", credits.filter((cr) => cr.media_type === "tv")],
+        ["Movies", credits.filter((cr) => cr.media_type === "movie")],
+      ] as const
+    ).map(
+      ([label, group]) =>
+        group.length > 0 && (
+          <div class="mt-12">
+            <h2 class="mb-4 text-xl font-semibold">{label}</h2>
+            <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+              {group.map((cr) => {
+                const title = cr.title ?? cr.name ?? "";
+                return (
+                  <a href={`/${cr.media_type === "tv" ? "shows" : "movies"}/${cr.id}-${slugify(title)}`} class="poster-card group block">
+                    <img
+                      src={poster(cr.poster_path)}
+                      alt={title}
+                      loading="lazy"
+                      class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover"
+                    />
+                    <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{title}</p>
+                    {cr.character && <p class="line-clamp-1 text-xs text-slate-400">as {cr.character}</p>}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        )
     )}
   </div>
 );
@@ -1436,7 +1444,8 @@ export const BrowseIndex: FC<{
   movieGenres: { id: number; name: string }[];
   networks: readonly { id: number; name: string }[];
   years: number[];
-}> = ({ tvGenres, movieGenres, networks, years }) => (
+  people?: { id: number; name: string; profile_path: string | null }[];
+}> = ({ tvGenres, movieGenres, networks, years, people }) => (
   <div>
     <h1 class="mb-2 text-2xl font-bold">Browse TV shows &amp; movies</h1>
     <p class="mb-8 text-slate-400">Find your next watch by genre, year or network — powered by TMDB.</p>
@@ -1496,6 +1505,26 @@ export const BrowseIndex: FC<{
         ))}
       </div>
     </section>
+    {people && people.length > 0 && (
+      <section class="mb-10">
+        <h2 class="mb-4 text-xl font-semibold">Popular people</h2>
+        <ul class="flex flex-wrap gap-4">
+          {people.map((p) => (
+            <li class="w-20 text-center">
+              <a href={`/person/${p.id}-${slugify(p.name)}`} class="group block">
+                <img
+                  src={`https://image.tmdb.org/t/p/w185${p.profile_path}`}
+                  alt={p.name}
+                  loading="lazy"
+                  class="mx-auto aspect-square w-16 rounded-full border border-slate-800 object-cover"
+                />
+                <p class="mt-1.5 line-clamp-2 text-xs group-hover:text-violet-400">{p.name}</p>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )}
   </div>
 );
 
