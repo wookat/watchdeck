@@ -2057,7 +2057,10 @@ export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: n
 
 export const StatsPage: FC<{ stats: UserStats; shareUrl: string | null }> = ({ stats, shareUrl }) => (
   <div>
-    <h1 class="mb-6 text-2xl font-bold">Your watch stats</h1>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-bold">Your watch stats</h1>
+      <a href="/wrapped" class="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white hover:opacity-90">🎬 Your {new Date().getUTCFullYear()} Wrapped</a>
+    </div>
     <StatsBody stats={stats} />
     <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
       <h2 class="font-semibold">Share your profile</h2>
@@ -2109,6 +2112,174 @@ export const PublicProfilePage: FC<{ stats: UserStats; name: string; lists?: { n
     </div>
   </div>
 );
+
+export interface WrappedStats {
+  year: number;
+  eps: number;
+  movies: number;
+  hours: number;
+  days: number;
+  bestStreak: number;
+  topShows: { title: string; tmdb_id: number; eps: number; poster_path: string | null }[];
+  topGenres: { name: string; count: number }[];
+  byMonth: { month: number; count: number }[];
+  busiestMonth: { month: string; count: number } | null;
+  ratingsGiven: number;
+  avgEpisodeRating: number | null;
+  topRated: { title: string; rating: number } | null;
+  firstWatch: { title: string; date: string } | null;
+}
+
+const MONTH_ABBR = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+export const WrappedPage: FC<{ stats: WrappedStats; name: string; shareUrl?: string | null; years?: number[]; public?: boolean }> = ({ stats, name, shareUrl, years, public: isPublic }) => {
+  const monthCounts = Array.from({ length: 12 }, (_, i) => stats.byMonth.find((m) => m.month === i + 1)?.count ?? 0);
+  const maxMonth = Math.max(1, ...monthCounts);
+  const hasData = stats.eps > 0 || stats.movies > 0;
+  return (
+    <div class="mx-auto max-w-2xl">
+      <div class="relative overflow-hidden rounded-3xl border border-violet-900/60 bg-gradient-to-b from-violet-950/60 via-slate-950 to-slate-950 px-6 py-10 text-center">
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-violet-400">WatchDeck Wrapped</p>
+        <h1 class="mt-3 bg-gradient-to-r from-violet-300 via-fuchsia-300 to-violet-300 bg-clip-text text-6xl font-extrabold tracking-tight text-transparent sm:text-7xl">{stats.year}</h1>
+        <p class="mt-3 text-slate-300">{isPublic ? `${name}'s year in TV & film` : "Your year in TV & film"}</p>
+      </div>
+      {!isPublic && years && years.length > 1 && (
+        <nav class="mt-4 flex flex-wrap justify-center gap-2" aria-label="Wrapped years">
+          {years.map((y) => (
+            <a href={`/wrapped/${y}`} class={`rounded-full px-3 py-1 text-sm ${y === stats.year ? "bg-violet-600 font-semibold text-white" : "border border-slate-700 text-slate-300 hover:border-violet-500"}`} aria-current={y === stats.year ? "page" : undefined}>
+              {y}
+            </a>
+          ))}
+        </nav>
+      )}
+      {!hasData ? (
+        <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-8 text-center">
+          <p class="text-slate-300">No watches logged in {stats.year}{isPublic ? "" : " yet"}.</p>
+          {!isPublic && (
+            <p class="mt-2 text-sm text-slate-400">
+              <a href="/import" class="text-violet-400 hover:underline">Import your history</a> or mark episodes watched to build your Wrapped.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div class="mt-8 space-y-6">
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {[
+              [stats.hours.toLocaleString("en-US"), "hours watched"],
+              [String(stats.eps), "episodes"],
+              [String(stats.movies), "movies"],
+              [String(stats.days), `day${stats.days === 1 ? "" : "s"} watching`],
+            ].map(([n, label]) => (
+              <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 text-center">
+                <p class="text-3xl font-extrabold text-violet-300">{n}</p>
+                <p class="mt-1 text-sm text-slate-400">{label}</p>
+              </div>
+            ))}
+          </div>
+          {stats.topShows.length > 0 && (
+            <section class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+              <h2 class="font-semibold">Top shows of {stats.year}</h2>
+              <ol class="mt-4 flex flex-wrap justify-center gap-4">
+                {stats.topShows.map((s, i) => (
+                  <li class="w-24 text-center sm:w-28">
+                    <a href={`/shows/${s.tmdb_id}-${slugify(s.title)}`} class="group block">
+                      <div class="relative">
+                        <img src={poster(s.poster_path, "w185")} alt={s.title} width="185" height="278" loading="lazy" class="w-full rounded-xl border border-slate-800 group-hover:border-violet-500" />
+                        <span class="absolute -left-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-sm font-bold text-white">{i + 1}</span>
+                      </div>
+                      <p class="mt-2 truncate text-xs text-slate-300 group-hover:text-violet-300">{s.title}</p>
+                      <p class="text-xs text-slate-500">{s.eps} eps</p>
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+          <div class="grid gap-6 sm:grid-cols-2">
+            <section class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+              <h2 class="font-semibold">Watching rhythm</h2>
+              <div class="mt-4 flex h-24 items-end gap-1" role="img" aria-label={`Watches per month in ${stats.year}`}>
+                {monthCounts.map((n, i) => (
+                  <div class="flex flex-1 flex-col items-center gap-1">
+                    <div class="w-full rounded-t bg-gradient-to-t from-violet-700 to-fuchsia-500" style={`height:${n === 0 ? 2 : Math.max(6, Math.round((n / maxMonth) * 80))}px`} title={`${n} watches`} />
+                    <span class="text-[10px] text-slate-500">{MONTH_ABBR[i]}</span>
+                  </div>
+                ))}
+              </div>
+              {stats.busiestMonth && (
+                <p class="mt-3 text-sm text-slate-400">
+                  Busiest month: <span class="font-semibold text-violet-300">{stats.busiestMonth.month}</span> ({stats.busiestMonth.count} watches)
+                </p>
+              )}
+              {stats.bestStreak >= 2 && (
+                <p class="mt-1 text-sm text-slate-400">
+                  🔥 Longest streak: <span class="font-semibold text-violet-300">{stats.bestStreak} days</span> in a row
+                </p>
+              )}
+            </section>
+            <section class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+              <h2 class="font-semibold">Taste profile</h2>
+              {stats.topGenres.length === 0 ? (
+                <p class="mt-3 text-sm text-slate-400">Not enough data for genres.</p>
+              ) : (
+                <ul class="mt-3 flex flex-wrap gap-2">
+                  {stats.topGenres.map((g, i) => (
+                    <li class={`rounded-full px-3 py-1 text-sm ${i === 0 ? "bg-violet-600 font-semibold text-white" : "border border-slate-700 text-slate-300"}`}>{g.name}</li>
+                  ))}
+                </ul>
+              )}
+              {stats.topRated && (
+                <p class="mt-4 text-sm text-slate-400">
+                  Highest rated: <span class="font-semibold text-violet-300">{stats.topRated.title}</span> {"★".repeat(stats.topRated.rating)}
+                </p>
+              )}
+              {stats.ratingsGiven > 0 && (
+                <p class="mt-1 text-sm text-slate-400">
+                  {stats.ratingsGiven} episode rating{stats.ratingsGiven === 1 ? "" : "s"} given{stats.avgEpisodeRating != null ? <> · avg ★{stats.avgEpisodeRating}</> : null}
+                </p>
+              )}
+              {stats.firstWatch && (
+                <p class="mt-1 text-sm text-slate-400">
+                  First watch of {stats.year}: <span class="font-semibold text-violet-300">{stats.firstWatch.title}</span> on {stats.firstWatch.date}
+                </p>
+              )}
+            </section>
+          </div>
+        </div>
+      )}
+      {isPublic ? (
+        <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6 text-center">
+          <p class="text-slate-300">Want a Wrapped like this?</p>
+          <a href="/signup" class="mt-3 inline-block rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90">Start tracking — free in beta</a>
+        </div>
+      ) : (
+        <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h2 class="font-semibold">Share your {stats.year} Wrapped</h2>
+          {shareUrl ? (
+            <div class="mt-3">
+              <p class="text-sm text-slate-400">Anyone with this link sees a read-only copy with a shareable poster card (no email shown):</p>
+              <p class="mt-2 break-all rounded-lg bg-slate-800/70 px-3 py-2 font-mono text-sm text-violet-300">{shareUrl}</p>
+              <form action="/api/wrapped/share" method="post" class="mt-3">
+                <input type="hidden" name="year" value={String(stats.year)} />
+                <input type="hidden" name="enabled" value="" />
+                <button class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-red-500 hover:text-red-400">Disable share link</button>
+              </form>
+            </div>
+          ) : (
+            <div class="mt-3">
+              <p class="text-sm text-slate-400">Create a public link with a poster-style share card — perfect for a year-in-review post.</p>
+              <form action="/api/wrapped/share" method="post" class="mt-3">
+                <input type="hidden" name="year" value={String(stats.year)} />
+                <input type="hidden" name="enabled" value="1" />
+                <button class="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white hover:opacity-90">Create share link</button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const PricingPage: FC<{ loggedIn?: boolean }> = ({ loggedIn }) => (
   <div class="mx-auto max-w-4xl">
