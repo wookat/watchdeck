@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 161;
+export const CSS_VERSION = 162;
 
 export interface ListRef {
   id: number;
@@ -116,7 +116,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
             . This product uses the TMDB API but is not endorsed or certified by TMDB.
           </p>
           <p>
-            <a href="/pricing" class="hover:underline">Pricing</a> · <a href="/privacy" class="hover:underline">Privacy</a> · <a href="/terms" class="hover:underline">Terms</a>
+            <a href="/about" class="hover:underline">About & Press</a> · <a href="/guides" class="hover:underline">Guides</a> · <a href="/pricing" class="hover:underline">Pricing</a> · <a href="/privacy" class="hover:underline">Privacy</a> · <a href="/terms" class="hover:underline">Terms</a>
           </p>
           <p>
             More from us:{" "}
@@ -249,6 +249,142 @@ export const landingFaqs: [string, string][] = [
     "No. WatchDeck runs entirely in your browser and works on phones, tablets and desktops.",
   ],
 ];
+
+const GuideLayout: FC<PropsWithChildren<{ title: string; updated: string }>> = ({ title, updated, children }) => (
+  <article class="mx-auto max-w-2xl space-y-4 text-slate-300">
+    <p class="text-sm">
+      <a href="/guides" class="text-violet-400 hover:underline">Guides</a> <span class="text-slate-500">/</span>
+    </p>
+    <h1 class="text-2xl font-bold text-white">{title}</h1>
+    <p class="text-sm text-slate-400">Last updated: {updated}</p>
+    {children}
+    <p class="rounded-2xl border border-violet-900/60 bg-violet-950/30 p-5">
+      Ready to try it? <a href="/signup" class="font-medium text-violet-400 hover:underline">Join the WatchDeck beta</a> — every
+      feature is free while the beta lasts, and your data exports back out any time.
+    </p>
+  </article>
+);
+
+export const GUIDES: { slug: string; title: string; description: string; body: FC }[] = [
+  {
+    slug: "export-tv-time-data",
+    title: "How to export your TV Time data (and what's inside the ZIP)",
+    description: "Step-by-step: requesting the TV Time GDPR export, what the ZIP contains, and how to bring your full watch history to WatchDeck.",
+    body: () => (
+      <>
+        <h2 class="text-lg font-semibold text-white">Getting the export</h2>
+        <p>
+          TV Time provided data exports under GDPR: an email to their support (or the in-app privacy request while the
+          service was live) returned a ZIP with your complete account data. If you requested one before the shutdown,
+          that ZIP is all you need — don't unpack or edit it.
+        </p>
+        <h2 class="text-lg font-semibold text-white">What's inside</h2>
+        <p>
+          The ZIP contains CSVs including <code class="text-violet-300">tracking-prod-records</code> (episodes you watched, with timestamps),
+          seen movies, your followed shows and your ratings. Episode rows reference shows by name and by TVDB-style IDs;
+          movie rows carry titles and watch dates. Ratings appear for both shows and episodes.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Importing it into WatchDeck</h2>
+        <p>
+          On the <a href="/import" class="text-violet-400 hover:underline">Import page</a>, upload the ZIP as-is. WatchDeck parses the CSVs,
+          matches shows/episodes/movies against TMDB, shows you exactly what it found, and only writes after you confirm.
+          Anything it can't match automatically is listed for one-click manual binding — nothing is silently dropped.
+          Afterwards your <a href="/home" class="text-violet-400 hover:underline">Next Up</a> screen picks up from the exact episode you left off.
+        </p>
+        <p>
+          Also importable: Trakt- and Serializd-style CSVs and Netflix viewing history — see{" "}
+          <a href="/guides/import-netflix-history" class="text-violet-400 hover:underline">importing your Netflix history</a>.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: "tv-time-alternatives",
+    title: "TV Time alternatives in 2026: an honest comparison",
+    description: "TV Time shut down — here's how Trakt, Hobi, Showly, Simkl and WatchDeck compare for episode tracking, imports and price.",
+    body: () => (
+      <>
+        <p>
+          TV Time's shutdown left its users choosing a new tracker. The right one depends on what you need; here's a
+          fair rundown (we build WatchDeck, and we'll say so where it matters).
+        </p>
+        <h2 class="text-lg font-semibold text-white">Trakt</h2>
+        <p>
+          The most established tracker with a huge ecosystem and media-center integrations. Web + apps. The free tier is
+          ad-supported and gates several features (year in review, monthly stats, unlimited lists) behind VIP.
+          TV Time imports are possible but historically lossy around episode-level data.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Hobi & Showly</h2>
+        <p>
+          Polished mobile apps; Hobi positioned itself as a TV Time migration destination. Both are phone-first —
+          if you want to track from a laptop or any browser, neither offers a full web experience.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Simkl</h2>
+        <p>Broad scope (TV, anime, movies) with apps and a web UI; the interface is dense and some features are premium.</p>
+        <h2 class="text-lg font-semibold text-white">WatchDeck (that's us)</h2>
+        <p>
+          Web-first and built specifically around the TV Time export: upload the GDPR ZIP unchanged and episodes, movies
+          and ratings all come across, with a confirmation step and manual binding for edge cases. Next-episode home
+          screen, airing <a href="/calendar" class="text-violet-400 hover:underline">calendar</a> with iCal + email reminders,{" "}
+          <a href="/stats" class="text-violet-400 hover:underline">stats</a>, shareable lists and a year-end Wrapped.
+          Every feature is <a href="/pricing" class="text-violet-400 hover:underline">free while in beta</a>, with full JSON/CSV export always.
+        </p>
+        <p>
+          Whichever you pick: get your data in writing. A tracker worth your history lets you export it back out —{" "}
+          <a href="/guides/export-tv-time-data" class="text-violet-400 hover:underline">start from your TV Time ZIP</a>.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: "import-netflix-history",
+    title: "How to import your Netflix viewing history",
+    description: "Download ViewingActivity.csv from Netflix and turn years of viewing into a tracked library in one upload.",
+    body: () => (
+      <>
+        <h2 class="text-lg font-semibold text-white">Getting the file from Netflix</h2>
+        <p>
+          Netflix lets each profile download its full viewing history: Account → Profiles → Viewing activity →
+          "Download all". You get <code class="text-violet-300">ViewingActivity.csv</code> — two columns, title and date, going back years.
+        </p>
+        <h2 class="text-lg font-semibold text-white">What WatchDeck does with it</h2>
+        <p>
+          Upload the CSV on the <a href="/import" class="text-violet-400 hover:underline">Import page</a>. Series rows (Netflix formats them as
+          "Show: Season: Episode") add the show to your library; movie rows are marked watched with their date. As with
+          every import, you see the matched list first and confirm before anything is written, and unmatched titles can
+          be bound manually.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Tips</h2>
+        <p>
+          Import your <a href="/guides/export-tv-time-data" class="text-violet-400 hover:underline">TV Time export</a> first if you have one —
+          it carries episode-level history that Netflix's file lacks, and the Netflix import then fills gaps like
+          movies you only watched there. Afterwards, "⇤ up to here" bulk-marking makes squaring up partial seasons fast.
+        </p>
+      </>
+    ),
+  },
+];
+
+export const GuidesIndexPage: FC = () => (
+  <div class="mx-auto max-w-2xl">
+    <h1 class="text-2xl font-bold text-white">Guides</h1>
+    <p class="mt-2 text-slate-400">Practical guides for moving in and getting the most out of your watch history.</p>
+    <ul class="mt-6 space-y-4">
+      {GUIDES.map((g) => (
+        <li class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <a href={`/guides/${g.slug}`} class="font-semibold text-violet-400 hover:underline">{g.title}</a>
+          <p class="mt-1 text-sm text-slate-400">{g.description}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
+export const GuidePage: FC<{ guide: (typeof GUIDES)[number] }> = ({ guide }) => (
+  <GuideLayout title={guide.title} updated="August 5, 2026">
+    <guide.body />
+  </GuideLayout>
+);
 
 export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: string }> = ({ mode, error, next }) => (
   <div class="mx-auto max-w-sm py-10">
@@ -1888,6 +2024,51 @@ export const PrivacyPage: FC = () => (
     <p>
       Show and movie metadata comes from <a href="https://www.themoviedb.org/" rel="noopener" class="text-violet-400 hover:underline">TMDB</a>.
       Poster images are loaded from TMDB's image CDN. Transactional email is delivered by Resend. Hosting is provided by Cloudflare.
+    </p>
+  </div>
+);
+
+export const AboutPage: FC = () => (
+  <div class="mx-auto max-w-2xl space-y-4 text-slate-300">
+    <h1 class="text-2xl font-bold text-white">About WatchDeck</h1>
+    <p>
+      WatchDeck is a web-first tracker for TV shows and movies. It exists because millions of people who kept years of
+      watch history in TV Time were left without a good home for it — WatchDeck lets you drop in your TV Time GDPR
+      export (or a Trakt, Serializd or Netflix CSV) and pick up your next episode about a minute later, from any
+      browser, with nothing to install.
+    </p>
+    <p>
+      Beyond tracking, WatchDeck gives you an airing calendar with iCal feeds and email reminders, watch statistics,
+      shareable lists and profiles, streaming-availability filters and a year-end Wrapped. Everything works the same on
+      phone and desktop. WatchDeck is currently in beta, and every feature is free while the beta lasts.
+    </p>
+    <p>
+      WatchDeck is built by the team behind <a href="https://zalize.com" rel="noopener" class="text-violet-400 hover:underline">zalize.com</a>.
+      Metadata comes from <a href="https://www.themoviedb.org/" rel="noopener" class="text-violet-400 hover:underline">TMDB</a>
+      {" "}(this product uses the TMDB API but is not endorsed or certified by TMDB).
+    </p>
+    <h2 class="text-lg font-semibold text-white">Press & media kit</h2>
+    <p>
+      <strong class="text-white">Boilerplate:</strong> “WatchDeck is a web-first TV show and movie tracker. Import your
+      TV Time, Trakt, Serializd or Netflix history in one click and continue your next episode from any browser — with
+      an airing calendar, watch statistics, shareable lists and a year-end Wrapped. Free while in beta at
+      watchdeck.zalize.com.”
+    </p>
+    <ul class="list-inside list-disc space-y-1 text-sm">
+      <li>
+        Logo (SVG): <a href="/favicon.svg" download class="text-violet-400 hover:underline">favicon.svg</a> — violet clapperboard with play
+        triangle; keep clear space around it and don't recolor it.
+      </li>
+      <li>
+        Social/OG card (PNG 1200×630): <a href="/og-default.png" download class="text-violet-400 hover:underline">og-default.png</a>
+      </li>
+      <li>App icon (PNG 512×512): <a href="/icon-512.png" download class="text-violet-400 hover:underline">icon-512.png</a></li>
+      <li>Name: always “WatchDeck” — one word, capital W and D. Not “Watchdeck”, “Watch Deck” or “WD”.</li>
+      <li>Brand colors: violet #7c3aed on near-black #020617.</li>
+    </ul>
+    <p>
+      Press, partnership or data questions:{" "}
+      <a href="mailto:watchdeck@zalize.com" class="text-violet-400 hover:underline">watchdeck@zalize.com</a>.
     </p>
   </div>
 );
