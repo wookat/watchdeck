@@ -2568,7 +2568,7 @@ export const PricingPage: FC<{ loggedIn?: boolean }> = ({ loggedIn }) => (
         </a>
       )}
     </div>
-    <p class="mt-6 text-center text-xs text-slate-500">
+    <p class="mt-6 text-center text-xs text-slate-400">
       Beta members will be told well in advance before any plan change, and exporting your data stays free forever.
     </p>
   </div>
