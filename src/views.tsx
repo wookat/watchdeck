@@ -3,7 +3,13 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 163;
+export const CSS_VERSION = 164;
+
+const Hint: FC<{ tip: string }> = ({ tip }) => (
+  <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
+    ?
+  </span>
+);
 
 export interface ListRef {
   id: number;
@@ -44,6 +50,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <link rel="preconnect" href="https://image.tmdb.org" />
+      <link rel="preload" href="/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
       <link rel="stylesheet" href={`/styles.css?v=${CSS_VERSION}`} />
       <script src={`/app.js?v=${CSS_VERSION}`} defer></script>
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -59,7 +66,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
         Skip to content
       </a>
       <nav id="site-nav" class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-        <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-3">
+        <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-3 xl:max-w-7xl">
           <a href={user ? "/home" : "/"} data-logo class="flex items-center gap-2 text-lg font-bold tracking-tight">
             <img src="/favicon.svg" alt="" width="24" height="24" class="h-6 w-6" />
             WatchDeck
@@ -102,9 +109,9 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
           </div>
         </div>
       </nav>
-      <main id="main" class="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <main id="main" class="mx-auto max-w-6xl px-4 py-6 xl:max-w-7xl">{children}</main>
       <footer class="mt-16 border-t border-slate-800 py-8 text-sm text-slate-400">
-        <div class="mx-auto max-w-6xl space-y-3 px-4">
+        <div class="mx-auto max-w-6xl space-y-3 px-4 xl:max-w-7xl">
           <p>
             WatchDeck — web-first TV & movie tracking, free while in beta. <a href="/import" class="text-violet-400 underline underline-offset-2">Import from TV Time</a>.
           </p>
@@ -751,7 +758,7 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
           </ul>
         </div>
       )}
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {filtered.map((r) => {
           const inLib = libraryIds?.has(`${r.media_type}:${r.id}`);
           return (
@@ -787,7 +794,7 @@ export const TrendingSection: FC<{ shows: SearchResult[]; movies: SearchResult[]
   <div class="space-y-10">
     <section>
       <h2 class="mb-4 text-xl font-semibold">Trending shows this week</h2>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {shows.slice(0, 12).map((s) => (
           <MediaCard item={s} type="tv" />
         ))}
@@ -795,7 +802,7 @@ export const TrendingSection: FC<{ shows: SearchResult[]; movies: SearchResult[]
     </section>
     <section>
       <h2 class="mb-4 text-xl font-semibold">Trending movies this week</h2>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {movies.slice(0, 12).map((m) => (
           <MediaCard item={m} type="movie" />
         ))}
@@ -855,7 +862,7 @@ export const PersonPage: FC<{ person: PersonDetails; credits: PersonCredit[] }> 
         group.length > 0 && (
           <div class="mt-12">
             <h2 class="mb-4 text-xl font-semibold">{label}</h2>
-            <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+            <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
               {group.map((cr) => {
                 const title = cr.title ?? cr.name ?? "";
                 return (
@@ -882,7 +889,7 @@ export const RecsSection: FC<{ recs: SearchResult[]; type: "tv" | "movie" }> = (
   recs.length === 0 ? null : (
     <div class="mt-12">
       <h2 class="mb-4 text-xl font-semibold">More like this</h2>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {recs.slice(0, 12).map((r) => (
           <MediaCard item={r} type={type} />
         ))}
@@ -1479,7 +1486,7 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
       </EmptyState>
       )
     ) : (
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {rows.map((r) => (
           <div>
             <a href={`/${r.media_type === "tv" ? "shows" : "movies"}/${r.tmdb_id}-${slugify(r.title)}`} class="group block">
@@ -1581,6 +1588,7 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
       <a href={feedUrl} class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-violet-300 hover:border-violet-500">
         📅 Subscribe (iCal)
       </a>
+      <Hint tip="iCal is a standard calendar feed: paste the link into Google or Apple Calendar once and air dates keep updating there automatically." />
       <form action="/api/feed/rotate" method="post">
         <button class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-400 hover:border-violet-500 hover:text-violet-300" title="Invalidate the current iCal URL and generate a new one">
           ↻ Reset feed URL
@@ -1744,7 +1752,7 @@ export const BrowseGenre: FC<{
         Popular {genre.name.toLowerCase()} {type === "tv" ? "series" : "films"} to track on WatchDeck.{" "}
         <a href="/browse" class="text-violet-400 hover:underline">All genres</a>
       </p>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
           <MediaCard item={r} type={type} />
         ))}
@@ -1772,7 +1780,7 @@ export const BrowseNetwork: FC<{
         Popular series on {network.name} to track on WatchDeck.{" "}
         <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; networks</a>
       </p>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
           <MediaCard item={r} type="tv" />
         ))}
@@ -1803,7 +1811,7 @@ export const BrowseYear: FC<{
         The most popular {type === "tv" ? `series that premiered in ${year}` : `films released in ${year}`}, ready to track on WatchDeck.{" "}
         <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; years</a>
       </p>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
           <MediaCard item={r} type={type} />
         ))}
@@ -1844,15 +1852,18 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
     <div>
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {[
-          [stats.hoursWatched.toLocaleString("en-US"), "hours watched"],
-          [String(stats.epsWatched), "episodes watched"],
-          [String(stats.moviesWatched), "movies watched"],
-          [String(stats.showsTracked), "shows tracked"],
-          [String(stats.completedShows), "shows completed"],
-        ].map(([n, label]) => (
+          [stats.hoursWatched.toLocaleString("en-US"), "hours watched", "Estimated from each episode's and movie's real runtime — rewatches count every time you watch."],
+          [String(stats.epsWatched), "episodes watched", "Unique episodes you've marked as watched, across all your shows."],
+          [String(stats.moviesWatched), "movies watched", "Different movies you've logged at least once."],
+          [String(stats.showsTracked), "shows tracked", "Shows in your library — watching, planning to watch, or finished."],
+          [String(stats.completedShows), "shows completed", "Shows where you've seen every aired episode. Nice work."],
+        ].map(([n, label, tip]) => (
           <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 text-center">
-            <p class="text-3xl font-extrabold text-violet-300">{n}</p>
-            <p class="mt-1 text-sm text-slate-400">{label}</p>
+            <p class="stat-num text-3xl font-extrabold text-violet-300">{n}</p>
+            <p class="mt-1 text-sm text-slate-400">
+              {label}
+              <Hint tip={tip} />
+            </p>
           </div>
         ))}
       </div>
@@ -1861,7 +1872,10 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
           So far in {new Date().getUTCFullYear()}: <span class="font-semibold text-violet-300">{stats.epsThisYear}</span> episode{stats.epsThisYear === 1 ? "" : "s"} and{" "}
           <span class="font-semibold text-violet-300">{stats.moviesThisYear}</span> movie{stats.moviesThisYear === 1 ? "" : "s"} watched.
           {stats.currentStreak >= 2 && (
-            <> 🔥 <span class="font-semibold text-violet-300">{stats.currentStreak}-day</span> watching streak{stats.bestStreak > stats.currentStreak ? <> (best: {stats.bestStreak} days)</> : null}.</>
+            <>
+              {" "}🔥 <span class="font-semibold text-violet-300">{stats.currentStreak}-day</span> watching streak{stats.bestStreak > stats.currentStreak ? <> (best: {stats.bestStreak} days)</> : null}.
+              <Hint tip="Consecutive days with at least one episode or movie watched. Watch anything today to keep it going." />
+            </>
           )}
           {stats.currentStreak < 2 && stats.bestStreak >= 2 && (
             <> Longest watching streak: <span class="font-semibold text-violet-300">{stats.bestStreak} days</span>.</>
@@ -1912,7 +1926,7 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
               {stats.byMonth.map((m) => (
                 <li class="flex items-center gap-2 text-xs">
                   <span class="w-16 shrink-0 text-slate-400">{m.month}</span>
-                  <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((m.eps / maxMonth) * 100))}%`} />
+                  <div class="bar-grow h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((m.eps / maxMonth) * 100))}%`} />
                   <span class="text-slate-400">{m.eps}</span>
                 </li>
               ))}
@@ -1930,7 +1944,7 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
               return (
                 <li class="flex items-center gap-2 text-xs">
                   <span class="w-16 shrink-0 text-slate-400">{y.year}</span>
-                  <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((total / maxYear) * 100))}%`} />
+                  <div class="bar-grow h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((total / maxYear) * 100))}%`} />
                   <span class="whitespace-nowrap text-slate-400">
                     {y.eps} ep{y.eps === 1 ? "" : "s"}{y.movies > 0 ? ` · ${y.movies} movie${y.movies === 1 ? "" : "s"}` : ""}
                   </span>
@@ -1950,7 +1964,7 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
               return (
                 <li class="flex items-center gap-2 text-xs">
                   <span class="w-16 shrink-0 text-slate-400">{"★".repeat(r)}</span>
-                  <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((n / maxN) * 100))}%`} />
+                  <div class="bar-grow h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((n / maxN) * 100))}%`} />
                   <span class="text-slate-400">{n}</span>
                 </li>
               );
@@ -1980,7 +1994,7 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
             {stats.topGenres.map((g) => (
               <li class="flex items-center gap-2 text-xs">
                 <span class="w-28 shrink-0 truncate text-slate-400">{g.name}</span>
-                <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((g.count / Math.max(1, stats.topGenres[0].count)) * 100))}%`} />
+                <div class="bar-grow h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((g.count / Math.max(1, stats.topGenres[0].count)) * 100))}%`} />
                 <span class="text-slate-400">{g.count}</span>
               </li>
             ))}
@@ -2403,14 +2417,17 @@ export const WrappedPage: FC<{ stats: WrappedStats; name: string; shareUrl?: str
         <div class="mt-8 space-y-6">
           <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
             {[
-              [stats.hours.toLocaleString("en-US"), "hours watched"],
-              [String(stats.eps), "episodes"],
-              [String(stats.movies), "movies"],
-              [String(stats.days), `day${stats.days === 1 ? "" : "s"} watching`],
-            ].map(([n, label]) => (
+              [stats.hours.toLocaleString("en-US"), "hours watched", "Estimated from real episode and movie runtimes."],
+              [String(stats.eps), "episodes", `Episodes you watched in ${stats.year}.`],
+              [String(stats.movies), "movies", `Movies you watched in ${stats.year}.`],
+              [String(stats.days), `day${stats.days === 1 ? "" : "s"} watching`, `Days in ${stats.year} where you watched at least one thing.`],
+            ].map(([n, label, tip]) => (
               <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 text-center">
-                <p class="text-3xl font-extrabold text-violet-300">{n}</p>
-                <p class="mt-1 text-sm text-slate-400">{label}</p>
+                <p class="stat-num text-3xl font-extrabold text-violet-300">{n}</p>
+                <p class="mt-1 text-sm text-slate-400">
+                  {label}
+                  <Hint tip={tip} />
+                </p>
               </div>
             ))}
           </div>
@@ -2436,6 +2453,7 @@ export const WrappedPage: FC<{ stats: WrappedStats; name: string; shareUrl?: str
           <div class="grid gap-6 sm:grid-cols-2">
             <section class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
               <h2 class="font-semibold">Watching rhythm</h2>
+              <p class="mt-1 text-xs text-slate-400">How your watching spread across the year, month by month.</p>
               <div class="mt-4 flex h-24 items-end gap-1" role="img" aria-label={`Watches per month in ${stats.year}`}>
                 {monthCounts.map((n, i) => (
                   <div class="flex flex-1 flex-col items-center gap-1">
@@ -2457,6 +2475,7 @@ export const WrappedPage: FC<{ stats: WrappedStats; name: string; shareUrl?: str
             </section>
             <section class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
               <h2 class="font-semibold">Taste profile</h2>
+              <p class="mt-1 text-xs text-slate-400">The genres you watched most this year — your comfort zone at a glance.</p>
               {stats.topGenres.length === 0 ? (
                 <p class="mt-3 text-sm text-slate-400">Not enough data for genres.</p>
               ) : (
@@ -2614,6 +2633,7 @@ export const ImportPage: FC = () => (
       <p id="done-detail" class="mt-1 text-sm text-slate-300"></p>
       <div id="unmatched" class="mt-3 hidden">
         <p class="text-sm font-medium text-amber-300">We couldn't match these titles — find them manually:</p>
+        <p class="mt-1 text-xs text-slate-400">This usually happens when a title was renamed or spelled differently. Search for each one and everything else stays intact — nothing was lost.</p>
         <ul id="unmatched-list" class="mt-2 space-y-1 text-sm"></ul>
       </div>
       <a href="/home" class="mt-4 inline-block rounded-lg bg-violet-600 px-4 py-2 font-medium text-white hover:bg-violet-500">
@@ -2698,7 +2718,7 @@ export const ListDetailPage: FC<{ list: { id: number; name: string }; items: { t
         Open any show or movie page and use the <span class="text-slate-300">☰ Lists</span> button to add it.
       </EmptyState>
     ) : (
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {items.map((it) => (
           <div>
             <a href={`/${it.media_type === "tv" ? "shows" : "movies"}/${it.tmdb_id}-${slugify(it.title)}`} class="group block">
@@ -2733,7 +2753,7 @@ export const PublicListPage: FC<{ name: string; owner: string; items: { tmdb_id:
     {items.length === 0 ? (
       <EmptyState title="This list is empty right now">Check back later — the owner may still be adding titles.</EmptyState>
     ) : (
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {items.map((it) => (
           <a href={`/${it.media_type === "tv" ? "shows" : "movies"}/${it.tmdb_id}-${slugify(it.title)}`} class="group block">
             <img
