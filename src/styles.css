@@ -247,9 +247,9 @@ textarea:focus {
   bottom: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
-  z-index: 30;
+  z-index: 50;
   width: max-content;
-  max-width: 230px;
+  max-width: min(230px, calc(100vw - 2rem));
   padding: 0.5rem 0.65rem;
   border-radius: 0.6rem;
   border: 1px solid #334155;
@@ -261,16 +261,31 @@ textarea:focus {
   text-align: left;
   white-space: normal;
   box-shadow: 0 10px 24px -8px rgb(0 0 0 / 0.6);
-  opacity: 0;
+  display: none;
   pointer-events: none;
 }
 .hint:hover::after,
 .hint:focus-visible::after,
 .hint:focus::after {
-  opacity: 1;
+  display: block;
 }
 @media (prefers-reduced-motion: no-preference) {
+  .hint:hover::after,
+  .hint:focus-visible::after,
+  .hint:focus::after {
+    animation: rise-in 0.15s ease both;
+  }
+}
+/* small screens: tooltip becomes a bottom sheet so it can never leave the viewport */
+@media (max-width: 640px) {
   .hint::after {
-    transition: opacity 0.15s ease;
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    top: auto;
+    bottom: 1rem;
+    transform: none;
+    width: auto;
+    max-width: none;
   }
 }
