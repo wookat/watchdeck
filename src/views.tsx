@@ -3,7 +3,13 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 150;
+export const CSS_VERSION = 165;
+
+const Hint: FC<{ tip: string }> = ({ tip }) => (
+  <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
+    ?
+  </span>
+);
 
 export interface ListRef {
   id: number;
@@ -44,8 +50,9 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <link rel="preconnect" href="https://image.tmdb.org" />
+      <link rel="preload" href="/fonts/sora-latin.woff2" as="font" type="font/woff2" crossorigin="anonymous" />
       <link rel="stylesheet" href={`/styles.css?v=${CSS_VERSION}`} />
-      <script src="/app.js" defer></script>
+      <script src={`/app.js?v=${CSS_VERSION}`} defer></script>
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       <link rel="manifest" href="/manifest.webmanifest" />
@@ -59,7 +66,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
         Skip to content
       </a>
       <nav id="site-nav" class="sticky top-0 z-40 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-        <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-3">
+        <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-3 px-4 py-3 xl:max-w-7xl">
           <a href={user ? "/home" : "/"} data-logo class="flex items-center gap-2 text-lg font-bold tracking-tight">
             <img src="/favicon.svg" alt="" width="24" height="24" class="h-6 w-6" />
             WatchDeck
@@ -102,9 +109,9 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
           </div>
         </div>
       </nav>
-      <main id="main" class="mx-auto max-w-6xl px-4 py-6">{children}</main>
+      <main id="main" class="mx-auto max-w-6xl px-4 py-6 xl:max-w-7xl">{children}</main>
       <footer class="mt-16 border-t border-slate-800 py-8 text-sm text-slate-400">
-        <div class="mx-auto max-w-6xl space-y-3 px-4">
+        <div class="mx-auto max-w-6xl space-y-3 px-4 xl:max-w-7xl">
           <p>
             WatchDeck — web-first TV & movie tracking, free while in beta. <a href="/import" class="text-violet-400 underline underline-offset-2">Import from TV Time</a>.
           </p>
@@ -116,7 +123,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
             . This product uses the TMDB API but is not endorsed or certified by TMDB.
           </p>
           <p>
-            <a href="/pricing" class="hover:underline">Pricing</a> · <a href="/privacy" class="hover:underline">Privacy</a> · <a href="/terms" class="hover:underline">Terms</a>
+            <a href="/about" class="hover:underline">About & Press</a> · <a href="/guides" class="hover:underline">Guides</a> · <a href="/pricing" class="hover:underline">Pricing</a> · <a href="/privacy" class="hover:underline">Privacy</a> · <a href="/terms" class="hover:underline">Terms</a>
           </p>
           <p>
             More from us:{" "}
@@ -158,6 +165,22 @@ export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
       <p class="mt-6 text-sm text-slate-500">
         No app to install · No ads · Your data exports any time · <a href="/pricing" class="text-violet-400 hover:underline">Free while in beta</a>
       </p>
+    </section>
+    <section class="py-10">
+      <h2 class="mb-6 text-center text-2xl font-bold">Up and running in three steps</h2>
+      <ol class="mx-auto grid max-w-4xl gap-4 sm:grid-cols-3">
+        {[
+          ["1", "Bring your history", "Upload your TV Time GDPR ZIP (or a Trakt/Serializd/Netflix CSV) — or just search and add your first show."],
+          ["2", "Pick up where you left off", "Next Up shows exactly which episode is next for every show, with one-tap ✓ Watched."],
+          ["3", "Enjoy the extras", "Airing calendar with reminders, watch statistics, shareable lists and your year-end Wrapped."],
+        ].map(([n, h, p]) => (
+          <li class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-violet-600 font-bold text-white">{n}</span>
+            <h3 class="mb-1 mt-3 font-semibold">{h}</h3>
+            <p class="text-sm text-slate-400">{p}</p>
+          </li>
+        ))}
+      </ol>
     </section>
     <section class="grid gap-6 py-10 sm:grid-cols-3">
       {[
@@ -233,6 +256,142 @@ export const landingFaqs: [string, string][] = [
     "No. WatchDeck runs entirely in your browser and works on phones, tablets and desktops.",
   ],
 ];
+
+const GuideLayout: FC<PropsWithChildren<{ title: string; updated: string }>> = ({ title, updated, children }) => (
+  <article class="mx-auto max-w-2xl space-y-4 text-slate-300">
+    <p class="text-sm">
+      <a href="/guides" class="text-violet-400 underline underline-offset-2">Guides</a> <span class="text-slate-500">/</span>
+    </p>
+    <h1 class="text-2xl font-bold text-white">{title}</h1>
+    <p class="text-sm text-slate-400">Last updated: {updated}</p>
+    {children}
+    <p class="rounded-2xl border border-violet-900/60 bg-violet-950/30 p-5">
+      Ready to try it? <a href="/signup" class="font-medium text-violet-400 underline underline-offset-2">Join the WatchDeck beta</a> — every
+      feature is free while the beta lasts, and your data exports back out any time.
+    </p>
+  </article>
+);
+
+export const GUIDES: { slug: string; title: string; description: string; body: FC }[] = [
+  {
+    slug: "export-tv-time-data",
+    title: "How to export your TV Time data (and what's inside the ZIP)",
+    description: "Step-by-step: requesting the TV Time GDPR export, what the ZIP contains, and how to bring your full watch history to WatchDeck.",
+    body: () => (
+      <>
+        <h2 class="text-lg font-semibold text-white">Getting the export</h2>
+        <p>
+          TV Time provided data exports under GDPR: an email to their support (or the in-app privacy request while the
+          service was live) returned a ZIP with your complete account data. If you requested one before the shutdown,
+          that ZIP is all you need — don't unpack or edit it.
+        </p>
+        <h2 class="text-lg font-semibold text-white">What's inside</h2>
+        <p>
+          The ZIP contains CSVs including <code class="text-violet-300">tracking-prod-records</code> (episodes you watched, with timestamps),
+          seen movies, your followed shows and your ratings. Episode rows reference shows by name and by TVDB-style IDs;
+          movie rows carry titles and watch dates. Ratings appear for both shows and episodes.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Importing it into WatchDeck</h2>
+        <p>
+          On the <a href="/import" class="text-violet-400 underline underline-offset-2">Import page</a>, upload the ZIP as-is. WatchDeck parses the CSVs,
+          matches shows/episodes/movies against TMDB, shows you exactly what it found, and only writes after you confirm.
+          Anything it can't match automatically is listed for one-click manual binding — nothing is silently dropped.
+          Afterwards your <a href="/home" class="text-violet-400 underline underline-offset-2">Next Up</a> screen picks up from the exact episode you left off.
+        </p>
+        <p>
+          Also importable: Trakt- and Serializd-style CSVs and Netflix viewing history — see{" "}
+          <a href="/guides/import-netflix-history" class="text-violet-400 underline underline-offset-2">importing your Netflix history</a>.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: "tv-time-alternatives",
+    title: "TV Time alternatives in 2026: an honest comparison",
+    description: "TV Time shut down — here's how Trakt, Hobi, Showly, Simkl and WatchDeck compare for episode tracking, imports and price.",
+    body: () => (
+      <>
+        <p>
+          TV Time's shutdown left its users choosing a new tracker. The right one depends on what you need; here's a
+          fair rundown (we build WatchDeck, and we'll say so where it matters).
+        </p>
+        <h2 class="text-lg font-semibold text-white">Trakt</h2>
+        <p>
+          The most established tracker with a huge ecosystem and media-center integrations. Web + apps. The free tier is
+          ad-supported and gates several features (year in review, monthly stats, unlimited lists) behind VIP.
+          TV Time imports are possible but historically lossy around episode-level data.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Hobi & Showly</h2>
+        <p>
+          Polished mobile apps; Hobi positioned itself as a TV Time migration destination. Both are phone-first —
+          if you want to track from a laptop or any browser, neither offers a full web experience.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Simkl</h2>
+        <p>Broad scope (TV, anime, movies) with apps and a web UI; the interface is dense and some features are premium.</p>
+        <h2 class="text-lg font-semibold text-white">WatchDeck (that's us)</h2>
+        <p>
+          Web-first and built specifically around the TV Time export: upload the GDPR ZIP unchanged and episodes, movies
+          and ratings all come across, with a confirmation step and manual binding for edge cases. Next-episode home
+          screen, airing <a href="/calendar" class="text-violet-400 underline underline-offset-2">calendar</a> with iCal + email reminders,{" "}
+          <a href="/stats" class="text-violet-400 underline underline-offset-2">stats</a>, shareable lists and a year-end Wrapped.
+          Every feature is <a href="/pricing" class="text-violet-400 underline underline-offset-2">free while in beta</a>, with full JSON/CSV export always.
+        </p>
+        <p>
+          Whichever you pick: get your data in writing. A tracker worth your history lets you export it back out —{" "}
+          <a href="/guides/export-tv-time-data" class="text-violet-400 underline underline-offset-2">start from your TV Time ZIP</a>.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: "import-netflix-history",
+    title: "How to import your Netflix viewing history",
+    description: "Download ViewingActivity.csv from Netflix and turn years of viewing into a tracked library in one upload.",
+    body: () => (
+      <>
+        <h2 class="text-lg font-semibold text-white">Getting the file from Netflix</h2>
+        <p>
+          Netflix lets each profile download its full viewing history: Account → Profiles → Viewing activity →
+          "Download all". You get <code class="text-violet-300">ViewingActivity.csv</code> — two columns, title and date, going back years.
+        </p>
+        <h2 class="text-lg font-semibold text-white">What WatchDeck does with it</h2>
+        <p>
+          Upload the CSV on the <a href="/import" class="text-violet-400 underline underline-offset-2">Import page</a>. Series rows (Netflix formats them as
+          "Show: Season: Episode") add the show to your library; movie rows are marked watched with their date. As with
+          every import, you see the matched list first and confirm before anything is written, and unmatched titles can
+          be bound manually.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Tips</h2>
+        <p>
+          Import your <a href="/guides/export-tv-time-data" class="text-violet-400 underline underline-offset-2">TV Time export</a> first if you have one —
+          it carries episode-level history that Netflix's file lacks, and the Netflix import then fills gaps like
+          movies you only watched there. Afterwards, "⇤ up to here" bulk-marking makes squaring up partial seasons fast.
+        </p>
+      </>
+    ),
+  },
+];
+
+export const GuidesIndexPage: FC = () => (
+  <div class="mx-auto max-w-2xl">
+    <h1 class="text-2xl font-bold text-white">Guides</h1>
+    <p class="mt-2 text-slate-400">Practical guides for moving in and getting the most out of your watch history.</p>
+    <ul class="mt-6 space-y-4">
+      {GUIDES.map((g) => (
+        <li class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
+          <a href={`/guides/${g.slug}`} class="font-semibold text-violet-400 underline underline-offset-2">{g.title}</a>
+          <p class="mt-1 text-sm text-slate-400">{g.description}</p>
+        </li>
+      ))}
+    </ul>
+  </div>
+);
+
+export const GuidePage: FC<{ guide: (typeof GUIDES)[number] }> = ({ guide }) => (
+  <GuideLayout title={guide.title} updated="August 5, 2026">
+    <guide.body />
+  </GuideLayout>
+);
 
 export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: string }> = ({ mode, error, next }) => (
   <div class="mx-auto max-w-sm py-10">
@@ -386,9 +545,46 @@ export const HomePage: FC<{
   justWatched?: { tmdbId: number; season: number; episode: number } | null;
   watchlistPreview?: WatchlistPreviewItem[];
   upcoming?: CalendarItem[];
-}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview, upcoming }) => (
+  hasWatch?: boolean;
+  wrappedYear?: number;
+}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview, upcoming, hasWatch, wrappedYear }) => (
   <div>
     <h1 class="mb-6 text-2xl font-bold">Next up</h1>
+    {!(hasAnything && hasWatch) && (
+      <section data-dismiss-key="onboarding-v1" hidden class="mb-6 rounded-2xl border border-violet-900/60 bg-violet-950/30 p-5" aria-label="Getting started checklist">
+        <div class="flex items-start justify-between gap-3">
+          <h2 class="font-semibold">Getting started</h2>
+          <button data-dismiss class="rounded px-2 text-slate-400 hover:text-slate-200" aria-label="Dismiss getting started checklist">✕</button>
+        </div>
+        <ol class="mt-3 space-y-2 text-sm">
+          <li class="flex items-center gap-2">
+            <span aria-hidden="true">{hasAnything ? "✅" : "1️⃣"}</span>
+            <span class={hasAnything ? "text-slate-500 line-through" : ""}>
+              Add your shows — <a href="/import" class="text-violet-400 hover:underline">import your TV Time export</a> or{" "}
+              <a href="/search" class="text-violet-400 hover:underline">search for one</a>
+            </span>
+          </li>
+          <li class="flex items-center gap-2">
+            <span aria-hidden="true">{hasWatch ? "✅" : "2️⃣"}</span>
+            <span class={hasWatch ? "text-slate-500 line-through" : ""}>Mark your first episode watched — Next Up keeps your place from there</span>
+          </li>
+          <li class="flex items-center gap-2">
+            <span aria-hidden="true">3️⃣</span>
+            <span>
+              Explore the extras — <a href="/calendar" class="text-violet-400 hover:underline">calendar</a>,{" "}
+              <a href="/stats" class="text-violet-400 hover:underline">stats</a> and{" "}
+              <a href="/wrapped" class="text-violet-400 hover:underline">your Wrapped</a>
+            </span>
+          </li>
+        </ol>
+      </section>
+    )}
+    {hasAnything && hasWatch && wrappedYear != null && (
+      <div data-dismiss-key={`wrapped-${wrappedYear}`} hidden class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-violet-900/60 bg-violet-950/30 px-4 py-2.5 text-sm">
+        <span>✨ New: your {wrappedYear} Wrapped is ready — <a href={`/wrapped/${wrappedYear}`} class="font-medium text-violet-300 hover:underline">see your year in TV & film</a></span>
+        <button data-dismiss class="ml-auto rounded px-2 text-slate-400 hover:text-slate-200" aria-label="Dismiss Wrapped announcement">✕</button>
+      </div>
+    )}
     {justWatched && (
       <div class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-800 bg-emerald-950/40 px-4 py-2.5 text-sm text-emerald-300">
         <span>
@@ -562,7 +758,7 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
           </ul>
         </div>
       )}
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {filtered.map((r) => {
           const inLib = libraryIds?.has(`${r.media_type}:${r.id}`);
           return (
@@ -598,7 +794,7 @@ export const TrendingSection: FC<{ shows: SearchResult[]; movies: SearchResult[]
   <div class="space-y-10">
     <section>
       <h2 class="mb-4 text-xl font-semibold">Trending shows this week</h2>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {shows.slice(0, 12).map((s) => (
           <MediaCard item={s} type="tv" />
         ))}
@@ -606,7 +802,7 @@ export const TrendingSection: FC<{ shows: SearchResult[]; movies: SearchResult[]
     </section>
     <section>
       <h2 class="mb-4 text-xl font-semibold">Trending movies this week</h2>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {movies.slice(0, 12).map((m) => (
           <MediaCard item={m} type="movie" />
         ))}
@@ -666,7 +862,7 @@ export const PersonPage: FC<{ person: PersonDetails; credits: PersonCredit[] }> 
         group.length > 0 && (
           <div class="mt-12">
             <h2 class="mb-4 text-xl font-semibold">{label}</h2>
-            <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+            <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
               {group.map((cr) => {
                 const title = cr.title ?? cr.name ?? "";
                 return (
@@ -693,7 +889,7 @@ export const RecsSection: FC<{ recs: SearchResult[]; type: "tv" | "movie" }> = (
   recs.length === 0 ? null : (
     <div class="mt-12">
       <h2 class="mb-4 text-xl font-semibold">More like this</h2>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {recs.slice(0, 12).map((r) => (
           <MediaCard item={r} type={type} />
         ))}
@@ -732,7 +928,7 @@ export const RatingStars: FC<{ tmdbId: number; mediaType: "tv" | "movie"; title:
   </div>
 );
 
-export const EmptyState: FC<PropsWithChildren<{ title: string }>> = ({ title, children }) => (
+export const EmptyState: FC<PropsWithChildren<{ title: string; cta?: { href: string; label: string } }>> = ({ title, cta, children }) => (
   <div class="mx-auto max-w-md rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-10 text-center">
     <svg viewBox="0 0 96 72" width="96" height="72" aria-hidden="true" class="mx-auto mb-4 opacity-90">
       <defs>
@@ -749,6 +945,11 @@ export const EmptyState: FC<PropsWithChildren<{ title: string }>> = ({ title, ch
     </svg>
     <p class="font-semibold text-slate-200">{title}</p>
     <p class="mt-1 text-sm text-slate-400">{children}</p>
+    {cta && (
+      <a href={cta.href} class="mt-4 inline-block rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">
+        {cta.label}
+      </a>
+    )}
   </div>
 );
 
@@ -1280,13 +1481,12 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
           Nothing in your library matches “{q}”. <a href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}`} class="text-violet-400 hover:underline">Clear filter</a>
         </p>
       ) : (
-      <EmptyState title="Your library is waiting">
-        <a href="/import" class="text-violet-400 hover:underline">Import from TV Time</a> or{" "}
-        <a href="/search" class="text-violet-400 hover:underline">search</a> for your first show.
+      <EmptyState title="Your library is waiting" cta={{ href: "/import", label: "📦 Import from TV Time" }}>
+        Or <a href="/search" class="text-violet-400 hover:underline">search</a> for your first show.
       </EmptyState>
       )
     ) : (
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {rows.map((r) => (
           <div>
             <a href={`/${r.media_type === "tv" ? "shows" : "movies"}/${r.tmdb_id}-${slugify(r.title)}`} class="group block">
@@ -1388,6 +1588,7 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
       <a href={feedUrl} class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-violet-300 hover:border-violet-500">
         📅 Subscribe (iCal)
       </a>
+      <Hint tip="iCal is a standard calendar feed: paste the link into Google or Apple Calendar once and air dates keep updating there automatically." />
       <form action="/api/feed/rotate" method="post">
         <button class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-400 hover:border-violet-500 hover:text-violet-300" title="Invalidate the current iCal URL and generate a new one">
           ↻ Reset feed URL
@@ -1407,8 +1608,8 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
       </form>
     </div>
     {items.length === 0 ? (
-      <EmptyState title="No scheduled air dates right now">
-        The shows you track have no announced upcoming episodes — new dates show up here (and in your iCal feed) automatically. Looking for something new? <a href="/browse" class="text-violet-400 hover:underline">Browse by genre</a>.
+      <EmptyState title="No scheduled air dates right now" cta={{ href: "/browse", label: "Browse for something new" }}>
+        The shows you track have no announced upcoming episodes — new dates show up here (and in your iCal feed) automatically.
       </EmptyState>
     ) : (
       <div class="space-y-6">
@@ -1551,7 +1752,7 @@ export const BrowseGenre: FC<{
         Popular {genre.name.toLowerCase()} {type === "tv" ? "series" : "films"} to track on WatchDeck.{" "}
         <a href="/browse" class="text-violet-400 hover:underline">All genres</a>
       </p>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
           <MediaCard item={r} type={type} />
         ))}
@@ -1579,7 +1780,7 @@ export const BrowseNetwork: FC<{
         Popular series on {network.name} to track on WatchDeck.{" "}
         <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; networks</a>
       </p>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
           <MediaCard item={r} type="tv" />
         ))}
@@ -1610,7 +1811,7 @@ export const BrowseYear: FC<{
         The most popular {type === "tv" ? `series that premiered in ${year}` : `films released in ${year}`}, ready to track on WatchDeck.{" "}
         <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; years</a>
       </p>
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
           <MediaCard item={r} type={type} />
         ))}
@@ -1651,15 +1852,18 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
     <div>
       <div class="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
         {[
-          [stats.hoursWatched.toLocaleString("en-US"), "hours watched"],
-          [String(stats.epsWatched), "episodes watched"],
-          [String(stats.moviesWatched), "movies watched"],
-          [String(stats.showsTracked), "shows tracked"],
-          [String(stats.completedShows), "shows completed"],
-        ].map(([n, label]) => (
+          [stats.hoursWatched.toLocaleString("en-US"), "hours watched", "Estimated from each episode's and movie's real runtime — rewatches count every time you watch."],
+          [String(stats.epsWatched), "episodes watched", "Unique episodes you've marked as watched, across all your shows."],
+          [String(stats.moviesWatched), "movies watched", "Different movies you've logged at least once."],
+          [String(stats.showsTracked), "shows tracked", "Shows in your library — watching, planning to watch, or finished."],
+          [String(stats.completedShows), "shows completed", "Shows where you've seen every aired episode. Nice work."],
+        ].map(([n, label, tip]) => (
           <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 text-center">
-            <p class="text-3xl font-extrabold text-violet-300">{n}</p>
-            <p class="mt-1 text-sm text-slate-400">{label}</p>
+            <p class="stat-num text-3xl font-extrabold text-violet-300">{n}</p>
+            <p class="mt-1 text-sm text-slate-400">
+              {label}
+              <Hint tip={tip} />
+            </p>
           </div>
         ))}
       </div>
@@ -1668,7 +1872,10 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
           So far in {new Date().getUTCFullYear()}: <span class="font-semibold text-violet-300">{stats.epsThisYear}</span> episode{stats.epsThisYear === 1 ? "" : "s"} and{" "}
           <span class="font-semibold text-violet-300">{stats.moviesThisYear}</span> movie{stats.moviesThisYear === 1 ? "" : "s"} watched.
           {stats.currentStreak >= 2 && (
-            <> 🔥 <span class="font-semibold text-violet-300">{stats.currentStreak}-day</span> watching streak{stats.bestStreak > stats.currentStreak ? <> (best: {stats.bestStreak} days)</> : null}.</>
+            <>
+              {" "}🔥 <span class="font-semibold text-violet-300">{stats.currentStreak}-day</span> watching streak{stats.bestStreak > stats.currentStreak ? <> (best: {stats.bestStreak} days)</> : null}.
+              <Hint tip="Consecutive days with at least one episode or movie watched. Watch anything today to keep it going." />
+            </>
           )}
           {stats.currentStreak < 2 && stats.bestStreak >= 2 && (
             <> Longest watching streak: <span class="font-semibold text-violet-300">{stats.bestStreak} days</span>.</>
@@ -1719,7 +1926,7 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
               {stats.byMonth.map((m) => (
                 <li class="flex items-center gap-2 text-xs">
                   <span class="w-16 shrink-0 text-slate-400">{m.month}</span>
-                  <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((m.eps / maxMonth) * 100))}%`} />
+                  <div class="bar-grow h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((m.eps / maxMonth) * 100))}%`} />
                   <span class="text-slate-400">{m.eps}</span>
                 </li>
               ))}
@@ -1737,7 +1944,7 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
               return (
                 <li class="flex items-center gap-2 text-xs">
                   <span class="w-16 shrink-0 text-slate-400">{y.year}</span>
-                  <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((total / maxYear) * 100))}%`} />
+                  <div class="bar-grow h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((total / maxYear) * 100))}%`} />
                   <span class="whitespace-nowrap text-slate-400">
                     {y.eps} ep{y.eps === 1 ? "" : "s"}{y.movies > 0 ? ` · ${y.movies} movie${y.movies === 1 ? "" : "s"}` : ""}
                   </span>
@@ -1757,7 +1964,7 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
               return (
                 <li class="flex items-center gap-2 text-xs">
                   <span class="w-16 shrink-0 text-slate-400">{"★".repeat(r)}</span>
-                  <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((n / maxN) * 100))}%`} />
+                  <div class="bar-grow h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((n / maxN) * 100))}%`} />
                   <span class="text-slate-400">{n}</span>
                 </li>
               );
@@ -1787,7 +1994,7 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
             {stats.topGenres.map((g) => (
               <li class="flex items-center gap-2 text-xs">
                 <span class="w-28 shrink-0 truncate text-slate-400">{g.name}</span>
-                <div class="h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((g.count / Math.max(1, stats.topGenres[0].count)) * 100))}%`} />
+                <div class="bar-grow h-3 rounded bg-gradient-to-r from-violet-600 to-fuchsia-500" style={`width:${Math.max(2, Math.round((g.count / Math.max(1, stats.topGenres[0].count)) * 100))}%`} />
                 <span class="text-slate-400">{g.count}</span>
               </li>
             ))}
@@ -1823,14 +2030,59 @@ export const PrivacyPage: FC = () => (
     <h2 class="text-lg font-semibold text-white">Your rights</h2>
     <p>
       You can delete your account and all associated data at any time from{" "}
-      <a href="/settings" class="text-violet-400 hover:underline">Settings</a> — deletion is immediate and permanent.
+      <a href="/settings" class="text-violet-400 underline underline-offset-2">Settings</a> — deletion is immediate and permanent.
       For questions or data requests, contact{" "}
-      <a href="mailto:watchdeck@zalize.com" class="text-violet-400 hover:underline">watchdeck@zalize.com</a>.
+      <a href="mailto:watchdeck@zalize.com" class="text-violet-400 underline underline-offset-2">watchdeck@zalize.com</a>.
     </p>
     <h2 class="text-lg font-semibold text-white">Third parties</h2>
     <p>
-      Show and movie metadata comes from <a href="https://www.themoviedb.org/" rel="noopener" class="text-violet-400 hover:underline">TMDB</a>.
+      Show and movie metadata comes from <a href="https://www.themoviedb.org/" rel="noopener" class="text-violet-400 underline underline-offset-2">TMDB</a>.
       Poster images are loaded from TMDB's image CDN. Transactional email is delivered by Resend. Hosting is provided by Cloudflare.
+    </p>
+  </div>
+);
+
+export const AboutPage: FC = () => (
+  <div class="mx-auto max-w-2xl space-y-4 text-slate-300">
+    <h1 class="text-2xl font-bold text-white">About WatchDeck</h1>
+    <p>
+      WatchDeck is a web-first tracker for TV shows and movies. It exists because millions of people who kept years of
+      watch history in TV Time were left without a good home for it — WatchDeck lets you drop in your TV Time GDPR
+      export (or a Trakt, Serializd or Netflix CSV) and pick up your next episode about a minute later, from any
+      browser, with nothing to install.
+    </p>
+    <p>
+      Beyond tracking, WatchDeck gives you an airing calendar with iCal feeds and email reminders, watch statistics,
+      shareable lists and profiles, streaming-availability filters and a year-end Wrapped. Everything works the same on
+      phone and desktop. WatchDeck is currently in beta, and every feature is free while the beta lasts.
+    </p>
+    <p>
+      WatchDeck is built by the team behind <a href="https://zalize.com" rel="noopener" class="text-violet-400 underline underline-offset-2">zalize.com</a>.
+      Metadata comes from <a href="https://www.themoviedb.org/" rel="noopener" class="text-violet-400 underline underline-offset-2">TMDB</a>
+      {" "}(this product uses the TMDB API but is not endorsed or certified by TMDB).
+    </p>
+    <h2 class="text-lg font-semibold text-white">Press & media kit</h2>
+    <p>
+      <strong class="text-white">Boilerplate:</strong> “WatchDeck is a web-first TV show and movie tracker. Import your
+      TV Time, Trakt, Serializd or Netflix history in one click and continue your next episode from any browser — with
+      an airing calendar, watch statistics, shareable lists and a year-end Wrapped. Free while in beta at
+      watchdeck.zalize.com.”
+    </p>
+    <ul class="list-inside list-disc space-y-1 text-sm">
+      <li>
+        Logo (SVG): <a href="/favicon.svg" download class="text-violet-400 underline underline-offset-2">favicon.svg</a> — violet clapperboard with play
+        triangle; keep clear space around it and don't recolor it.
+      </li>
+      <li>
+        Social/OG card (PNG 1200×630): <a href="/og-default.png" download class="text-violet-400 underline underline-offset-2">og-default.png</a>
+      </li>
+      <li>App icon (PNG 512×512): <a href="/icon-512.png" download class="text-violet-400 underline underline-offset-2">icon-512.png</a></li>
+      <li>Name: always “WatchDeck” — one word, capital W and D. Not “Watchdeck”, “Watch Deck” or “WD”.</li>
+      <li>Brand colors: violet #7c3aed on near-black #020617.</li>
+    </ul>
+    <p>
+      Press, partnership or data questions:{" "}
+      <a href="mailto:watchdeck@zalize.com" class="text-violet-400 underline underline-offset-2">watchdeck@zalize.com</a>.
     </p>
   </div>
 );
@@ -1949,8 +2201,8 @@ export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: n
   <div>
     <h1 class="mb-6 text-2xl font-bold">History</h1>
     {items.length === 0 ? (
-      <EmptyState title="No watch history yet">
-        <a href="/home" class="text-violet-400 hover:underline">Mark an episode watched</a> and it shows up here.
+      <EmptyState title="No watch history yet" cta={{ href: "/home", label: "▶ Go to Next Up" }}>
+        Mark an episode watched and it shows up here.
       </EmptyState>
     ) : (
       (() => {
@@ -2057,7 +2309,10 @@ export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: n
 
 export const StatsPage: FC<{ stats: UserStats; shareUrl: string | null }> = ({ stats, shareUrl }) => (
   <div>
-    <h1 class="mb-6 text-2xl font-bold">Your watch stats</h1>
+    <div class="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <h1 class="text-2xl font-bold">Your watch stats</h1>
+      <a href="/wrapped" class="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white hover:opacity-90">🎬 Your {new Date().getUTCFullYear()} Wrapped</a>
+    </div>
     <StatsBody stats={stats} />
     <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
       <h2 class="font-semibold">Share your profile</h2>
@@ -2110,6 +2365,179 @@ export const PublicProfilePage: FC<{ stats: UserStats; name: string; lists?: { n
   </div>
 );
 
+export interface WrappedStats {
+  year: number;
+  eps: number;
+  movies: number;
+  hours: number;
+  days: number;
+  bestStreak: number;
+  topShows: { title: string; tmdb_id: number; eps: number; poster_path: string | null }[];
+  topGenres: { name: string; count: number }[];
+  byMonth: { month: number; count: number }[];
+  busiestMonth: { month: string; count: number } | null;
+  ratingsGiven: number;
+  avgEpisodeRating: number | null;
+  topRated: { title: string; rating: number } | null;
+  firstWatch: { title: string; date: string } | null;
+}
+
+const MONTH_ABBR = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+
+export const WrappedPage: FC<{ stats: WrappedStats; name: string; shareUrl?: string | null; years?: number[]; public?: boolean }> = ({ stats, name, shareUrl, years, public: isPublic }) => {
+  const monthCounts = Array.from({ length: 12 }, (_, i) => stats.byMonth.find((m) => m.month === i + 1)?.count ?? 0);
+  const maxMonth = Math.max(1, ...monthCounts);
+  const hasData = stats.eps > 0 || stats.movies > 0;
+  return (
+    <div class="mx-auto max-w-2xl">
+      <div class="relative overflow-hidden rounded-3xl border border-violet-900/60 bg-gradient-to-b from-violet-950/60 via-slate-950 to-slate-950 px-6 py-10 text-center">
+        <p class="text-xs font-semibold uppercase tracking-[0.3em] text-violet-400">WatchDeck Wrapped</p>
+        <h1 class="mt-3 bg-gradient-to-r from-violet-300 via-fuchsia-300 to-violet-300 bg-clip-text text-6xl font-extrabold tracking-tight text-transparent sm:text-7xl">{stats.year}</h1>
+        <p class="mt-3 text-slate-300">{isPublic ? `${name}'s year in TV & film` : "Your year in TV & film"}</p>
+      </div>
+      {!isPublic && years && years.length > 1 && (
+        <nav class="mt-4 flex flex-wrap justify-center gap-2" aria-label="Wrapped years">
+          {years.map((y) => (
+            <a href={`/wrapped/${y}`} class={`rounded-full px-3 py-1 text-sm ${y === stats.year ? "bg-violet-600 font-semibold text-white" : "border border-slate-700 text-slate-300 hover:border-violet-500"}`} aria-current={y === stats.year ? "page" : undefined}>
+              {y}
+            </a>
+          ))}
+        </nav>
+      )}
+      {!hasData ? (
+        <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-8 text-center">
+          <p class="text-slate-300">No watches logged in {stats.year}{isPublic ? "" : " yet"}.</p>
+          {!isPublic && (
+            <p class="mt-2 text-sm text-slate-400">
+              <a href="/import" class="text-violet-400 hover:underline">Import your history</a> or mark episodes watched to build your Wrapped.
+            </p>
+          )}
+        </div>
+      ) : (
+        <div class="mt-8 space-y-6">
+          <div class="grid grid-cols-2 gap-4 sm:grid-cols-4">
+            {[
+              [stats.hours.toLocaleString("en-US"), "hours watched", "Estimated from real episode and movie runtimes."],
+              [String(stats.eps), "episodes", `Episodes you watched in ${stats.year}.`],
+              [String(stats.movies), "movies", `Movies you watched in ${stats.year}.`],
+              [String(stats.days), `day${stats.days === 1 ? "" : "s"} watching`, `Days in ${stats.year} where you watched at least one thing.`],
+            ].map(([n, label, tip]) => (
+              <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5 text-center">
+                <p class="stat-num text-3xl font-extrabold text-violet-300">{n}</p>
+                <p class="mt-1 text-sm text-slate-400">
+                  {label}
+                  <Hint tip={tip} />
+                </p>
+              </div>
+            ))}
+          </div>
+          {stats.topShows.length > 0 && (
+            <section class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+              <h2 class="font-semibold">Top shows of {stats.year}</h2>
+              <ol class="mt-4 flex flex-wrap justify-center gap-4">
+                {stats.topShows.map((s, i) => (
+                  <li class="w-24 text-center sm:w-28">
+                    <a href={`/shows/${s.tmdb_id}-${slugify(s.title)}`} class="group block">
+                      <div class="relative">
+                        <img src={poster(s.poster_path, "w185")} alt={s.title} width="185" height="278" loading="lazy" class="w-full rounded-xl border border-slate-800 group-hover:border-violet-500" />
+                        <span class="absolute -left-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-sm font-bold text-white">{i + 1}</span>
+                      </div>
+                      <p class="mt-2 truncate text-xs text-slate-300 group-hover:text-violet-300">{s.title}</p>
+                      <p class="text-xs text-slate-400">{s.eps} eps</p>
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+          <div class="grid gap-6 sm:grid-cols-2">
+            <section class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+              <h2 class="font-semibold">Watching rhythm</h2>
+              <p class="mt-1 text-xs text-slate-400">How your watching spread across the year, month by month.</p>
+              <div class="mt-4 flex h-24 items-end gap-1" role="img" aria-label={`Watches per month in ${stats.year}`}>
+                {monthCounts.map((n, i) => (
+                  <div class="flex flex-1 flex-col items-center gap-1">
+                    <div class="w-full rounded-t bg-gradient-to-t from-violet-700 to-fuchsia-500" style={`height:${n === 0 ? 2 : Math.max(6, Math.round((n / maxMonth) * 80))}px`} title={`${n} watches`} />
+                    <span class="text-[10px] text-slate-500">{MONTH_ABBR[i]}</span>
+                  </div>
+                ))}
+              </div>
+              {stats.busiestMonth && (
+                <p class="mt-3 text-sm text-slate-400">
+                  Busiest month: <span class="font-semibold text-violet-300">{stats.busiestMonth.month}</span> ({stats.busiestMonth.count} watch{stats.busiestMonth.count === 1 ? "" : "es"})
+                </p>
+              )}
+              {stats.bestStreak >= 2 && (
+                <p class="mt-1 text-sm text-slate-400">
+                  🔥 Longest streak: <span class="font-semibold text-violet-300">{stats.bestStreak} days</span> in a row
+                </p>
+              )}
+            </section>
+            <section class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+              <h2 class="font-semibold">Taste profile</h2>
+              <p class="mt-1 text-xs text-slate-400">The genres you watched most this year — your comfort zone at a glance.</p>
+              {stats.topGenres.length === 0 ? (
+                <p class="mt-3 text-sm text-slate-400">Not enough data for genres.</p>
+              ) : (
+                <ul class="mt-3 flex flex-wrap gap-2">
+                  {stats.topGenres.map((g, i) => (
+                    <li class={`rounded-full px-3 py-1 text-sm ${i === 0 ? "bg-violet-600 font-semibold text-white" : "border border-slate-700 text-slate-300"}`}>{g.name}</li>
+                  ))}
+                </ul>
+              )}
+              {stats.topRated && (
+                <p class="mt-4 text-sm text-slate-400">
+                  Highest rated: <span class="font-semibold text-violet-300">{stats.topRated.title}</span> {"★".repeat(stats.topRated.rating)}
+                </p>
+              )}
+              {stats.ratingsGiven > 0 && (
+                <p class="mt-1 text-sm text-slate-400">
+                  {stats.ratingsGiven} episode rating{stats.ratingsGiven === 1 ? "" : "s"} given{stats.avgEpisodeRating != null ? <> · avg ★{stats.avgEpisodeRating}</> : null}
+                </p>
+              )}
+              {stats.firstWatch && (
+                <p class="mt-1 text-sm text-slate-400">
+                  First watch of {stats.year}: <span class="font-semibold text-violet-300">{stats.firstWatch.title}</span> on {stats.firstWatch.date}
+                </p>
+              )}
+            </section>
+          </div>
+        </div>
+      )}
+      {isPublic ? (
+        <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6 text-center">
+          <p class="text-slate-300">Want a Wrapped like this?</p>
+          <a href="/signup" class="mt-3 inline-block rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90">Start tracking — free in beta</a>
+        </div>
+      ) : (
+        <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h2 class="font-semibold">Share your {stats.year} Wrapped</h2>
+          {shareUrl ? (
+            <div class="mt-3">
+              <p class="text-sm text-slate-400">Anyone with this link sees a read-only copy with a shareable poster card (no email shown):</p>
+              <p class="mt-2 break-all rounded-lg bg-slate-800/70 px-3 py-2 font-mono text-sm text-violet-300">{shareUrl}</p>
+              <form action="/api/wrapped/share" method="post" class="mt-3">
+                <input type="hidden" name="year" value={String(stats.year)} />
+                <input type="hidden" name="enabled" value="" />
+                <button class="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 hover:border-red-500 hover:text-red-400">Disable share link</button>
+              </form>
+            </div>
+          ) : (
+            <div class="mt-3">
+              <p class="text-sm text-slate-400">Create a public link with a poster-style share card — perfect for a year-in-review post.</p>
+              <form action="/api/wrapped/share" method="post" class="mt-3">
+                <input type="hidden" name="year" value={String(stats.year)} />
+                <input type="hidden" name="enabled" value="1" />
+                <button class="rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-4 py-2 text-sm font-semibold text-white hover:opacity-90">Create share link</button>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const PricingPage: FC<{ loggedIn?: boolean }> = ({ loggedIn }) => (
   <div class="mx-auto max-w-4xl">
     <div class="py-10 text-center">
@@ -2136,7 +2564,7 @@ export const PricingPage: FC<{ loggedIn?: boolean }> = ({ loggedIn }) => (
         </ul>
       </div>
       <div class="relative rounded-2xl border border-violet-600 bg-violet-950/30 p-6">
-        <span class="absolute -top-3 left-6 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-3 py-0.5 text-xs font-semibold text-white">Free during beta</span>
+        <span class="absolute -top-3 left-6 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 py-0.5 text-xs font-semibold text-white">Free during beta</span>
         <h2 class="text-lg font-bold">Plus</h2>
         <p class="mt-1 text-sm text-slate-400">For serious trackers — keeps WatchDeck independent.</p>
         <p class="mt-4 text-3xl font-extrabold">$1.99<span class="text-base font-normal text-slate-400"> / month</span></p>
@@ -2159,7 +2587,7 @@ export const PricingPage: FC<{ loggedIn?: boolean }> = ({ loggedIn }) => (
         </a>
       )}
     </div>
-    <p class="mt-6 text-center text-xs text-slate-500">
+    <p class="mt-6 text-center text-xs text-slate-400">
       Beta members will be told well in advance before any plan change, and exporting your data stays free forever.
     </p>
   </div>
@@ -2205,6 +2633,7 @@ export const ImportPage: FC = () => (
       <p id="done-detail" class="mt-1 text-sm text-slate-300"></p>
       <div id="unmatched" class="mt-3 hidden">
         <p class="text-sm font-medium text-amber-300">We couldn't match these titles — find them manually:</p>
+        <p class="mt-1 text-xs text-slate-400">This usually happens when a title was renamed or spelled differently. Search for each one and everything else stays intact — nothing was lost.</p>
         <ul id="unmatched-list" class="mt-2 space-y-1 text-sm"></ul>
       </div>
       <a href="/home" class="mt-4 inline-block rounded-lg bg-violet-600 px-4 py-2 font-medium text-white hover:bg-violet-500">
@@ -2289,7 +2718,7 @@ export const ListDetailPage: FC<{ list: { id: number; name: string }; items: { t
         Open any show or movie page and use the <span class="text-slate-300">☰ Lists</span> button to add it.
       </EmptyState>
     ) : (
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {items.map((it) => (
           <div>
             <a href={`/${it.media_type === "tv" ? "shows" : "movies"}/${it.tmdb_id}-${slugify(it.title)}`} class="group block">
@@ -2324,7 +2753,7 @@ export const PublicListPage: FC<{ name: string; owner: string; items: { tmdb_id:
     {items.length === 0 ? (
       <EmptyState title="This list is empty right now">Check back later — the owner may still be adding titles.</EmptyState>
     ) : (
-      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {items.map((it) => (
           <a href={`/${it.media_type === "tv" ? "shows" : "movies"}/${it.tmdb_id}-${slugify(it.title)}`} class="group block">
             <img

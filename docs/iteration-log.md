@@ -221,6 +221,55 @@
 
 ---
 
+## Round 159 — 2026-08-08（大功能：WatchDeck Wrapped 年度回顾）
+
+**发现（老板「全面进化」指令 + 竞品差距）**
+- 竞品无 Web 端可分享年度回顾（Trakt 年度回顾收 VIP 费且无海报卡）；TV Time 难民的年度情感数据是传播抓手。
+
+**修复**
+- /wrapped/:year：年度小时/集数/电影/观看天数、Top5 剧集海报榜、题材画像、月度节奏图+最忙月份、最长 streak、集评分统计、年度首看；多年份切换（对导入历史立即可用）。
+- 分享：wrapped_shares 表（每用户每年一 token，可撤销→404），公开只读 /w/:token（注册 CTA、可索引）+ /w/:token/og.png workers-og 海报卡；/stats 加入口按钮；私密页 noindex/no-store/robots 对齐；删号级联清理。
+
+**证据**：线上部署 Version 4b52399e，回归见 PR #50。
+
+---
+
+## Round 161 — 2026-08-05（品牌化 + 全活动运营专项，老板指令）
+
+**A. 品牌体系**
+- docs/brand/brand-guide.md：品牌故事与一句话定位（TV Time 难民的 web 家）、命名/口径规范（WatchDeck 拼写、功能名 canonical、「free while in beta」定价口径、禁用语）、tone of voice、视觉规范（logo 用法/色板 #7c3aed·#020617/排版/卡片形制/动效原则）、品牌表面巡检清单。
+- 站内一致性巡检：title/meta/OG/footer/邮件署名/定价口径全站扫描，无「Watchdeck/Watch Deck/free forever」违规（唯一例外为既定承诺「Full data export — always free」），无需修复。
+
+**B. 站内新增**
+- /about「About & Press」页：品牌故事 + 媒体资源包（boilerplate、logo/OG/icon 下载、命名与色彩规范、联系邮箱），footer 加链接、sitemap 收录。
+- /guides 内容营销区（pSEO 可索引，Article JSON-LD + og:type=article）：①TV Time 导出指南 ②TV Time alternatives 对比（诚实口径、自曝利益相关）③Netflix 观看历史导入指南；三篇互链并内链 /import、/pricing、/calendar、/stats、/signup CTA；footer「Guides」入口、sitemap 收录。CSS_VERSION 161→162。
+
+**C. 产品外素材包（docs/marketing/，需真人账号执行）**
+- directory-submissions.md：AlternativeTo/SaaSHub/Product Hunt/Uneed/Fazier/Peerlist/IndieHackers 提交清单 + 一次粘贴版标准文案（红线：不注册假账号，全部备好待真人提交）。
+- producthunt-launch-kit.md：tagline、260 字描述、gallery 5 图脚本、maker comment、FAQ、launch checklist。
+- social-calendar-14d.md：14 天逐日 Reddit/X/HN 素材（各平台定制、披露 maker 身份、遵守各 sub 自我推广规则）。
+- email-lifecycle.md：现有 4 条链路盘点 + 3 个待批准模板（Day-7/Wrapped 季/功能公告，仅 double opt-in updates 列表可用）。
+
+**证据**：见 PR 与回归。
+
+---
+
+## Round 160 — 2026-08-08（用户引导/Onboarding 专项，老板指令）
+
+**发现（新用户视角走查 + onboarding 模式参考）**
+- 落地页只讲卖点不讲步骤；新注册用户 /home 空态仅两行文字；空状态多为文字链接缺主 CTA 按钮；新上线的 Wrapped 对老用户无主流程曝光（仅 /stats 按钮）。竞品直连多被 JS 渲染/Cloudflare 盾挡（不绕），参考通行模式：Letterboxd 式 getting-started 清单、一次性可关闭公告。
+
+**修复**
+- 落地页新增「Up and running in three steps」三步叙事区（导入 → Next Up 续看 → 日历/统计/Wrapped）。
+- /home 新增「Getting started」清单卡（3 步，服务端按 tracked/watches 实时打勾划线；两步都完成即不再渲染；✕ 关闭 localStorage 记忆，一次性）。
+- /home 新增一次性「✨ New: your {year} Wrapped is ready」提示条（仅老用户即 tracked+watches 均有时展示，可关闭且 localStorage 记忆）。
+- EmptyState 组件加 cta 按钮属性：Library 空态「📦 Import from TV Time」、Calendar 空态「Browse for something new」、History 空态「▶ Go to Next Up」。
+- app.js 通用 data-dismiss-key/data-dismiss 机制（默认 hidden 防闪烁、localStorage 禁用时降级为常显）；app.js 加版本参数与 CSS_VERSION 同步防缓存；CSS_VERSION 160→161。
+
+**证据**：见 PR 与回归录屏。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**
@@ -1735,3 +1784,20 @@
 - 日历：TVmaze/Hobi 式相对倒计时「· in N days」（30 天内）。
 - 统计：Hobi 式 🔥 watching streak（当前连续天数+历史最佳，D1 distinct 日期 JS 折算）。
 - Version c1f59160，线上验证落地页新文案渲染。
+
+---
+
+# 专项：设计系统深度升级（2026-08-08）
+
+## Rounds 162-166 — 字体/组件/适配/特效/用户心智（Version 76ebc1b4）
+- R162 字体排版：自托管 Sora（latin 子集 woff2 ~25KB，font-display:swap+preload+immutable 缓存），h1/h2/h3 与品牌 logo 使用；h1 text-wrap:balance；统计数字 tabular-nums（.stat-num/time/td）；品牌紫 ::selection。
+- R163 组件精修：全站 input/select/textarea 统一品牌 focus ring（violet 边框+3px 光晕）；.card 统一层级与 hover 提升（hover 设备+非减动效下）；沿用既有按钮 active 微缩。
+- R164 全设备适配：main/nav/footer 容器 xl:max-w-7xl，海报网格新增 xl:grid-cols-7（1440 宽屏利用）；coarse pointer 下导航/页脚链接 min-height 44px、按钮与输入 ≥40px。
+- R165 特效：海报网格 stagger-in 逐个上浮入场（前 12 项错峰）、统计图表 bar-grow 从左生长动画，全部 prefers-reduced-motion 降级为静态。
+- R166 用户心智（人话解释层）：新增 Hint 组件（CSS tooltip，键盘可聚焦 aria-label）；/stats 五张统计卡+watching streak、Wrapped 四张卡逐一配大白话解释；Wrapped「Watching rhythm/Taste profile」加一句话说明；导入未匹配标题加安抚性解释（为什么会发生+数据没丢）；日历 iCal 按钮配「贴进 Google/Apple 日历自动更新」说明。
+- CSS_VERSION 163→164。
+
+## R162 回归修复 — Hint tooltip 两个 P3（Version 40921373）
+- 回归发现：① 隐藏 tooltip（opacity:0）仍占布局，/stats、/wrapped 375px 下 scrollWidth 439；② 日历 iCal tooltip z-index 30 < 导航 40，被 sticky nav 遮挡。
+- 修复：.hint::after 空闲态 display:none（hover/focus 时 block）、z-index 50、max-width min(230px, 100vw-2rem)；≤640px 改 fixed 底部弹层（left/right/bottom 1rem）永不越界；显示时快速 rise-in（reduced-motion 降级）。
+- 复验：375px scrollWidth 恢复 375（开着 tooltip 也是）、日历 tooltip 桌面全可见、hover+键盘均可触发、/stats axe 0。CSS_VERSION 164→165。
