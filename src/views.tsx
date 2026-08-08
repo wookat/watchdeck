@@ -971,16 +971,16 @@ export const ShowPage: FC<{
               const playCount = plays?.get(`${ep.season_number}x${ep.episode_number}`) ?? 1;
               const epRating = epRatings?.get(`${ep.season_number}x${ep.episode_number}`);
               return (
-                <li class="flex items-center gap-4 bg-slate-900/40 px-4 py-3">
+                <li class="flex flex-wrap items-center gap-x-4 gap-y-2 bg-slate-900/40 px-4 py-3">
                   <span class="w-14 shrink-0 text-sm text-slate-400">
                     S{String(ep.season_number).padStart(2, "0")}E{String(ep.episode_number).padStart(2, "0")}
                   </span>
-                  <div class="min-w-0 flex-1">
+                  <div class="min-w-0 flex-1 basis-40">
                     <p class="line-clamp-1 font-medium">{ep.name}</p>
                     <p class="whitespace-nowrap text-xs text-slate-400">{ep.air_date ?? "TBA"}</p>
                   </div>
                   {user && (
-                    <div class="flex max-w-[60%] flex-wrap items-center justify-end gap-2">
+                    <div class="ml-auto flex shrink-0 items-center gap-2">
                       {!isWatched && (
                         <form action="/api/watch-up-to" method="post">
                           <input type="hidden" name="tmdb_id" value={String(show.id)} />
