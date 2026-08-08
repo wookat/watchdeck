@@ -171,6 +171,19 @@
 
 ---
 
+## Rounds 151-152 — 2026-08-08（人物页 pSEO 扩容：sitemap + Browse 互链）
+
+**发现（SEO/数据分析）**
+- R147 人物页可索引但不可发现：sitemap 无 /person URL、站内除详情页 Top cast 外无入口，爬虫无稳定抓取路径（周更 IndexNow 以 sitemap 为源，也覆盖不到）。
+
+**修复**
+- R151 sitemap 纳入 TMDB popular 人物前 3 页（有头像者，约 60 URL），随每周 IndexNow 自动提交。
+- R152 /browse 索引页新增「Popular people」区（12 个圆头像链向 /person 页），补站内互链抓取路径。
+
+**证据**：线上 sitemap.xml 与 /browse 实测，见 PR。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**

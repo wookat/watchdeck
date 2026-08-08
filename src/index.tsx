@@ -29,6 +29,7 @@ import {
   topCast,
   personDetails,
   personCredits,
+  popularPeople,
   type CastMember,
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, isNetflixCsv, parseNetflixCsv, type ParsedImport } from "./importer";
@@ -854,7 +855,12 @@ function browseCrumbs(siteUrl: string, name: string, item: string) {
 }
 
 app.get("/browse", async (c) => {
-  const [tv, movie] = await Promise.all([genreList(c.env, "tv"), genreList(c.env, "movie")]);
+  const [tv, movie, ppl] = await Promise.all([
+    genreList(c.env, "tv"),
+    genreList(c.env, "movie"),
+    popularPeople(c.env, 1).catch(() => ({ results: [] })),
+  ]);
+  const people = ppl.results.filter((p) => p.profile_path).slice(0, 12);
   return c.html(
     <Layout
       user={c.get("user")}
@@ -862,7 +868,7 @@ app.get("/browse", async (c) => {
       description="Explore popular TV shows and movies by genre and start tracking them on WatchDeck."
       canonical={`${c.env.SITE_URL}/browse`}
     >
-      <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} networks={NETWORKS} years={browseYears()} />
+      <BrowseIndex tvGenres={tv.genres} movieGenres={movie.genres} networks={NETWORKS} years={browseYears()} people={people} />
     </Layout>
   );
 });
@@ -2094,11 +2100,14 @@ app.get("/robots.txt", (c) =>
 app.get("/sitemap.xml", async (c) => {
   const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`, `${c.env.SITE_URL}/pricing`, `${c.env.SITE_URL}/privacy`, `${c.env.SITE_URL}/terms`];
   try {
-    const [shows, movies, tvGenres, movieGenres, ...popular] = await Promise.all([
+    const [shows, movies, tvGenres, movieGenres, people1, people2, people3, ...popular] = await Promise.all([
       trendingTv(c.env),
       trendingMovies(c.env),
       genreList(c.env, "tv"),
       genreList(c.env, "movie"),
+      popularPeople(c.env, 1),
+      popularPeople(c.env, 2),
+      popularPeople(c.env, 3),
       discoverPopular(c.env, "tv", 1),
       discoverPopular(c.env, "tv", 2),
       discoverPopular(c.env, "tv", 3),
@@ -2128,6 +2137,9 @@ app.get("/sitemap.xml", async (c) => {
     for (const [i, p] of popular.entries()) {
       const type = i < 4 || (i >= 8 && i < 12) ? "tv" : "movie";
       for (const r of p.results) pushTitle(type, r.id, (type === "tv" ? r.name : r.title) ?? "");
+    }
+    for (const p of [...people1.results, ...people2.results, ...people3.results]) {
+      if (p.profile_path) urls.push(`${c.env.SITE_URL}/person/${p.id}-${slugify(p.name)}`);
     }
     for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
     for (const g of movieGenres.genres) urls.push(`${c.env.SITE_URL}/browse/movie/${g.id}-${slugify(g.name)}`);
