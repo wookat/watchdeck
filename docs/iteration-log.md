@@ -1801,3 +1801,10 @@
 - 回归发现：① 隐藏 tooltip（opacity:0）仍占布局，/stats、/wrapped 375px 下 scrollWidth 439；② 日历 iCal tooltip z-index 30 < 导航 40，被 sticky nav 遮挡。
 - 修复：.hint::after 空闲态 display:none（hover/focus 时 block）、z-index 50、max-width min(230px, 100vw-2rem)；≤640px 改 fixed 底部弹层（left/right/bottom 1rem）永不越界；显示时快速 rise-in（reduced-motion 降级）。
 - 复验：375px scrollWidth 恢复 375（开着 tooltip 也是）、日历 tooltip 桌面全可见、hover+键盘均可触发、/stats axe 0。CSS_VERSION 164→165。
+
+## Rounds 168-171 — 2026-08-08（一比一复刻基准：Trakt）
+- R168 标杆走查：真实浏览器逐页走查 app.trakt.tv（home/详情/calendar/discover/profile/search），只用公开可访问部分，未绕 bot wall；其 trakt-web 为 GPLv3 开源，为避免 license 传染同样不复制代码。
+- R169 还原度对照表：docs/replication-benchmark.md（7 大页面/流程逐维度评分+差距+有意不复刻项说明）。
+- R170 缺陷修复：P1 首页 streak 激励条（🔥 N-day，D1 连续日期计算，≥2 天显示）；P1 详情页 Created by 行（TMDB created_by → /person 页互链）；P2 详情页生命周期 StatusBadge 彩色 chip；P2 日历/首页 Airing「Series/Season premiere」徽章（E01 自动识别）。
+- R171 超越项+洞察优化：对照表末尾列 6 项超越项；2 个复刻洞察优化 = streak 前置到首屏 + premiere 徽章内联化（比 Trakt 过滤器交互成本更低）。
+- CSS_VERSION 165→166。

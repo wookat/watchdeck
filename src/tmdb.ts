@@ -61,6 +61,7 @@ export interface TvDetails {
   number_of_episodes: number;
   seasons: { season_number: number; episode_count: number; name: string; poster_path: string | null; air_date: string | null }[];
   next_episode_to_air: { season_number: number; episode_number: number; air_date: string; name: string } | null;
+  created_by?: { id: number; name: string }[];
   episode_run_time: number[];
   last_episode_to_air: { runtime: number | null } | null;
 }
