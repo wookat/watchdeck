@@ -1796,3 +1796,8 @@
 - R165 特效：海报网格 stagger-in 逐个上浮入场（前 12 项错峰）、统计图表 bar-grow 从左生长动画，全部 prefers-reduced-motion 降级为静态。
 - R166 用户心智（人话解释层）：新增 Hint 组件（CSS tooltip，键盘可聚焦 aria-label）；/stats 五张统计卡+watching streak、Wrapped 四张卡逐一配大白话解释；Wrapped「Watching rhythm/Taste profile」加一句话说明；导入未匹配标题加安抚性解释（为什么会发生+数据没丢）；日历 iCal 按钮配「贴进 Google/Apple 日历自动更新」说明。
 - CSS_VERSION 163→164。
+
+## R162 回归修复 — Hint tooltip 两个 P3（Version 40921373）
+- 回归发现：① 隐藏 tooltip（opacity:0）仍占布局，/stats、/wrapped 375px 下 scrollWidth 439；② 日历 iCal tooltip z-index 30 < 导航 40，被 sticky nav 遮挡。
+- 修复：.hint::after 空闲态 display:none（hover/focus 时 block）、z-index 50、max-width min(230px, 100vw-2rem)；≤640px 改 fixed 底部弹层（left/right/bottom 1rem）永不越界；显示时快速 rise-in（reduced-motion 降级）。
+- 复验：375px scrollWidth 恢复 375（开着 tooltip 也是）、日历 tooltip 桌面全可见、hover+键盘均可触发、/stats axe 0。CSS_VERSION 164→165。
