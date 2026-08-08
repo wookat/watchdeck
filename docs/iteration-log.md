@@ -45,6 +45,18 @@
 
 ---
 
+## Round 135 — 2026-08-08（回归修复：一键退订 POST 被 CSRF 拦截）
+
+**发现（R130-134 回归，P1）**
+- 邮箱服务商发起的 RFC 8058 一键退订 POST 不带 Origin 头，被全局 csrf() 以 403 HTTPException 拒绝，且 R133 onError 又将其吞成 500——List-Unsubscribe-Post 指向死端点。
+
+**修复**
+- POST /unsubscribe/:token 豁免 CSRF（token 即鉴权，必须接受外部 POST）；onError 对 HTTPException 直接返回 err.getResponse()（403 等原样透传，不再 500）。线上复验：无 Origin POST → 200 "OK"；evil.com Origin POST /login → 403（CSRF 负例不回退）。
+
+**证据**：见 PR #46 回归评论。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**
