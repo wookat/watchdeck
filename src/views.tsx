@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 165;
+export const CSS_VERSION = 166;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -547,7 +547,8 @@ export const HomePage: FC<{
   upcoming?: CalendarItem[];
   hasWatch?: boolean;
   wrappedYear?: number;
-}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview, upcoming, hasWatch, wrappedYear }) => (
+  streak?: number;
+}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview, upcoming, hasWatch, wrappedYear, streak }) => (
   <div>
     <h1 class="mb-6 text-2xl font-bold">Next up</h1>
     {!(hasAnything && hasWatch) && (
@@ -584,6 +585,14 @@ export const HomePage: FC<{
         <span>✨ New: your {wrappedYear} Wrapped is ready — <a href={`/wrapped/${wrappedYear}`} class="font-medium text-violet-300 hover:underline">see your year in TV & film</a></span>
         <button data-dismiss class="ml-auto rounded px-2 text-slate-400 hover:text-slate-200" aria-label="Dismiss Wrapped announcement">✕</button>
       </div>
+    )}
+    {(streak ?? 0) >= 2 && (
+      <a href="/stats" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-orange-900/60 bg-orange-950/30 px-4 py-2.5 text-sm hover:border-orange-700">
+        <span class="text-orange-300">
+          🔥 <span class="stat-num font-semibold">{streak}-day</span> watching streak
+        </span>
+        <span class="text-xs text-slate-400">Watch anything today to keep it going →</span>
+      </a>
     )}
     {justWatched && (
       <div class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-800 bg-emerald-950/40 px-4 py-2.5 text-sm text-emerald-300">
@@ -685,6 +694,11 @@ export const HomePage: FC<{
                   ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}`
                   : "🎬 Movie release"}
               </span>
+              {it.mediaType === "tv" && it.episode === 1 && (
+                <span class="shrink-0 rounded-full border border-violet-800 bg-violet-950/50 px-2 py-0.5 text-xs font-medium text-violet-300">
+                  {it.season === 1 ? "Series premiere" : "Season premiere"}
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -1032,6 +1046,16 @@ export const AddToList: FC<{ lists: ListRef[]; tmdbId: number; mediaType: "tv" |
   </details>
 );
 
+const StatusBadge: FC<{ status: string }> = ({ status }) => {
+  const cls =
+    status === "Returning Series" || status === "In Production" || status === "Planned"
+      ? "border-emerald-800 bg-emerald-950/50 text-emerald-300"
+      : status === "Canceled"
+        ? "border-red-900 bg-red-950/50 text-red-300"
+        : "border-slate-700 bg-slate-900/60 text-slate-300";
+  return <span class={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium ${cls}`}>{status}</span>;
+};
+
 export const ShowPage: FC<{
   show: TvDetails;
   season: SeasonDetails | null;
@@ -1061,8 +1085,19 @@ export const ShowPage: FC<{
           <h1 class="text-3xl font-bold">{show.name}</h1>
           <p class="mt-1 text-sm text-slate-400">
             {show.first_air_date?.slice(0, 4)} · {show.number_of_seasons} season{show.number_of_seasons === 1 ? "" : "s"} ·{" "}
-            {show.number_of_episodes} episodes · {show.status} · ★ {show.vote_average?.toFixed(1)}
+            {show.number_of_episodes} episodes · <StatusBadge status={show.status} /> · ★ {show.vote_average?.toFixed(1)}
           </p>
+          {(show.created_by?.length ?? 0) > 0 && (
+            <p class="mt-1 text-sm text-slate-400">
+              Created by{" "}
+              {show.created_by!.map((p, i) => (
+                <>
+                  {i > 0 && ", "}
+                  <a href={`/person/${p.id}-${slugify(p.name)}`} class="text-violet-400 hover:underline">{p.name}</a>
+                </>
+              ))}
+            </p>
+          )}
           <p class="mt-1 text-sm text-slate-400">
             {show.genres.map((g) => g.name).join(", ")}
             {trailer && (
@@ -1633,6 +1668,11 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
                         {it.mediaType === "tv" && it.season != null && it.episode != null
                           ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` · ${it.episodeName}` : ""}`
                           : "🎬 Movie release"}
+                        {it.mediaType === "tv" && it.episode === 1 && (
+                          <span class="ml-2 inline-block rounded-full border border-violet-800 bg-violet-950/50 px-2 py-0.5 text-xs font-medium text-violet-300">
+                            {it.season === 1 ? "Series premiere" : "Season premiere"}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </li>

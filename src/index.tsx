@@ -427,6 +427,22 @@ app.get("/home", async (c) => {
   const upcoming = (await upcomingItems(c.env, user.id).catch(() => [] as CalendarItem[]))
     .filter((it) => it.airDate <= weekAhead)
     .slice(0, 6);
+  const streakDays = await c.env.DB.prepare(
+    `SELECT DISTINCT d FROM (
+       SELECT date(watched_at) AS d FROM episode_watches WHERE user_id = ?1
+       UNION
+       SELECT date(watched_at) AS d FROM movie_watches WHERE user_id = ?1
+     ) WHERE d IS NOT NULL ORDER BY d DESC LIMIT 90`
+  )
+    .bind(user.id)
+    .all<{ d: string }>();
+  const dayNums = streakDays.results.map((r) => Math.round(Date.parse(r.d + "T00:00:00Z") / 86400000));
+  const todayNum = Math.floor(Date.now() / 86400000);
+  let streak = 0;
+  if (dayNums.length && dayNums[0] >= todayNum - 1) {
+    streak = 1;
+    for (let i = 0; i < dayNums.length - 1 && dayNums[i + 1] === dayNums[i] - 1; i++) streak++;
+  }
   return c.html(
     <Layout user={user} title="Next up">
       <HomePage
@@ -438,6 +454,7 @@ app.get("/home", async (c) => {
         upcoming={upcoming}
         hasWatch={hasWatch}
         wrappedYear={new Date().getUTCFullYear()}
+        streak={streak}
       />
     </Layout>
   );
