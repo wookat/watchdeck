@@ -1,6 +1,9 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
-import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember } from "./tmdb";
+import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
+
+// bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
+export const CSS_VERSION = 150;
 
 export interface ListRef {
   id: number;
@@ -41,7 +44,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <link rel="preconnect" href="https://image.tmdb.org" />
-      <link rel="stylesheet" href="/styles.css?v=130" />
+      <link rel="stylesheet" href={`/styles.css?v=${CSS_VERSION}`} />
       <script src="/app.js" defer></script>
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -502,6 +505,7 @@ export const HomePage: FC<{
 export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: Set<string>; type?: "all" | "tv" | "movie"; loggedIn?: boolean }> = ({ q, results, libraryIds, type = "all", loggedIn }) => {
   const backTo = `/search?q=${encodeURIComponent(q)}${type === "all" ? "" : `&type=${type}`}`;
   const filtered = results.filter((r) => (r.media_type === "tv" || r.media_type === "movie") && (type === "all" || r.media_type === type));
+  const people = type === "all" ? results.filter((r) => r.media_type === "person" && r.profile_path).slice(0, 8) : [];
   return (
     <div>
       <form action="/search" method="get" class="mb-6">
@@ -534,6 +538,26 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
           ))}
         </div>
       )}
+      {people.length > 0 && (
+        <div class="mb-8">
+          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">People</h2>
+          <ul class="flex flex-wrap gap-4">
+            {people.map((p) => (
+              <li class="w-20 text-center">
+                <a href={`/person/${p.id}-${slugify(p.name ?? "")}`} class="group block">
+                  <img
+                    src={`https://image.tmdb.org/t/p/w185${p.profile_path}`}
+                    alt={p.name}
+                    loading="lazy"
+                    class="mx-auto aspect-square w-16 rounded-full border border-slate-800 object-cover"
+                  />
+                  <p class="mt-1.5 line-clamp-2 text-xs group-hover:text-violet-400">{p.name}</p>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {filtered.map((r) => {
           const inLib = libraryIds?.has(`${r.media_type}:${r.id}`);
@@ -555,7 +579,7 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
           );
         })}
       </div>
-      {q && filtered.length === 0 && (
+      {q && filtered.length === 0 && people.length === 0 && (
         <EmptyState title="Nothing found">
           {type !== "all" ? `No ${type === "tv" ? "TV shows" : "movies"} matched — try the All tab.` : "Check the spelling, or browse what's trending below."}
         </EmptyState>
@@ -592,19 +616,64 @@ export const CastSection: FC<{ cast: CastMember[] }> = ({ cast }) =>
       <ul class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
         {cast.map((m) => (
           <li class="text-center">
-            <img
-              src={m.profile_path ? `https://image.tmdb.org/t/p/w185${m.profile_path}` : "/placeholder-poster.svg"}
-              alt={m.name}
-              loading="lazy"
-              class="mx-auto aspect-[2/3] w-full max-w-[7rem] rounded-xl border border-slate-800 object-cover"
-            />
-            <p class="mt-2 line-clamp-1 text-sm font-medium">{m.name}</p>
+            <a href={`/person/${m.id}-${slugify(m.name)}`} class="group block">
+              <img
+                src={m.profile_path ? `https://image.tmdb.org/t/p/w185${m.profile_path}` : "/placeholder-poster.svg"}
+                alt={m.name}
+                loading="lazy"
+                class="mx-auto aspect-[2/3] w-full max-w-[7rem] rounded-xl border border-slate-800 object-cover"
+              />
+              <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{m.name}</p>
+            </a>
             {m.character && <p class="line-clamp-1 text-xs text-slate-400">{m.character}</p>}
           </li>
         ))}
       </ul>
     </div>
   );
+
+export const PersonPage: FC<{ person: PersonDetails; credits: PersonCredit[] }> = ({ person, credits }) => (
+  <div>
+    <div class="flex flex-col gap-6 sm:flex-row">
+      <img
+        src={person.profile_path ? `https://image.tmdb.org/t/p/w342${person.profile_path}` : "/placeholder-poster.svg"}
+        alt={person.name}
+        fetchpriority="high"
+        class="aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover sm:w-52"
+      />
+      <div class="min-w-0 flex-1">
+        <h1 class="text-3xl font-bold">{person.name}</h1>
+        <p class="mt-1 text-sm text-slate-400">
+          {person.known_for_department ?? "Acting"}
+          {person.birthday ? ` · born ${person.birthday}` : ""}
+        </p>
+        {person.biography && <p class="mt-4 line-clamp-[8] max-w-2xl whitespace-pre-line text-slate-300">{person.biography}</p>}
+      </div>
+    </div>
+    {credits.length > 0 && (
+      <div class="mt-12">
+        <h2 class="mb-4 text-xl font-semibold">Known for</h2>
+        <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+          {credits.map((cr) => {
+            const title = cr.title ?? cr.name ?? "";
+            return (
+              <a href={`/${cr.media_type === "tv" ? "shows" : "movies"}/${cr.id}-${slugify(title)}`} class="poster-card group block">
+                <img
+                  src={poster(cr.poster_path)}
+                  alt={title}
+                  loading="lazy"
+                  class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover"
+                />
+                <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{title}</p>
+                {cr.character && <p class="line-clamp-1 text-xs text-slate-400">as {cr.character}</p>}
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    )}
+  </div>
+);
 
 export const RecsSection: FC<{ recs: SearchResult[]; type: "tv" | "movie" }> = ({ recs, type }) =>
   recs.length === 0 ? null : (
@@ -905,16 +974,16 @@ export const ShowPage: FC<{
               const playCount = plays?.get(`${ep.season_number}x${ep.episode_number}`) ?? 1;
               const epRating = epRatings?.get(`${ep.season_number}x${ep.episode_number}`);
               return (
-                <li class="flex items-center gap-4 bg-slate-900/40 px-4 py-3">
+                <li class="flex flex-wrap items-center gap-x-4 gap-y-2 bg-slate-900/40 px-4 py-3">
                   <span class="w-14 shrink-0 text-sm text-slate-400">
                     S{String(ep.season_number).padStart(2, "0")}E{String(ep.episode_number).padStart(2, "0")}
                   </span>
-                  <div class="min-w-0 flex-1">
+                  <div class="min-w-0 flex-1 basis-40">
                     <p class="line-clamp-1 font-medium">{ep.name}</p>
-                    <p class="text-xs text-slate-400">{ep.air_date ?? "TBA"}</p>
+                    <p class="whitespace-nowrap text-xs text-slate-400">{ep.air_date ?? "TBA"}</p>
                   </div>
                   {user && (
-                    <div class="flex shrink-0 items-center gap-2">
+                    <div class="ml-auto flex shrink-0 items-center gap-2">
                       {!isWatched && (
                         <form action="/api/watch-up-to" method="post">
                           <input type="hidden" name="tmdb_id" value={String(show.id)} />
@@ -1538,6 +1607,7 @@ export interface UserStats {
   topShowThisMonth: { title: string; eps: number } | null;
   currentStreak: number;
   bestStreak: number;
+  topEpisodes: { title: string; tmdb_id: number; season: number; episode: number; rating: number }[];
 }
 
 const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
@@ -1657,6 +1727,21 @@ const StatsBody: FC<{ stats: UserStats }> = ({ stats }) => {
                 </li>
               );
             })}
+          </ul>
+        </div>
+      )}
+      {stats.topEpisodes.length > 0 && (
+        <div class="mt-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+          <h2 class="mb-4 font-semibold">Top episodes</h2>
+          <ul class="space-y-1.5">
+            {stats.topEpisodes.map((e) => (
+              <li class="flex items-center gap-2 text-sm">
+                <span class="w-16 shrink-0 text-amber-300">{"★".repeat(e.rating)}</span>
+                <a href={`/shows/${e.tmdb_id}-${slugify(e.title)}?season=${e.season}`} class="min-w-0 truncate hover:text-violet-400">
+                  {e.title} · S{String(e.season).padStart(2, "0")}E{String(e.episode).padStart(2, "0")}
+                </a>
+              </li>
+            ))}
           </ul>
         </div>
       )}

@@ -27,6 +27,8 @@ import {
   metaDescription,
   type SearchResult,
   topCast,
+  personDetails,
+  personCredits,
   type CastMember,
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, isNetflixCsv, parseNetflixCsv, type ParsedImport } from "./importer";
@@ -44,6 +46,7 @@ import {
   TrendingSection,
   ShowPage,
   MoviePage,
+  PersonPage,
   LibraryPage,
   CalendarPage,
   ImportPage,
@@ -229,16 +232,28 @@ app.post("/signup", async (c) => {
     return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Enter a valid email and a password of 8+ characters." next={safeNext(form.next)} /></Layout>, 400);
   }
   const { hash, salt } = await hashPassword(password);
-  try {
-    const res = await c.env.DB.prepare("INSERT INTO users (email, password_hash, salt) VALUES (?, ?, ?) RETURNING id")
+  const insert = () =>
+    c.env.DB.prepare("INSERT INTO users (email, password_hash, salt) VALUES (?, ?, ?) RETURNING id")
       .bind(email, hash, salt)
       .first<{ id: number }>();
-    await createSession(c, res!.id);
-    c.executionCtx.waitUntil(sendEmail(c.env, email, ...welcomeEmail(c.env.SITE_URL)));
-    return c.redirect(safeNext(form.next) ?? "/import");
-  } catch {
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." next={safeNext(form.next)} /></Layout>, 400);
+  let res;
+  try {
+    try {
+      res = await insert();
+    } catch (err) {
+      if (String(err).includes("UNIQUE")) throw err;
+      res = await insert();
+    }
+  } catch (err) {
+    if (String(err).includes("UNIQUE")) {
+      return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." next={safeNext(form.next)} /></Layout>, 400);
+    }
+    console.error(err);
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Something went wrong on our side — please try again." next={safeNext(form.next)} /></Layout>, 500);
   }
+  await createSession(c, res!.id);
+  c.executionCtx.waitUntil(sendEmail(c.env, email, ...welcomeEmail(c.env.SITE_URL)));
+  return c.redirect(safeNext(form.next) ?? "/import");
 });
 
 app.post("/login", async (c) => {
@@ -433,7 +448,7 @@ app.get("/search", async (c) => {
   );
   const typeQ = c.req.query("type");
   const type = typeQ === "tv" || typeQ === "movie" ? typeQ : "all";
-  const hasMedia = res.results.some((r) => r.media_type === "tv" || r.media_type === "movie");
+  const hasMedia = res.results.some((r) => r.media_type === "tv" || r.media_type === "movie" || (r.media_type === "person" && r.profile_path));
   if (!hasMedia) {
     const [shows, movies] = await Promise.all([trendingTv(c.env), trendingMovies(c.env)]);
     return c.html(
@@ -598,6 +613,54 @@ app.get("/movies/:idslug", async (c) => {
       }}
     >
       <MoviePage movie={movie} watchCount={watchCount} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
+    </Layout>
+  );
+});
+
+app.get("/person/:idslug", async (c) => {
+  const user = c.get("user");
+  const id = parseInt(c.req.param("idslug"), 10);
+  if (!Number.isFinite(id)) return c.notFound();
+  let person;
+  try {
+    person = await personDetails(c.env, id);
+  } catch {
+    return c.notFound();
+  }
+  const personSlug = `${person.id}-${slugify(person.name)}`;
+  if (c.req.param("idslug") !== personSlug) return c.redirect(`/person/${personSlug}`, 301);
+  const credits = await personCredits(c.env, id).catch(() => []);
+  const canonical = `${c.env.SITE_URL}/person/${personSlug}`;
+  return c.html(
+    <Layout
+      user={user}
+      title={person.name}
+      description={metaDescription(person.biography ?? `TV shows and movies featuring ${person.name}.`)}
+      canonical={canonical}
+      ogType="profile"
+      ogImage={person.profile_path ? `https://image.tmdb.org/t/p/w500${person.profile_path}` : undefined}
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Person",
+            name: person.name,
+            url: canonical,
+            ...(person.profile_path ? { image: `https://image.tmdb.org/t/p/w500${person.profile_path}` } : {}),
+            ...(person.birthday ? { birthDate: person.birthday } : {}),
+          },
+          {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "WatchDeck", item: c.env.SITE_URL + "/" },
+              { "@type": "ListItem", position: 2, name: "Browse", item: c.env.SITE_URL + "/browse" },
+              { "@type": "ListItem", position: 3, name: person.name, item: canonical },
+            ],
+          },
+        ],
+      }}
+    >
+      <PersonPage person={person} credits={credits} />
     </Layout>
   );
 });
@@ -940,7 +1003,7 @@ async function hoursWatched(env: Env, userId: number): Promise<number> {
 }
 
 async function userStats(env: Env, userId: number): Promise<UserStats> {
-  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear, byYear, ratingRows, watchDays, epsMonth, moviesMonth, topShowMonth] = await Promise.all([
+  const [eps, movies, tracked, completed, topShows, byMonth, hours, epsYear, moviesYear, byYear, ratingRows, watchDays, epsMonth, moviesMonth, topShowMonth, topEpisodes] = await Promise.all([
     env.DB.prepare("SELECT COUNT(*) AS n FROM episode_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(DISTINCT tmdb_id) AS n FROM movie_watches WHERE user_id = ?").bind(userId).first<{ n: number }>(),
     env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND media_type = 'tv'").bind(userId).first<{ n: number }>(),
@@ -982,6 +1045,12 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
        WHERE w.user_id = ? AND w.watched_at >= strftime('%Y-%m-01', 'now')
        GROUP BY w.tmdb_id ORDER BY eps DESC, t.title LIMIT 1`
     ).bind(userId).first<{ title: string; eps: number }>(),
+    env.DB.prepare(
+      `SELECT t.title, w.tmdb_id, w.season, w.episode, w.rating FROM episode_watches w
+       JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
+       WHERE w.user_id = ? AND w.rating IS NOT NULL
+       ORDER BY w.rating DESC, w.watched_at DESC LIMIT 5`
+    ).bind(userId).all<{ title: string; tmdb_id: number; season: number; episode: number; rating: number }>(),
   ]);
   const ratingCounts = [1, 2, 3, 4, 5].map((r) => ratingRows.results.find((row) => row.rating === r)?.n ?? 0);
   const days = watchDays.results.map((r) => Math.round(Date.parse(r.d + "T00:00:00Z") / 86400000));
@@ -1033,6 +1102,7 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
     topShowThisMonth: topShowMonth ?? null,
     currentStreak,
     bestStreak,
+    topEpisodes: topEpisodes.results,
   };
 }
 

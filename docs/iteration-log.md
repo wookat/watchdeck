@@ -121,6 +121,56 @@
 
 ---
 
+## Round 146 — 2026-08-08（375px 集列表布局 + Top episodes 统计）
+
+**发现（R145 回归 P4 + R144 后续）**
+- 375px 下未看集行日期列被压至三行换行并贴近「⇤ up to here」；集评分数据尚无任何展示出口。
+
+**修复**
+- 集行日期加 whitespace-nowrap，操作按钮组改 max-w-[60%] flex-wrap 可换行不挤压；/stats（与公开分享页共用 StatsBody）新增「Top episodes」卡——按集评分 Top5，星级+可点回详情页对应季。
+
+**证据**：线上 375px 与 /stats 实测，见 PR。
+
+---
+
+## Round 147 — 2026-08-08（演职人员页 pSEO）
+
+**发现（竞品再挖掘）**
+- Trakt/Letterboxd/TMDB 均有人物页承接「演员名」搜索流量；我们详情页 Top cast 只是静态卡不可点，长尾入口缺失。
+
+**修复**
+- 新增 /person/:idslug（TMDB person + combined_credits，7 天缓存）：简介+「Known for」作品网格（去重、按热度排序、可点回详情页）；错 slug 301 规范化、Person+BreadcrumbList JSON-LD、og:type=profile；详情页 Top cast 头像/姓名改为可点链接。
+
+**证据**：线上 /person/1223786-emilia-clarke 实测（301/JSON-LD/网格），见 PR。
+
+---
+
+## Round 148 — 2026-08-08（搜索结果 People 行）
+
+**发现（R147 后续 + 竞品模式）**
+- searchMulti 本就返回 person 结果但被过滤丢弃；Trakt/TMDB 搜索均有人物区。
+
+**修复**
+- All 标签下搜索页新增「People」行（圆头像+姓名，最多 8 人，链向 /person 页）；tv/movie 过滤标签下不显示；仅人物命中时不再误显示「Nothing found」+Trending。
+
+**证据**：线上 ?q=emilia+clarke 实测，见 PR。
+
+---
+
+## Rounds 149-150 — 2026-08-08（回归发现修复：375px 集行/陈旧 CSS/注册闪失）
+
+**发现（R146-148 回归）**
+- P2：R146 的 375px 修复未达预期——max-w-[60%]+flex-wrap 下按钮组 min-content 胜出，标题列被压成 0px、日期叠画在按钮下；复验通过后又发现 P3：CSS 变更未 bump ?v=130，旧缓存样式最长 1h+SWR 24h 内用户仍见坏布局。
+- 连续两次回归复现：/signup 首次提交静默失败（表单回显、账号未建），重试即成功——原 catch 把一切 D1 瞬时错误都当「邮箱已注册」吞掉。
+
+**修复**
+- R149 集行改 li flex-wrap + 标题列 basis-40（375px 按钮组换行到独立行，桌面单行不变，CDP 复测标题 237px、零相交）；styles.css 版本参数抽成 CSS_VERSION 常量并 bump 150。
+- R150 注册 INSERT 区分 UNIQUE 与瞬时错误：非 UNIQUE 自动重试一次，仍失败展示「服务端出错请重试」（500）并 console.error，不再误报「已注册」。
+
+**证据**：R146a 复验报告（16d10c0d）+ 本轮部署，见 PR。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**
