@@ -72,6 +72,19 @@
 
 ---
 
+## Rounds 140-141 — 2026-08-08（数据驱动：favicon.ico 404 + og:type）
+
+**发现（用户/数据分析 + 分享卡走查）**
+- 第一方统计 7 天内 /favicon.ico 请求 20 次全部 404（旧客户端/爬虫默认路径）；全站 OG 标记缺 og:type——分享解析器回退默认值，详情页丢失 video.tv_show/video.movie 语义。
+
+**修复**
+- R140 生成多尺寸 public/favicon.ico（48/32/16，自 icon-192 转出）并加 7 天缓存头。
+- R141 Layout 加 og:type（默认 website），剧集详情页 video.tv_show、电影详情页 video.movie。
+
+**证据**：线上 curl 实测 favicon 200 与 og:type 标记，见 PR。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**

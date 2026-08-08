@@ -500,6 +500,7 @@ app.get("/shows/:idslug", async (c) => {
       description={metaDescription(show.overview)}
       canonical={showCanonical}
       ogImage={show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : undefined}
+      ogType="video.tv_show"
       jsonLd={{
         "@context": "https://schema.org",
         "@graph": [
@@ -568,6 +569,7 @@ app.get("/movies/:idslug", async (c) => {
       description={metaDescription(movie.overview)}
       canonical={movieCanonical}
       ogImage={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined}
+      ogType="video.movie"
       jsonLd={{
         "@context": "https://schema.org",
         "@graph": [

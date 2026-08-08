@@ -8,13 +8,14 @@ export interface ListRef {
   has: number;
 }
 
-export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; jsonLd?: object; prev?: string; next?: string }>> = ({
+export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; ogType?: string; jsonLd?: object; prev?: string; next?: string }>> = ({
   children,
   user,
   title,
   description,
   canonical,
   ogImage,
+  ogType,
   jsonLd,
   prev,
   next,
@@ -35,6 +36,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       {description && <meta property="og:description" content={description} />}
       {canonical && <meta property="og:url" content={canonical} />}
       <meta property="og:site_name" content="WatchDeck" />
+      <meta property="og:type" content={ogType ?? "website"} />
       <meta property="og:image" content={ogImage ?? "https://watchdeck.zalize.com/og-default.png"} />
       <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
