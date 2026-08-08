@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { csrf } from "hono/csrf";
+import { HTTPException } from "hono/http-exception";
 import type { AppContext, Env } from "./types";
 import { hashPassword, verifyPassword, createSession, destroySession, loadUser } from "./auth";
 import {
@@ -88,9 +89,11 @@ function userLists(env: Env, userId: number, tmdbId: number, mediaType: "tv" | "
 
 const app = new Hono<AppContext>();
 
-app.use("*", (c, next) =>
-  csrf({ origin: (origin) => origin === new URL(c.env.SITE_URL).origin || origin === new URL(c.req.url).origin })(c, next)
-);
+app.use("*", (c, next) => {
+  // RFC 8058 one-click unsubscribe: mailbox providers POST without an Origin header
+  if (c.req.method === "POST" && /^\/unsubscribe\/[^/]+$/.test(new URL(c.req.url).pathname)) return next();
+  return csrf({ origin: (origin) => origin === new URL(c.env.SITE_URL).origin || origin === new URL(c.req.url).origin })(c, next);
+});
 
 app.use("*", async (c, next) => {
   await next();
@@ -2124,6 +2127,7 @@ app.notFound((c) =>
 );
 
 app.onError((err, c) => {
+  if (err instanceof HTTPException) return err.getResponse();
   console.error(err);
   return c.html(
     <Layout user={c.get("user")} title="Something went wrong">
