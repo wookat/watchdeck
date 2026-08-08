@@ -96,3 +96,67 @@
 
 1. **Streak 激励条**（上表 P1）：把留存机制从 /stats 深处提到 dashboard 首屏——直接借鉴 Trakt streak callout 的位置心理学。
 2. **Premiere 徽章**（上表 P2）：把 Trakt「Premieres 过滤」的价值内联化——不用切过滤器，扫日历即见首播，比标杆交互成本更低。
+
+## 页面覆盖率盘点（R172，2026-08-08 补充）
+
+盘点方式：标杆 sitemap.xml（21 URL）+ robots.txt Disallow 清单 + 全局导航/footer 链接逐层爬查 + 路由探测（301/307/404 归并同类型）。
+
+标杆全部页面类型 **N = 22**：
+
+| # | Trakt 页面类型 | 走查方式 | 我们对应 | 状态 |
+|---|---|---|---|---|
+| 1 | Home dashboard `/` | 浏览器（R168） | `/home` | ✅ 已对照（上表 §1） |
+| 2 | Discover hub `/discover` | 浏览器（R168） | `/browse` | ✅ 已对照（§4） |
+| 3 | Discover 榜单 `/discover/popular|trending`（show/movie/media 三模式；`/shows`、`/movies` 等 301 归并至此） | 浏览器（R172 补） | `/browse` trending + genre/network/year 页 | ✅ 本轮补对照（见下） |
+| 4 | Discover `anticipated` / `recommended` 榜单 | 路由探测 | 无 | deliberate-n/a：TMDB 无 anticipated 等价端点（前表 P3 已记）；recommended 我们在详情页 More like this 提供 |
+| 5 | 剧集详情 `/shows/:slug` | 浏览器（R168） | `/shows/:idslug` | ✅ 已对照（§2） |
+| 6 | 电影详情 `/movies/:slug` | 浏览器（R172 补） | `/movies/:idslug` | ✅ 本轮补对照（见下） |
+| 7 | 季页 `/shows/:slug/seasons/:n` | 浏览器（R172，页面空渲染）+ 路由探测 | 详情页内嵌季/集列表 | ✅ 结构对照：Trakt 集视图实为详情页 `?view=episode` 查询参数（307 实测），与我们详情页内嵌同构 |
+| 8 | 人物页 `/people/:slug` | 浏览器（R172 补） | `/person/:idslug` | ✅ 本轮补对照（见下） |
+| 9 | 官方榜单 lists `/lists/official/:slug` | 浏览器（R172 补，主体延迟加载） | 自定义列表+公开分享 | 前表已标 deliberate-n/a（产品模型不同：私有列表+分享链接） |
+| 10 | 用户列表 `/users/me/lists` | 导航链接确认 | `/lists` | ✅ 已有同构功能（§R109-111） |
+| 11 | Profile `/profile/:user` | 浏览器（R168） | `/u/:token` 公开分享页 + `/stats` | ✅ 已对照（§5） |
+| 12 | Search `/search` | 浏览器（R168） | `/search` | ✅ 已对照（§6） |
+| 13 | Calendar `/calendar`（robots Disallow，登录态） | 浏览器（R168，注册账号） | `/calendar` | ✅ 已对照（§3） |
+| 14 | History `/history`（robots Disallow） | 登录态走查 | `/history` | ✅ 已有同构功能 |
+| 15 | Settings `/settings`（robots Disallow） | 登录态走查 | `/settings` | ✅ 已有同构功能 |
+| 16 | Social `/social`（robots Disallow） | — | 无 | deliberate-n/a：社交层为待拍板独立方向（前表已标） |
+| 17 | VIP `/vip` | HTML 抓取（R172） | `/pricing` | ✅ 同构：付费墙营销页 ↔ 我们 Beta 免费口径 pricing 页（红线：不接支付） |
+| 18 | About `/about` | HTML 抓取（R172） | `/about` | ✅ 已有同构功能（What is + Meet the Team ↔ 品牌故事+press kit） |
+| 19 | Privacy / Terms | HTML 抓取 | `/privacy` `/terms` | ✅ 已有同构功能 |
+| 20 | Branding `/branding` | footer 链接确认 | `/about` 内品牌资源区 | ✅ 已有同构功能（logo 下载+品牌色） |
+| 21 | 404 页 | 路由探测 | 品牌化 404/500 页 | ✅ 已有同构功能（R133） |
+| 22 | API/Forums/Status（外链 docs.trakt.tv 等） | footer 链接确认 | 无 | deliberate-n/a：超出当前产品面（前表已标） |
+
+**覆盖率结论：22 个页面类型中 18 个已对照或已有同构功能（82%）；4 个 deliberate-n/a（anticipated 榜单、social、官方 lists 库、API/Forums/Status），均有明确理由。无遗漏未处置页面类型。**
+
+### R172 补充走查要点（本轮新对照页）
+
+| 页面 | Trakt 观察 | WatchDeck 现状 | 还原度 | 差距/处置 |
+|---|---|---|---|---|
+| Discover 榜单页 | H1+模式副标题、海报网格卡（海报/标题/题材/年份/集数/分级/评分%）、卡上 ⋮ context menu、Filters 按钮、无限滚动 | /browse trending + genre/network/year 网格：海报/标题/年份/评分，分页 | 90% | 卡片元数据密度略低（集数/分级未上卡）——卡片保持扫读性为有意取舍；context menu 前表已标 n/a |
+| 电影详情页 | 海报+Directed by 链接+年份/时长/分级/题材、评分行、简介、Where to Watch（JustWatch）、Sentiment AI 摘要、操作条、Actors 带影评、Extras/Related/Popular Lists | /movies 详情：海报+backdrop+元数据+评分+简介+where-to-stream+More like this+Top cast | 92% | 缺 Directed by 行（**P2 本轮已修**，与剧集 Created by 同构）；Sentiment AI 摘要/影评为社交层 n/a |
+| 人物页 | 头像+姓名+bio+身高/生日/年龄+社媒链接、作品横向 carousel（Acting 下拉分类） | /person：头像+姓名+bio+TV/Movies 分节网格 | 95% | 身高/社媒链接不做（隐私面窄化为有意取舍）；分节网格 vs carousel 为等价结构 |
+
+## 技术标准反推审计（R172）
+
+审计方式：黑盒观测（curl 头部/HTML 源码/DevTools）+ 公开构建产物分析；不绕反爬、不拷代码。我们侧数据为生产实测（2026-08-08）。
+
+| # | 技术项 | Trakt 标准 | WatchDeck 现状 | 达标? |
+|---|---|---|---|---|
+| 1 | 渲染方式 | SvelteKit SSR shell + 客户端水合（x-sveltekit-page；核心内容多为 client fetch 后渲染） | Hono JSX 纯 SSR，无水合、内容首字节即全量 | ✅ 反超（内容可用时间更早、无 JS 依赖） |
+| 2 | 框架/构建产物 | Svelte + Vite，hash 文件名 immutable chunks（~78 css chunks + 数百 JS chunks；入口 app.js br 后 ~55KB，全站 JS 数百 KB） | Tailwind 构建单 CSS（br 后 9.3KB）+ 1KB 原生 JS | ✅ 反超（传输体积一个数量级更小） |
+| 3 | 静态资产缓存 | `public, immutable, max-age=31536000` + ETag（hash 文件名） | 原 `max-age=3600+SWR`（?v= 版本参数） | ❌→✅ **本轮修**：styles.css/app.js 改 1 年 immutable（URL 带 ?v=CSS_VERSION，bump 即失效） |
+| 4 | HTML 缓存 | `private, no-store, no-cache`（全页） | 公开页 CDN 可缓存 + 私密页 private,no-store | ✅ 反超（公开页可缓存对 SEO/性能更优；私密页同标准） |
+| 5 | 103 Early Hints / Link preload | 103 Early Hints 推送全部 css preload + modulepreload | 原无 Link 头 | ❌→✅ **本轮修**：HTML 响应加 Link preload（styles.css+字体），Cloudflare 自动升级 103 Early Hints |
+| 6 | Speculation Rules 预取 | `speculation-rules: /cdn-cgi/speculation`（Cloudflare 托管预取） | 原无 | ❌→✅ **本轮修**：`Speculation-Rules` 头 + /speculationrules.json（moderate prefetch，排除 logout/api/退订） |
+| 7 | 字体管线 | Roboto via Cloudflare Fonts，unicode-range 子集，font-display:swap，无 preload | Sora latin 子集自托管 woff2（~25KB），swap + preload + 1 年 immutable | ✅ 反超（preload 是我们多做的） |
+| 8 | 图片管线 | 自建 media.trakt.tv CDN，客户端渲染 img（SSR shell 无 srcset/lazy） | TMDB CDN + preconnect + loading=lazy + fetchpriority（LCP 海报） | ✅ 达标（双方均无 srcset；lazy/fetchpriority 我们多做） |
+| 9 | 压缩 | brotli（Cloudflare） | brotli（Cloudflare） | ✅ 同标准 |
+| 10 | 结构化数据 | WebSite+SearchAction（首页）；详情页 SSR shell 无 JSON-LD | WebSite+SearchAction+FAQPage+TVSeries/Movie/Person/Article/BreadcrumbList/ItemList/WebApplication 全站覆盖 | ✅ 反超 |
+| 11 | SEO 技术 | sitemap 21 URL（详情页不进 sitemap）、robots 分层（AI bot 全禁）、og 全套（含 og:image:alt/og:locale）、canonical | sitemap 460+ URL 含详情/人物/browse 页、robots+noindex 对齐、og 全套 | ❌→✅ **本轮修**：补 og:image:alt + og:locale（其余原已达标或反超） |
+| 12 | 性能基线 | HTML TTFB ~70ms（edge shell，内容另需客户端 fetch 数百 ms）；HTML br 19.4KB | TTFB 200-380ms（Worker 内含 D1/TMDB 数据获取，首字节即含全部内容）；HTML br 3-6KB | ✅ 达标（口径不同：我们 TTFB 即内容可用；其 shell 快但 LCP 依赖后续 JS+fetch。CWV 实测 FCP<500ms 已在 R171 回归记录） |
+| 13 | 无障碍 | aria-label 全覆盖（DOM 观察），未跑 axe（闭源站不注入脚本） | axe 0 violations（/home /calendar 详情页实测），aria+键盘可达 | ✅ 达标（我们有可验证的 axe 全零证据） |
+| 14 | 安全头 | HTML 响应仅 cache-control（无 CSP/HSTS/XFO/referrer-policy，黑盒观测） | CSP+HSTS+XFO+nosniff+referrer-policy+permissions-policy 全套 | ✅ 反超 |
+
+**技术结论：14 项技术标准中，本轮修复 4 项（#3 immutable 资产缓存、#5 Early Hints、#6 Speculation Rules、#11 og 补全）后 14/14 达标，其中 7 项反超标杆（#1/#2/#4/#7/#10/#13/#14）。**

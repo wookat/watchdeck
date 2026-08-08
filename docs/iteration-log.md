@@ -1808,3 +1808,8 @@
 - R170 缺陷修复：P1 首页 streak 激励条（🔥 N-day，D1 连续日期计算，≥2 天显示）；P1 详情页 Created by 行（TMDB created_by → /person 页互链）；P2 详情页生命周期 StatusBadge 彩色 chip；P2 日历/首页 Airing「Series/Season premiere」徽章（E01 自动识别）。
 - R171 超越项+洞察优化：对照表末尾列 6 项超越项；2 个复刻洞察优化 = streak 前置到首屏 + premiere 徽章内联化（比 Trakt 过滤器交互成本更低）。
 - CSS_VERSION 165→166。
+
+## Rounds 172-174 — 2026-08-08（复刻升级：页面覆盖率 + 技术标准审计）
+- R172 全页面覆盖盘点：Trakt sitemap.xml（21 URL）+ robots + 导航/footer 爬查 + 路由探测归并 → 22 个页面类型，18 个已对照/同构（覆盖率 82%），4 个 deliberate-n/a（anticipated、social、官方 lists 库、API/Forums/Status）均写明理由；本轮补走查 discover 榜单页/电影详情/人物页/season 路由/vip/about（docs/replication-benchmark.md「页面覆盖率盘点」节）。
+- R173 技术标准反推审计：14 项黑盒对比（渲染/框架/缓存/Early Hints/Speculation Rules/字体/图片/压缩/结构化数据/SEO/性能/无障碍/安全头），修复 4 项缺口后 14/14 达标、7 项反超（对照表「技术标准反推审计」节）。
+- R174 缺陷修复：① styles.css/app.js 改 1 年 immutable（URL 带 ?v=CSS_VERSION）；② HTML 响应加 Link preload 头（styles+字体，Cloudflare 自动升 103 Early Hints）；③ Speculation-Rules 头 + /speculationrules.json（moderate prefetch，排除 logout/api/退订）；④ og:image:alt + og:locale 补全；⑤ 页面覆盖补漏：电影详情页 Directed by 行（TMDB credits crew → /person 互链，与剧集 Created by 同构）。

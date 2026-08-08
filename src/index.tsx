@@ -11,6 +11,7 @@ import {
   tvDetails,
   seasonDetails,
   movieDetails,
+  movieDirectors,
   trendingTv,
   trendingMovies,
   genreList,
@@ -37,6 +38,7 @@ import { parseTvTimeZip, parseGenericCsv, isNetflixCsv, parseNetflixCsv, type Pa
 import { sendEmail, welcomeEmail, resetEmail, confirmSignupEmail } from "./email";
 import { shareOgImage, listOgImage, wrappedOgImage } from "./og";
 import {
+  CSS_VERSION,
   Layout,
   Landing,
   landingFaqs,
@@ -122,6 +124,11 @@ app.use("*", async (c, next) => {
     h.set("cache-control", "private, no-store");
   }
   if (c.res.headers.get("content-type")?.includes("text/html")) {
+    h.set("speculation-rules", '"/speculationrules.json"');
+    h.set(
+      "link",
+      `</styles.css?v=${CSS_VERSION}>; rel=preload; as=style, </fonts/sora-latin.woff2>; rel=preload; as=font; type="font/woff2"; crossorigin`
+    );
     h.set(
       "content-security-policy",
       "default-src 'self'; img-src 'self' https://image.tmdb.org data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
@@ -604,7 +611,7 @@ app.get("/movies/:idslug", async (c) => {
   }
   const movieSlug = `${movie.id}-${slugify(movie.title)}`;
   if (c.req.param("idslug") !== movieSlug) return c.redirect(`/movies/${movieSlug}`, 301);
-  const [watchedRow, tracked, recsRes, providers, cast, trailer, services, listsRes] = await Promise.all([
+  const [watchedRow, tracked, recsRes, providers, cast, trailer, directors, services, listsRes] = await Promise.all([
     user ? c.env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first<{ n: number }>() : Promise.resolve(null),
     user
       ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
@@ -615,6 +622,7 @@ app.get("/movies/:idslug", async (c) => {
     watchProviders(c.env, "movie", id).catch(() => null),
     topCast(c.env, "movie", id).catch(() => [] as CastMember[]),
     trailerUrl(c.env, "movie", id).catch(() => null),
+    movieDirectors(c.env, id).catch(() => [] as { id: number; name: string }[]),
     user ? userServices(c.env, user.id) : Promise.resolve(new Set<number>()),
     user ? userLists(c.env, user.id, id, "movie") : Promise.resolve(null),
   ]);
@@ -655,7 +663,7 @@ app.get("/movies/:idslug", async (c) => {
         ],
       }}
     >
-      <MoviePage movie={movie} watchCount={watchCount} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
+      <MoviePage movie={movie} watchCount={watchCount} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} directors={directors} />
     </Layout>
   );
 });
