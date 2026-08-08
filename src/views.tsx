@@ -2,6 +2,9 @@ import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
+// bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
+export const CSS_VERSION = 150;
+
 export interface ListRef {
   id: number;
   name: string;
@@ -41,7 +44,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <link rel="preconnect" href="https://image.tmdb.org" />
-      <link rel="stylesheet" href="/styles.css?v=130" />
+      <link rel="stylesheet" href={`/styles.css?v=${CSS_VERSION}`} />
       <script src="/app.js" defer></script>
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />

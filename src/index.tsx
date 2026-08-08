@@ -232,16 +232,28 @@ app.post("/signup", async (c) => {
     return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Enter a valid email and a password of 8+ characters." next={safeNext(form.next)} /></Layout>, 400);
   }
   const { hash, salt } = await hashPassword(password);
-  try {
-    const res = await c.env.DB.prepare("INSERT INTO users (email, password_hash, salt) VALUES (?, ?, ?) RETURNING id")
+  const insert = () =>
+    c.env.DB.prepare("INSERT INTO users (email, password_hash, salt) VALUES (?, ?, ?) RETURNING id")
       .bind(email, hash, salt)
       .first<{ id: number }>();
-    await createSession(c, res!.id);
-    c.executionCtx.waitUntil(sendEmail(c.env, email, ...welcomeEmail(c.env.SITE_URL)));
-    return c.redirect(safeNext(form.next) ?? "/import");
-  } catch {
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." next={safeNext(form.next)} /></Layout>, 400);
+  let res;
+  try {
+    try {
+      res = await insert();
+    } catch (err) {
+      if (String(err).includes("UNIQUE")) throw err;
+      res = await insert();
+    }
+  } catch (err) {
+    if (String(err).includes("UNIQUE")) {
+      return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." next={safeNext(form.next)} /></Layout>, 400);
+    }
+    console.error(err);
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Something went wrong on our side — please try again." next={safeNext(form.next)} /></Layout>, 500);
   }
+  await createSession(c, res!.id);
+  c.executionCtx.waitUntil(sendEmail(c.env, email, ...welcomeEmail(c.env.SITE_URL)));
+  return c.redirect(safeNext(form.next) ?? "/import");
 });
 
 app.post("/login", async (c) => {
