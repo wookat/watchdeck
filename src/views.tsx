@@ -753,6 +753,7 @@ export const ShowPage: FC<{
   season: SeasonDetails | null;
   watched: Set<string>;
   plays?: Map<string, number>;
+  epRatings?: Map<string, number>;
   tracked: { status: string; rating: number | null; notes: string | null } | null;
   user: User | null;
   recs: SearchResult[];
@@ -761,7 +762,7 @@ export const ShowPage: FC<{
   trailer?: string | null;
   myServices?: Set<number>;
   lists?: ListRef[];
-}> = ({ show, season, watched, plays, tracked, user, recs, providers, cast, trailer, myServices, lists }) => {
+}> = ({ show, season, watched, plays, epRatings, tracked, user, recs, providers, cast, trailer, myServices, lists }) => {
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
@@ -902,6 +903,7 @@ export const ShowPage: FC<{
             {season.episodes.map((ep) => {
               const isWatched = watched.has(`${ep.season_number}x${ep.episode_number}`);
               const playCount = plays?.get(`${ep.season_number}x${ep.episode_number}`) ?? 1;
+              const epRating = epRatings?.get(`${ep.season_number}x${ep.episode_number}`);
               return (
                 <li class="flex items-center gap-4 bg-slate-900/40 px-4 py-3">
                   <span class="w-14 shrink-0 text-sm text-slate-400">
@@ -926,6 +928,25 @@ export const ShowPage: FC<{
                           >
                             ⇤ up to here
                           </button>
+                        </form>
+                      )}
+                      {isWatched && (
+                        <form action="/api/episode-rating" method="post">
+                          <input type="hidden" name="tmdb_id" value={String(show.id)} />
+                          <input type="hidden" name="season" value={String(ep.season_number)} />
+                          <input type="hidden" name="episode" value={String(ep.episode_number)} />
+                          <input type="hidden" name="redirect" value={`${showUrl}?season=${season.season_number}`} />
+                          <select
+                            name="rating"
+                            data-autosubmit
+                            aria-label={`Rate season ${ep.season_number} episode ${ep.episode_number}`}
+                            class={epRating ? "rounded-lg border border-slate-700 bg-slate-900 px-1.5 py-1 text-sm text-amber-300" : "rounded-lg border border-slate-700 bg-slate-900 px-1.5 py-1 text-sm text-slate-400"}
+                          >
+                            <option value="" selected={!epRating}>☆ rate</option>
+                            {[5, 4, 3, 2, 1].map((n) => (
+                              <option value={String(n)} selected={epRating === n}>{"★".repeat(n)}</option>
+                            ))}
+                          </select>
                         </form>
                       )}
                       {isWatched && (

@@ -473,9 +473,9 @@ app.get("/shows/:idslug", async (c) => {
   const [season, watchedRows, tracked, recsRes, providers, cast, trailer, services, listsRes] = await Promise.all([
     seasonDetails(c.env, id, seasonNum).catch(() => null),
     user
-      ? c.env.DB.prepare("SELECT season, episode, plays FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
+      ? c.env.DB.prepare("SELECT season, episode, plays, rating FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
           .bind(user.id, id)
-          .all<{ season: number; episode: number; plays: number }>()
+          .all<{ season: number; episode: number; plays: number; rating: number | null }>()
       : Promise.resolve(null),
     user
       ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
@@ -491,6 +491,7 @@ app.get("/shows/:idslug", async (c) => {
   ]);
   const watched = new Set((watchedRows?.results ?? []).map((r) => `${r.season}x${r.episode}`));
   const plays = new Map((watchedRows?.results ?? []).map((r) => [`${r.season}x${r.episode}`, r.plays]));
+  const epRatings = new Map((watchedRows?.results ?? []).filter((r) => r.rating != null).map((r) => [`${r.season}x${r.episode}`, r.rating as number]));
   const recs = recsRes.results;
   const showCanonical = `${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`;
   return c.html(
@@ -528,7 +529,7 @@ app.get("/shows/:idslug", async (c) => {
         ],
       }}
     >
-      <ShowPage show={show} season={season} watched={watched} plays={plays} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
+      <ShowPage show={show} season={season} watched={watched} plays={plays} epRatings={epRatings} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
     </Layout>
   );
 });
@@ -1169,7 +1170,7 @@ app.get("/api/export", async (c) => {
   if (!user) return c.redirect("/login");
   const [tracked, episodes, movies] = await c.env.DB.batch([
     c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating, notes, created_at, updated_at FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
-    c.env.DB.prepare("SELECT tmdb_id, season, episode, watched_at, plays FROM episode_watches WHERE user_id = ? ORDER BY tmdb_id, season, episode").bind(user.id),
+    c.env.DB.prepare("SELECT tmdb_id, season, episode, watched_at, plays, rating FROM episode_watches WHERE user_id = ? ORDER BY tmdb_id, season, episode").bind(user.id),
     c.env.DB.prepare("SELECT tmdb_id, watched_at FROM movie_watches WHERE user_id = ? ORDER BY tmdb_id").bind(user.id),
   ]);
   const payload = {
@@ -1193,7 +1194,7 @@ app.get("/api/export.csv", async (c) => {
   const [tracked, episodes, movies] = await c.env.DB.batch([
     c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
     c.env.DB.prepare(
-      `SELECT w.season, w.episode, w.watched_at, t.title FROM episode_watches w
+      `SELECT w.season, w.episode, w.watched_at, w.rating, t.title FROM episode_watches w
        LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
        WHERE w.user_id = ? ORDER BY t.title, w.season, w.episode`
     ).bind(user.id),
@@ -1211,8 +1212,8 @@ app.get("/api/export.csv", async (c) => {
   for (const t of tracked.results as { media_type: string; title: string; status: string; rating: number | null }[]) {
     lines.push([t.media_type === "tv" ? "show" : "movie", esc(t.title), "", "", "", t.rating ?? "", t.status].join(","));
   }
-  for (const e of episodes.results as { season: number; episode: number; watched_at: string; title: string | null }[]) {
-    lines.push(["episode", esc(e.title), e.season, e.episode, e.watched_at, "", ""].join(","));
+  for (const e of episodes.results as { season: number; episode: number; watched_at: string; rating: number | null; title: string | null }[]) {
+    lines.push(["episode", esc(e.title), e.season, e.episode, e.watched_at, e.rating ?? "", ""].join(","));
   }
   for (const m of movies.results as { watched_at: string; title: string | null }[]) {
     lines.push(["movie_watch", esc(m.title), "", "", m.watched_at, "", ""].join(","));
@@ -1750,6 +1751,21 @@ app.post("/api/watch-again", async (c) => {
     .bind(user.id, tmdbId, season, episode)
     .run();
   invalidateHours(c, user.id);
+  return c.redirect(safeNext(form.redirect) ?? "/home");
+});
+
+app.post("/api/episode-rating", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const season = parseInt(String(form.season), 10);
+  const episode = parseInt(String(form.episode), 10);
+  const raw = parseInt(String(form.rating), 10);
+  const rating = Number.isFinite(raw) && raw >= 1 && raw <= 5 ? raw : null;
+  await c.env.DB.prepare("UPDATE episode_watches SET rating = ? WHERE user_id = ? AND tmdb_id = ? AND season = ? AND episode = ?")
+    .bind(rating, user.id, tmdbId, season, episode)
+    .run();
   return c.redirect(safeNext(form.redirect) ?? "/home");
 });
 

@@ -109,6 +109,18 @@
 
 ---
 
+## Round 144 — 2026-08-08（剧集级评分）
+
+**发现（竞品再挖掘）**
+- TV Time 的 emoji 集评分 / Trakt 的 per-episode rating 是留存核心互动；我们只有剧/电影整体评分，集级互动缺失。
+
+**修复**
+- episode_watches 加 rating 列（远程 D1 已迁移）；已看集行内 ★ 下拉（1-5，autosubmit，可清除回「☆ rate」）；POST /api/episode-rating 服务端校验 1-5；JSON/CSV 导出带集评分。
+
+**证据**：线上实测评分/清除与导出，见 PR。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**
