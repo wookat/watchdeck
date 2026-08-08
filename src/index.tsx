@@ -65,6 +65,10 @@ import {
   SettingsPage,
   PrivacyPage,
   TermsPage,
+  AboutPage,
+  GUIDES,
+  GuidesIndexPage,
+  GuidePage,
   PricingPage,
   type WatchlistPreviewItem,
   type LibraryRow,
@@ -1427,6 +1431,57 @@ app.get("/privacy", (c) =>
   )
 );
 
+app.get("/about", (c) =>
+  c.html(
+    <Layout
+      user={c.get("user")}
+      title="About & Press"
+      description="What WatchDeck is, why it exists, and everything press needs: boilerplate, logo downloads and brand colors."
+      canonical={`${c.env.SITE_URL}/about`}
+    >
+      <AboutPage />
+    </Layout>
+  )
+);
+
+app.get("/guides", (c) =>
+  c.html(
+    <Layout
+      user={c.get("user")}
+      title="Guides"
+      description="Practical guides for moving your watch history: TV Time exports, Netflix imports and tracker comparisons."
+      canonical={`${c.env.SITE_URL}/guides`}
+    >
+      <GuidesIndexPage />
+    </Layout>
+  )
+);
+
+app.get("/guides/:slug", (c) => {
+  const guide = GUIDES.find((g) => g.slug === c.req.param("slug"));
+  if (!guide) return c.notFound();
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={guide.title}
+      description={guide.description}
+      canonical={`${c.env.SITE_URL}/guides/${guide.slug}`}
+      ogType="article"
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "Article",
+        headline: guide.title,
+        description: guide.description,
+        dateModified: "2026-08-05",
+        author: { "@type": "Organization", name: "WatchDeck" },
+        mainEntityOfPage: `${c.env.SITE_URL}/guides/${guide.slug}`,
+      }}
+    >
+      <GuidePage guide={guide} />
+    </Layout>
+  );
+});
+
 app.get("/terms", (c) =>
   c.html(
     <Layout user={c.get("user")} title="Terms of service" canonical={`${c.env.SITE_URL}/terms`}>
@@ -2332,7 +2387,7 @@ app.get("/robots.txt", (c) =>
 );
 
 app.get("/sitemap.xml", async (c) => {
-  const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`, `${c.env.SITE_URL}/pricing`, `${c.env.SITE_URL}/privacy`, `${c.env.SITE_URL}/terms`];
+  const urls: string[] = [`${c.env.SITE_URL}/`, `${c.env.SITE_URL}/search`, `${c.env.SITE_URL}/browse`, `${c.env.SITE_URL}/signup`, `${c.env.SITE_URL}/login`, `${c.env.SITE_URL}/pricing`, `${c.env.SITE_URL}/about`, `${c.env.SITE_URL}/guides`, ...GUIDES.map((g) => `${c.env.SITE_URL}/guides/${g.slug}`), `${c.env.SITE_URL}/privacy`, `${c.env.SITE_URL}/terms`];
   try {
     const [shows, movies, tvGenres, movieGenres, people1, people2, people3, ...popular] = await Promise.all([
       trendingTv(c.env),

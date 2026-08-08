@@ -234,6 +234,26 @@
 
 ---
 
+## Round 161 — 2026-08-05（品牌化 + 全活动运营专项，老板指令）
+
+**A. 品牌体系**
+- docs/brand/brand-guide.md：品牌故事与一句话定位（TV Time 难民的 web 家）、命名/口径规范（WatchDeck 拼写、功能名 canonical、「free while in beta」定价口径、禁用语）、tone of voice、视觉规范（logo 用法/色板 #7c3aed·#020617/排版/卡片形制/动效原则）、品牌表面巡检清单。
+- 站内一致性巡检：title/meta/OG/footer/邮件署名/定价口径全站扫描，无「Watchdeck/Watch Deck/free forever」违规（唯一例外为既定承诺「Full data export — always free」），无需修复。
+
+**B. 站内新增**
+- /about「About & Press」页：品牌故事 + 媒体资源包（boilerplate、logo/OG/icon 下载、命名与色彩规范、联系邮箱），footer 加链接、sitemap 收录。
+- /guides 内容营销区（pSEO 可索引，Article JSON-LD + og:type=article）：①TV Time 导出指南 ②TV Time alternatives 对比（诚实口径、自曝利益相关）③Netflix 观看历史导入指南；三篇互链并内链 /import、/pricing、/calendar、/stats、/signup CTA；footer「Guides」入口、sitemap 收录。CSS_VERSION 161→162。
+
+**C. 产品外素材包（docs/marketing/，需真人账号执行）**
+- directory-submissions.md：AlternativeTo/SaaSHub/Product Hunt/Uneed/Fazier/Peerlist/IndieHackers 提交清单 + 一次粘贴版标准文案（红线：不注册假账号，全部备好待真人提交）。
+- producthunt-launch-kit.md：tagline、260 字描述、gallery 5 图脚本、maker comment、FAQ、launch checklist。
+- social-calendar-14d.md：14 天逐日 Reddit/X/HN 素材（各平台定制、披露 maker 身份、遵守各 sub 自我推广规则）。
+- email-lifecycle.md：现有 4 条链路盘点 + 3 个待批准模板（Day-7/Wrapped 季/功能公告，仅 double opt-in updates 列表可用）。
+
+**证据**：见 PR 与回归。
+
+---
+
 ## Round 160 — 2026-08-08（用户引导/Onboarding 专项，老板指令）
 
 **发现（新用户视角走查 + onboarding 模式参考）**
