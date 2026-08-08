@@ -22,6 +22,7 @@ export interface SearchResult {
   name?: string;
   title?: string;
   poster_path: string | null;
+  profile_path?: string | null;
   first_air_date?: string;
   release_date?: string;
   overview?: string;

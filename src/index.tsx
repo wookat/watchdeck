@@ -436,7 +436,7 @@ app.get("/search", async (c) => {
   );
   const typeQ = c.req.query("type");
   const type = typeQ === "tv" || typeQ === "movie" ? typeQ : "all";
-  const hasMedia = res.results.some((r) => r.media_type === "tv" || r.media_type === "movie");
+  const hasMedia = res.results.some((r) => r.media_type === "tv" || r.media_type === "movie" || (r.media_type === "person" && r.profile_path));
   if (!hasMedia) {
     const [shows, movies] = await Promise.all([trendingTv(c.env), trendingMovies(c.env)]);
     return c.html(

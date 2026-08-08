@@ -145,6 +145,18 @@
 
 ---
 
+## Round 148 — 2026-08-08（搜索结果 People 行）
+
+**发现（R147 后续 + 竞品模式）**
+- searchMulti 本就返回 person 结果但被过滤丢弃；Trakt/TMDB 搜索均有人物区。
+
+**修复**
+- All 标签下搜索页新增「People」行（圆头像+姓名，最多 8 人，链向 /person 页）；tv/movie 过滤标签下不显示；仅人物命中时不再误显示「Nothing found」+Trending。
+
+**证据**：线上 ?q=emilia+clarke 实测，见 PR。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**

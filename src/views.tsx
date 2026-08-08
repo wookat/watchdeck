@@ -502,6 +502,7 @@ export const HomePage: FC<{
 export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: Set<string>; type?: "all" | "tv" | "movie"; loggedIn?: boolean }> = ({ q, results, libraryIds, type = "all", loggedIn }) => {
   const backTo = `/search?q=${encodeURIComponent(q)}${type === "all" ? "" : `&type=${type}`}`;
   const filtered = results.filter((r) => (r.media_type === "tv" || r.media_type === "movie") && (type === "all" || r.media_type === type));
+  const people = type === "all" ? results.filter((r) => r.media_type === "person" && r.profile_path).slice(0, 8) : [];
   return (
     <div>
       <form action="/search" method="get" class="mb-6">
@@ -534,6 +535,26 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
           ))}
         </div>
       )}
+      {people.length > 0 && (
+        <div class="mb-8">
+          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-slate-400">People</h2>
+          <ul class="flex flex-wrap gap-4">
+            {people.map((p) => (
+              <li class="w-20 text-center">
+                <a href={`/person/${p.id}-${slugify(p.name ?? "")}`} class="group block">
+                  <img
+                    src={`https://image.tmdb.org/t/p/w185${p.profile_path}`}
+                    alt={p.name}
+                    loading="lazy"
+                    class="mx-auto aspect-square w-16 rounded-full border border-slate-800 object-cover"
+                  />
+                  <p class="mt-1.5 line-clamp-2 text-xs group-hover:text-violet-400">{p.name}</p>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
         {filtered.map((r) => {
           const inLib = libraryIds?.has(`${r.media_type}:${r.id}`);
@@ -555,7 +576,7 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
           );
         })}
       </div>
-      {q && filtered.length === 0 && (
+      {q && filtered.length === 0 && people.length === 0 && (
         <EmptyState title="Nothing found">
           {type !== "all" ? `No ${type === "tv" ? "TV shows" : "movies"} matched — try the All tab.` : "Check the spelling, or browse what's trending below."}
         </EmptyState>
