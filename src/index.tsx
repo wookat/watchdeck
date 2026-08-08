@@ -398,6 +398,12 @@ app.get("/home", async (c) => {
   const wl = await c.env.DB.prepare("SELECT COUNT(*) AS n FROM tracked WHERE user_id = ? AND status = 'watchlist'")
     .bind(user.id)
     .first<{ n: number }>();
+  const watchCounts = await c.env.DB.prepare(
+    "SELECT (SELECT COUNT(*) FROM episode_watches WHERE user_id = ?1) + (SELECT COUNT(*) FROM movie_watches WHERE user_id = ?1) AS n"
+  )
+    .bind(user.id)
+    .first<{ n: number }>();
+  const hasWatch = (watchCounts?.n ?? 0) > 0;
   const watchlistPreview =
     nextUp.length === 0 && (wl?.n ?? 0) > 0
       ? (
@@ -419,7 +425,16 @@ app.get("/home", async (c) => {
     .slice(0, 6);
   return c.html(
     <Layout user={user} title="Next up">
-      <HomePage nextUp={nextUp} watchlistCount={wl?.n ?? 0} hasAnything={tracked.results.length > 0 || (wl?.n ?? 0) > 0} justWatched={justWatched} watchlistPreview={watchlistPreview} upcoming={upcoming} />
+      <HomePage
+        nextUp={nextUp}
+        watchlistCount={wl?.n ?? 0}
+        hasAnything={tracked.results.length > 0 || (wl?.n ?? 0) > 0}
+        justWatched={justWatched}
+        watchlistPreview={watchlistPreview}
+        upcoming={upcoming}
+        hasWatch={hasWatch}
+        wrappedYear={new Date().getUTCFullYear()}
+      />
     </Layout>
   );
 });
