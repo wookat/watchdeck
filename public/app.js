@@ -43,6 +43,26 @@ document.addEventListener("input", (e) => {
     el.classList.toggle("border-slate-700", !invalid);
   }
 });
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("[data-dismiss-key]").forEach((el) => {
+    try {
+      if (localStorage.getItem("dismiss:" + el.dataset.dismissKey)) el.remove();
+      else el.hidden = false;
+    } catch {
+      el.hidden = false;
+    }
+  });
+});
+document.addEventListener("click", (e) => {
+  const btn = e.target instanceof Element && e.target.closest("[data-dismiss]");
+  if (!btn) return;
+  const box = btn.closest("[data-dismiss-key]");
+  if (!box) return;
+  try {
+    localStorage.setItem("dismiss:" + box.dataset.dismissKey, "1");
+  } catch {}
+  box.remove();
+});
 document.addEventListener("submit", (e) => {
   const form = e.target;
   if (form instanceof HTMLFormElement && form.dataset.confirm && !window.confirm(form.dataset.confirm)) e.preventDefault();
