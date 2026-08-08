@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 160;
+export const CSS_VERSION = 161;
 
 export interface ListRef {
   id: number;
@@ -45,7 +45,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <link rel="preconnect" href="https://image.tmdb.org" />
       <link rel="stylesheet" href={`/styles.css?v=${CSS_VERSION}`} />
-      <script src="/app.js" defer></script>
+      <script src={`/app.js?v=${CSS_VERSION}`} defer></script>
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       <link rel="manifest" href="/manifest.webmanifest" />
@@ -158,6 +158,22 @@ export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
       <p class="mt-6 text-sm text-slate-500">
         No app to install · No ads · Your data exports any time · <a href="/pricing" class="text-violet-400 hover:underline">Free while in beta</a>
       </p>
+    </section>
+    <section class="py-10">
+      <h2 class="mb-6 text-center text-2xl font-bold">Up and running in three steps</h2>
+      <ol class="mx-auto grid max-w-4xl gap-4 sm:grid-cols-3">
+        {[
+          ["1", "Bring your history", "Upload your TV Time GDPR ZIP (or a Trakt/Serializd/Netflix CSV) — or just search and add your first show."],
+          ["2", "Pick up where you left off", "Next Up shows exactly which episode is next for every show, with one-tap ✓ Watched."],
+          ["3", "Enjoy the extras", "Airing calendar with reminders, watch statistics, shareable lists and your year-end Wrapped."],
+        ].map(([n, h, p]) => (
+          <li class="rounded-2xl border border-slate-800 bg-slate-900/50 p-6">
+            <span class="flex h-8 w-8 items-center justify-center rounded-full bg-violet-600 font-bold text-white">{n}</span>
+            <h3 class="mb-1 mt-3 font-semibold">{h}</h3>
+            <p class="text-sm text-slate-400">{p}</p>
+          </li>
+        ))}
+      </ol>
     </section>
     <section class="grid gap-6 py-10 sm:grid-cols-3">
       {[
@@ -386,9 +402,46 @@ export const HomePage: FC<{
   justWatched?: { tmdbId: number; season: number; episode: number } | null;
   watchlistPreview?: WatchlistPreviewItem[];
   upcoming?: CalendarItem[];
-}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview, upcoming }) => (
+  hasWatch?: boolean;
+  wrappedYear?: number;
+}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview, upcoming, hasWatch, wrappedYear }) => (
   <div>
     <h1 class="mb-6 text-2xl font-bold">Next up</h1>
+    {!(hasAnything && hasWatch) && (
+      <section data-dismiss-key="onboarding-v1" hidden class="mb-6 rounded-2xl border border-violet-900/60 bg-violet-950/30 p-5" aria-label="Getting started checklist">
+        <div class="flex items-start justify-between gap-3">
+          <h2 class="font-semibold">Getting started</h2>
+          <button data-dismiss class="rounded px-2 text-slate-400 hover:text-slate-200" aria-label="Dismiss getting started checklist">✕</button>
+        </div>
+        <ol class="mt-3 space-y-2 text-sm">
+          <li class="flex items-center gap-2">
+            <span aria-hidden="true">{hasAnything ? "✅" : "1️⃣"}</span>
+            <span class={hasAnything ? "text-slate-500 line-through" : ""}>
+              Add your shows — <a href="/import" class="text-violet-400 hover:underline">import your TV Time export</a> or{" "}
+              <a href="/search" class="text-violet-400 hover:underline">search for one</a>
+            </span>
+          </li>
+          <li class="flex items-center gap-2">
+            <span aria-hidden="true">{hasWatch ? "✅" : "2️⃣"}</span>
+            <span class={hasWatch ? "text-slate-500 line-through" : ""}>Mark your first episode watched — Next Up keeps your place from there</span>
+          </li>
+          <li class="flex items-center gap-2">
+            <span aria-hidden="true">3️⃣</span>
+            <span>
+              Explore the extras — <a href="/calendar" class="text-violet-400 hover:underline">calendar</a>,{" "}
+              <a href="/stats" class="text-violet-400 hover:underline">stats</a> and{" "}
+              <a href="/wrapped" class="text-violet-400 hover:underline">your Wrapped</a>
+            </span>
+          </li>
+        </ol>
+      </section>
+    )}
+    {hasAnything && hasWatch && wrappedYear != null && (
+      <div data-dismiss-key={`wrapped-${wrappedYear}`} hidden class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-violet-900/60 bg-violet-950/30 px-4 py-2.5 text-sm">
+        <span>✨ New: your {wrappedYear} Wrapped is ready — <a href={`/wrapped/${wrappedYear}`} class="font-medium text-violet-300 hover:underline">see your year in TV & film</a></span>
+        <button data-dismiss class="ml-auto rounded px-2 text-slate-400 hover:text-slate-200" aria-label="Dismiss Wrapped announcement">✕</button>
+      </div>
+    )}
     {justWatched && (
       <div class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-800 bg-emerald-950/40 px-4 py-2.5 text-sm text-emerald-300">
         <span>
@@ -732,7 +785,7 @@ export const RatingStars: FC<{ tmdbId: number; mediaType: "tv" | "movie"; title:
   </div>
 );
 
-export const EmptyState: FC<PropsWithChildren<{ title: string }>> = ({ title, children }) => (
+export const EmptyState: FC<PropsWithChildren<{ title: string; cta?: { href: string; label: string } }>> = ({ title, cta, children }) => (
   <div class="mx-auto max-w-md rounded-2xl border border-dashed border-slate-800 bg-slate-900/40 px-6 py-10 text-center">
     <svg viewBox="0 0 96 72" width="96" height="72" aria-hidden="true" class="mx-auto mb-4 opacity-90">
       <defs>
@@ -749,6 +802,11 @@ export const EmptyState: FC<PropsWithChildren<{ title: string }>> = ({ title, ch
     </svg>
     <p class="font-semibold text-slate-200">{title}</p>
     <p class="mt-1 text-sm text-slate-400">{children}</p>
+    {cta && (
+      <a href={cta.href} class="mt-4 inline-block rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">
+        {cta.label}
+      </a>
+    )}
   </div>
 );
 
@@ -1280,9 +1338,8 @@ export const LibraryPage: FC<{ rows: LibraryRow[]; status: string; sort: string;
           Nothing in your library matches “{q}”. <a href={`/library?${status === "all" ? "" : `status=${status}&`}sort=${sort}`} class="text-violet-400 hover:underline">Clear filter</a>
         </p>
       ) : (
-      <EmptyState title="Your library is waiting">
-        <a href="/import" class="text-violet-400 hover:underline">Import from TV Time</a> or{" "}
-        <a href="/search" class="text-violet-400 hover:underline">search</a> for your first show.
+      <EmptyState title="Your library is waiting" cta={{ href: "/import", label: "📦 Import from TV Time" }}>
+        Or <a href="/search" class="text-violet-400 hover:underline">search</a> for your first show.
       </EmptyState>
       )
     ) : (
@@ -1407,8 +1464,8 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
       </form>
     </div>
     {items.length === 0 ? (
-      <EmptyState title="No scheduled air dates right now">
-        The shows you track have no announced upcoming episodes — new dates show up here (and in your iCal feed) automatically. Looking for something new? <a href="/browse" class="text-violet-400 hover:underline">Browse by genre</a>.
+      <EmptyState title="No scheduled air dates right now" cta={{ href: "/browse", label: "Browse for something new" }}>
+        The shows you track have no announced upcoming episodes — new dates show up here (and in your iCal feed) automatically.
       </EmptyState>
     ) : (
       <div class="space-y-6">
@@ -1949,8 +2006,8 @@ export const HistoryPage: FC<{ items: HistoryItem[]; page?: number; lastPage?: n
   <div>
     <h1 class="mb-6 text-2xl font-bold">History</h1>
     {items.length === 0 ? (
-      <EmptyState title="No watch history yet">
-        <a href="/home" class="text-violet-400 hover:underline">Mark an episode watched</a> and it shows up here.
+      <EmptyState title="No watch history yet" cta={{ href: "/home", label: "▶ Go to Next Up" }}>
+        Mark an episode watched and it shows up here.
       </EmptyState>
     ) : (
       (() => {

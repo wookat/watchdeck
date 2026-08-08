@@ -234,6 +234,22 @@
 
 ---
 
+## Round 160 — 2026-08-08（用户引导/Onboarding 专项，老板指令）
+
+**发现（新用户视角走查 + onboarding 模式参考）**
+- 落地页只讲卖点不讲步骤；新注册用户 /home 空态仅两行文字；空状态多为文字链接缺主 CTA 按钮；新上线的 Wrapped 对老用户无主流程曝光（仅 /stats 按钮）。竞品直连多被 JS 渲染/Cloudflare 盾挡（不绕），参考通行模式：Letterboxd 式 getting-started 清单、一次性可关闭公告。
+
+**修复**
+- 落地页新增「Up and running in three steps」三步叙事区（导入 → Next Up 续看 → 日历/统计/Wrapped）。
+- /home 新增「Getting started」清单卡（3 步，服务端按 tracked/watches 实时打勾划线；两步都完成即不再渲染；✕ 关闭 localStorage 记忆，一次性）。
+- /home 新增一次性「✨ New: your {year} Wrapped is ready」提示条（仅老用户即 tracked+watches 均有时展示，可关闭且 localStorage 记忆）。
+- EmptyState 组件加 cta 按钮属性：Library 空态「📦 Import from TV Time」、Calendar 空态「Browse for something new」、History 空态「▶ Go to Next Up」。
+- app.js 通用 data-dismiss-key/data-dismiss 机制（默认 hidden 防闪烁、localStorage 禁用时降级为常显）；app.js 加版本参数与 CSS_VERSION 同步防缓存；CSS_VERSION 160→161。
+
+**证据**：见 PR 与回归录屏。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**
