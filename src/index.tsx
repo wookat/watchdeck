@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { csrf } from "hono/csrf";
+import { HTTPException } from "hono/http-exception";
 import type { AppContext, Env } from "./types";
 import { hashPassword, verifyPassword, createSession, destroySession, loadUser } from "./auth";
 import {
@@ -88,9 +89,11 @@ function userLists(env: Env, userId: number, tmdbId: number, mediaType: "tv" | "
 
 const app = new Hono<AppContext>();
 
-app.use("*", (c, next) =>
-  csrf({ origin: (origin) => origin === new URL(c.env.SITE_URL).origin || origin === new URL(c.req.url).origin })(c, next)
-);
+app.use("*", (c, next) => {
+  // RFC 8058 one-click unsubscribe: mailbox providers POST without an Origin header
+  if (c.req.method === "POST" && /^\/unsubscribe\/[^/]+$/.test(new URL(c.req.url).pathname)) return next();
+  return csrf({ origin: (origin) => origin === new URL(c.env.SITE_URL).origin || origin === new URL(c.req.url).origin })(c, next);
+});
 
 app.use("*", async (c, next) => {
   await next();
@@ -103,6 +106,9 @@ app.use("*", async (c, next) => {
   const path = new URL(c.req.url).pathname;
   if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|forgot|reset|unsubscribe|confirm-email|u)(\/|$)/.test(path)) {
     h.set("x-robots-tag", "noindex");
+  }
+  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings)(\/|$)/.test(path) && c.res.headers.get("content-type")?.includes("text/html")) {
+    h.set("cache-control", "private, no-store");
   }
   if (c.res.headers.get("content-type")?.includes("text/html")) {
     h.set(
@@ -467,9 +473,9 @@ app.get("/shows/:idslug", async (c) => {
   const [season, watchedRows, tracked, recsRes, providers, cast, trailer, services, listsRes] = await Promise.all([
     seasonDetails(c.env, id, seasonNum).catch(() => null),
     user
-      ? c.env.DB.prepare("SELECT season, episode, plays FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
+      ? c.env.DB.prepare("SELECT season, episode, plays, rating FROM episode_watches WHERE user_id = ? AND tmdb_id = ?")
           .bind(user.id, id)
-          .all<{ season: number; episode: number; plays: number }>()
+          .all<{ season: number; episode: number; plays: number; rating: number | null }>()
       : Promise.resolve(null),
     user
       ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'tv'")
@@ -485,6 +491,7 @@ app.get("/shows/:idslug", async (c) => {
   ]);
   const watched = new Set((watchedRows?.results ?? []).map((r) => `${r.season}x${r.episode}`));
   const plays = new Map((watchedRows?.results ?? []).map((r) => [`${r.season}x${r.episode}`, r.plays]));
+  const epRatings = new Map((watchedRows?.results ?? []).filter((r) => r.rating != null).map((r) => [`${r.season}x${r.episode}`, r.rating as number]));
   const recs = recsRes.results;
   const showCanonical = `${c.env.SITE_URL}/shows/${show.id}-${slugify(show.name)}`;
   return c.html(
@@ -494,6 +501,7 @@ app.get("/shows/:idslug", async (c) => {
       description={metaDescription(show.overview)}
       canonical={showCanonical}
       ogImage={show.poster_path ? `https://image.tmdb.org/t/p/w500${show.poster_path}` : undefined}
+      ogType="video.tv_show"
       jsonLd={{
         "@context": "https://schema.org",
         "@graph": [
@@ -521,7 +529,7 @@ app.get("/shows/:idslug", async (c) => {
         ],
       }}
     >
-      <ShowPage show={show} season={season} watched={watched} plays={plays} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
+      <ShowPage show={show} season={season} watched={watched} plays={plays} epRatings={epRatings} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
     </Layout>
   );
 });
@@ -562,6 +570,7 @@ app.get("/movies/:idslug", async (c) => {
       description={metaDescription(movie.overview)}
       canonical={movieCanonical}
       ogImage={movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : undefined}
+      ogType="video.movie"
       jsonLd={{
         "@context": "https://schema.org",
         "@graph": [
@@ -666,7 +675,7 @@ async function upcomingItems(env: AppContext["Bindings"], userId: number): Promi
       try {
         if (t.media_type === "tv") {
           const d = await tvDetails(env, t.tmdb_id);
-          if (!d.next_episode_to_air?.air_date) return null;
+          if (!d.next_episode_to_air?.air_date || d.next_episode_to_air.air_date < todayIso) return null;
           return {
             tmdbId: d.id,
             title: d.name,
@@ -769,6 +778,18 @@ function browseYears(): number[] {
   return Array.from({ length: 15 }, (_, i) => current - i);
 }
 
+function browseCrumbs(siteUrl: string, name: string, item: string) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "WatchDeck", item: siteUrl + "/" },
+      { "@type": "ListItem", position: 2, name: "Browse", item: siteUrl + "/browse" },
+      { "@type": "ListItem", position: 3, name, item },
+    ],
+  };
+}
+
 app.get("/browse", async (c) => {
   const [tv, movie] = await Promise.all([genreList(c.env, "tv"), genreList(c.env, "movie")]);
   return c.html(
@@ -799,6 +820,7 @@ app.get("/browse/network/:idslug", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
+      jsonLd={browseCrumbs(c.env.SITE_URL, network.name, base)}
     >
       <BrowseNetwork network={network} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
@@ -822,6 +844,7 @@ app.get("/browse/year/:type/:year", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
+      jsonLd={browseCrumbs(c.env.SITE_URL, `${type === "tv" ? "TV shows" : "Movies"} of ${year}`, base)}
     >
       <BrowseYear type={type} year={year} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
@@ -847,6 +870,7 @@ app.get("/browse/:type/:genreslug", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
+      jsonLd={browseCrumbs(c.env.SITE_URL, `${genre.name} ${type === "tv" ? "TV shows" : "movies"}`, base)}
     >
       <BrowseGenre type={type} genre={genre} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
@@ -1109,6 +1133,19 @@ app.get("/pricing", (c) =>
       title="Pricing"
       description="WatchDeck pricing: a free plan plus a Plus plan from $1.99/month. Everything is free while WatchDeck is in beta — no payment required."
       canonical={`${c.env.SITE_URL}/pricing`}
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "WatchDeck",
+        url: c.env.SITE_URL,
+        applicationCategory: "EntertainmentApplication",
+        operatingSystem: "Web",
+        offers: [
+          { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD" },
+          { "@type": "Offer", name: "Plus (monthly)", price: "1.99", priceCurrency: "USD" },
+          { "@type": "Offer", name: "Plus (yearly)", price: "19", priceCurrency: "USD" },
+        ],
+      }}
     >
       <PricingPage loggedIn={!!c.get("user")} />
     </Layout>
@@ -1133,7 +1170,7 @@ app.get("/api/export", async (c) => {
   if (!user) return c.redirect("/login");
   const [tracked, episodes, movies] = await c.env.DB.batch([
     c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating, notes, created_at, updated_at FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
-    c.env.DB.prepare("SELECT tmdb_id, season, episode, watched_at, plays FROM episode_watches WHERE user_id = ? ORDER BY tmdb_id, season, episode").bind(user.id),
+    c.env.DB.prepare("SELECT tmdb_id, season, episode, watched_at, plays, rating FROM episode_watches WHERE user_id = ? ORDER BY tmdb_id, season, episode").bind(user.id),
     c.env.DB.prepare("SELECT tmdb_id, watched_at FROM movie_watches WHERE user_id = ? ORDER BY tmdb_id").bind(user.id),
   ]);
   const payload = {
@@ -1157,7 +1194,7 @@ app.get("/api/export.csv", async (c) => {
   const [tracked, episodes, movies] = await c.env.DB.batch([
     c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
     c.env.DB.prepare(
-      `SELECT w.season, w.episode, w.watched_at, t.title FROM episode_watches w
+      `SELECT w.season, w.episode, w.watched_at, w.rating, t.title FROM episode_watches w
        LEFT JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
        WHERE w.user_id = ? ORDER BY t.title, w.season, w.episode`
     ).bind(user.id),
@@ -1175,8 +1212,8 @@ app.get("/api/export.csv", async (c) => {
   for (const t of tracked.results as { media_type: string; title: string; status: string; rating: number | null }[]) {
     lines.push([t.media_type === "tv" ? "show" : "movie", esc(t.title), "", "", "", t.rating ?? "", t.status].join(","));
   }
-  for (const e of episodes.results as { season: number; episode: number; watched_at: string; title: string | null }[]) {
-    lines.push(["episode", esc(e.title), e.season, e.episode, e.watched_at, "", ""].join(","));
+  for (const e of episodes.results as { season: number; episode: number; watched_at: string; rating: number | null; title: string | null }[]) {
+    lines.push(["episode", esc(e.title), e.season, e.episode, e.watched_at, e.rating ?? "", ""].join(","));
   }
   for (const m of movies.results as { watched_at: string; title: string | null }[]) {
     lines.push(["movie_watch", esc(m.title), "", "", m.watched_at, "", ""].join(","));
@@ -1551,16 +1588,21 @@ app.post("/api/waitlist", async (c) => {
 
 app.get("/confirm-email/:token", async (c) => {
   const token = c.req.param("token");
-  const res = await c.env.DB.prepare("UPDATE email_signups SET confirmed = 1 WHERE confirm_token = ?").bind(token).run();
+  const row = await c.env.DB.prepare("SELECT confirmed FROM email_signups WHERE confirm_token = ?").bind(token).first<{ confirmed: number }>();
+  if (row && !row.confirmed) {
+    await c.env.DB.prepare("UPDATE email_signups SET confirmed = 1 WHERE confirm_token = ?").bind(token).run();
+  }
+  const heading = !row ? "Link not recognized" : row.confirmed ? "Already confirmed \u2713" : "You're subscribed \u2713";
+  const body = !row
+    ? "This confirmation link is invalid."
+    : row.confirmed
+      ? "This subscription was already confirmed \u2014 you're all set. You can unsubscribe from any email we send."
+      : "Thanks for confirming \u2014 we'll send occasional product updates. You can unsubscribe from any email we send.";
   return c.html(
     <Layout user={c.get("user")} title="Subscription confirmed">
       <div class="mx-auto max-w-md py-16 text-center">
-        <h1 class="text-2xl font-bold">{res.meta.changes > 0 ? "You're subscribed \u2713" : "Link not recognized"}</h1>
-        <p class="mt-3 text-slate-400">
-          {res.meta.changes > 0
-            ? "Thanks for confirming \u2014 we'll send occasional product updates. You can unsubscribe from any email we send."
-            : "This confirmation link is invalid or was already used."}
-        </p>
+        <h1 class="text-2xl font-bold">{heading}</h1>
+        <p class="mt-3 text-slate-400">{body}</p>
         <a href="/" class="mt-6 inline-block rounded-xl bg-violet-600 px-5 py-2.5 font-semibold text-white hover:bg-violet-500">Back to WatchDeck</a>
       </div>
     </Layout>
@@ -1709,6 +1751,21 @@ app.post("/api/watch-again", async (c) => {
     .bind(user.id, tmdbId, season, episode)
     .run();
   invalidateHours(c, user.id);
+  return c.redirect(safeNext(form.redirect) ?? "/home");
+});
+
+app.post("/api/episode-rating", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const tmdbId = parseInt(String(form.tmdb_id), 10);
+  const season = parseInt(String(form.season), 10);
+  const episode = parseInt(String(form.episode), 10);
+  const raw = parseInt(String(form.rating), 10);
+  const rating = Number.isFinite(raw) && raw >= 1 && raw <= 5 ? raw : null;
+  await c.env.DB.prepare("UPDATE episode_watches SET rating = ? WHERE user_id = ? AND tmdb_id = ? AND season = ? AND episode = ?")
+    .bind(rating, user.id, tmdbId, season, episode)
+    .run();
   return c.redirect(safeNext(form.redirect) ?? "/home");
 });
 
@@ -1960,7 +2017,7 @@ app.post("/api/import/batch", async (c) => {
 // ---------- seo ----------
 app.get("/robots.txt", (c) =>
   c.text(
-    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /calendar\nDisallow: /import\nDisallow: /stats\nDisallow: /history\nDisallow: /settings\nDisallow: /forgot\nDisallow: /reset\nDisallow: /u/\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`
+    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /lists\nDisallow: /roulette\nDisallow: /calendar\nDisallow: /import\nDisallow: /stats\nDisallow: /history\nDisallow: /settings\nDisallow: /forgot\nDisallow: /reset\nDisallow: /unsubscribe/\nDisallow: /confirm-email/\nDisallow: /u/\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`
   )
 );
 
@@ -1974,12 +2031,20 @@ app.get("/sitemap.xml", async (c) => {
       genreList(c.env, "movie"),
       discoverPopular(c.env, "tv", 1),
       discoverPopular(c.env, "tv", 2),
+      discoverPopular(c.env, "tv", 3),
+      discoverPopular(c.env, "tv", 4),
       discoverPopular(c.env, "movie", 1),
       discoverPopular(c.env, "movie", 2),
+      discoverPopular(c.env, "movie", 3),
+      discoverPopular(c.env, "movie", 4),
       topRated(c.env, "tv", 1),
       topRated(c.env, "tv", 2),
+      topRated(c.env, "tv", 3),
+      topRated(c.env, "tv", 4),
       topRated(c.env, "movie", 1),
       topRated(c.env, "movie", 2),
+      topRated(c.env, "movie", 3),
+      topRated(c.env, "movie", 4),
     ]);
     const seen = new Set<string>();
     const pushTitle = (type: "tv" | "movie", id: number, title: string) => {
@@ -1991,7 +2056,7 @@ app.get("/sitemap.xml", async (c) => {
     for (const s of shows.results) pushTitle("tv", s.id, s.name ?? "");
     for (const m of movies.results) pushTitle("movie", m.id, m.title ?? "");
     for (const [i, p] of popular.entries()) {
-      const type = i < 2 || (i >= 4 && i < 6) ? "tv" : "movie";
+      const type = i < 4 || (i >= 8 && i < 12) ? "tv" : "movie";
       for (const r of p.results) pushTitle(type, r.id, (type === "tv" ? r.name : r.title) ?? "");
     }
     for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
@@ -2114,6 +2179,23 @@ app.notFound((c) =>
     404
   )
 );
+
+app.onError((err, c) => {
+  if (err instanceof HTTPException) return err.getResponse();
+  console.error(err);
+  return c.html(
+    <Layout user={c.get("user")} title="Something went wrong">
+      <div class="mx-auto max-w-md py-20 text-center">
+        <h1 class="text-3xl font-bold">Something went wrong</h1>
+        <p class="mt-2 text-slate-400">A temporary hiccup on our end — your data is safe. Try again in a moment.</p>
+        <p class="mt-6 text-sm text-slate-400">
+          <a href={c.req.path} class="text-violet-400 hover:underline">Reload this page</a> · <a href="/home" class="text-violet-400 hover:underline">go to your deck</a> · <a href="/" class="text-violet-400 hover:underline">home</a>
+        </p>
+      </div>
+    </Layout>,
+    500
+  );
+});
 
 async function newlyStreamable(env: Env, userId: number): Promise<{ title: string; tmdbId: number; mediaType: "tv" | "movie"; services: string[] }[]> {
   const services = await userServices(env, userId);

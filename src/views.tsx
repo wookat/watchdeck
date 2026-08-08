@@ -8,13 +8,14 @@ export interface ListRef {
   has: number;
 }
 
-export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; jsonLd?: object; prev?: string; next?: string }>> = ({
+export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; description?: string; canonical?: string; ogImage?: string; ogType?: string; jsonLd?: object; prev?: string; next?: string }>> = ({
   children,
   user,
   title,
   description,
   canonical,
   ogImage,
+  ogType,
   jsonLd,
   prev,
   next,
@@ -35,9 +36,11 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       {description && <meta property="og:description" content={description} />}
       {canonical && <meta property="og:url" content={canonical} />}
       <meta property="og:site_name" content="WatchDeck" />
+      <meta property="og:type" content={ogType ?? "website"} />
       <meta property="og:image" content={ogImage ?? "https://watchdeck.zalize.com/og-default.png"} />
       <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
+      <link rel="preconnect" href="https://image.tmdb.org" />
       <link rel="stylesheet" href="/styles.css?v=130" />
       <script src="/app.js" defer></script>
       <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
@@ -750,6 +753,7 @@ export const ShowPage: FC<{
   season: SeasonDetails | null;
   watched: Set<string>;
   plays?: Map<string, number>;
+  epRatings?: Map<string, number>;
   tracked: { status: string; rating: number | null; notes: string | null } | null;
   user: User | null;
   recs: SearchResult[];
@@ -758,7 +762,7 @@ export const ShowPage: FC<{
   trailer?: string | null;
   myServices?: Set<number>;
   lists?: ListRef[];
-}> = ({ show, season, watched, plays, tracked, user, recs, providers, cast, trailer, myServices, lists }) => {
+}> = ({ show, season, watched, plays, epRatings, tracked, user, recs, providers, cast, trailer, myServices, lists }) => {
   const showUrl = `/shows/${show.id}-${slugify(show.name)}`;
   return (
     <div>
@@ -768,7 +772,7 @@ export const ShowPage: FC<{
             <img src={`https://image.tmdb.org/t/p/w1280${show.backdrop_path}`} alt="" loading="eager" fetchpriority="low" />
           </div>
         )}
-        <img src={poster(show.poster_path)} alt={show.name} class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
+        <img src={poster(show.poster_path)} alt={show.name} fetchpriority="high" class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
         <div class="min-w-0 flex-1">
           <h1 class="text-3xl font-bold">{show.name}</h1>
           <p class="mt-1 text-sm text-slate-400">
@@ -786,10 +790,13 @@ export const ShowPage: FC<{
           </p>
           {show.next_episode_to_air?.air_date && (
             <p class="mt-3 inline-block rounded-lg border border-violet-800 bg-violet-950/50 px-3 py-1.5 text-sm text-violet-300">
-              Next episode: S{String(show.next_episode_to_air.season_number).padStart(2, "0")}E
+              {show.next_episode_to_air.air_date < new Date().toISOString().slice(0, 10) ? "New episode aired" : "Next episode"}: S
+              {String(show.next_episode_to_air.season_number).padStart(2, "0")}E
               {String(show.next_episode_to_air.episode_number).padStart(2, "0")}
               {show.next_episode_to_air.name ? ` — ${show.next_episode_to_air.name}` : ""} ·{" "}
-              {new Date(show.next_episode_to_air.air_date + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}
+              {show.next_episode_to_air.air_date === new Date().toISOString().slice(0, 10)
+                ? "today"
+                : new Date(show.next_episode_to_air.air_date + "T00:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}
             </p>
           )}
           <p class="mt-4 max-w-2xl text-slate-300">{show.overview}</p>
@@ -896,6 +903,7 @@ export const ShowPage: FC<{
             {season.episodes.map((ep) => {
               const isWatched = watched.has(`${ep.season_number}x${ep.episode_number}`);
               const playCount = plays?.get(`${ep.season_number}x${ep.episode_number}`) ?? 1;
+              const epRating = epRatings?.get(`${ep.season_number}x${ep.episode_number}`);
               return (
                 <li class="flex items-center gap-4 bg-slate-900/40 px-4 py-3">
                   <span class="w-14 shrink-0 text-sm text-slate-400">
@@ -920,6 +928,25 @@ export const ShowPage: FC<{
                           >
                             ⇤ up to here
                           </button>
+                        </form>
+                      )}
+                      {isWatched && (
+                        <form action="/api/episode-rating" method="post">
+                          <input type="hidden" name="tmdb_id" value={String(show.id)} />
+                          <input type="hidden" name="season" value={String(ep.season_number)} />
+                          <input type="hidden" name="episode" value={String(ep.episode_number)} />
+                          <input type="hidden" name="redirect" value={`${showUrl}?season=${season.season_number}`} />
+                          <select
+                            name="rating"
+                            data-autosubmit
+                            aria-label={`Rate season ${ep.season_number} episode ${ep.episode_number}`}
+                            class={epRating ? "rounded-lg border border-slate-700 bg-slate-900 px-1.5 py-1 text-sm text-amber-300" : "rounded-lg border border-slate-700 bg-slate-900 px-1.5 py-1 text-sm text-slate-400"}
+                          >
+                            <option value="" selected={!epRating}>☆ rate</option>
+                            {[5, 4, 3, 2, 1].map((n) => (
+                              <option value={String(n)} selected={epRating === n}>{"★".repeat(n)}</option>
+                            ))}
+                          </select>
                         </form>
                       )}
                       {isWatched && (
@@ -989,7 +1016,7 @@ export const MoviePage: FC<{
           <img src={`https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`} alt="" loading="eager" fetchpriority="low" />
         </div>
       )}
-      <img src={poster(movie.poster_path)} alt={movie.title} class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
+      <img src={poster(movie.poster_path)} alt={movie.title} fetchpriority="high" class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
       <div class="min-w-0 flex-1">
         <h1 class="text-3xl font-bold">{movie.title}</h1>
         <p class="mt-1 text-sm text-slate-400">
@@ -1301,27 +1328,36 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
         The shows you track have no announced upcoming episodes — new dates show up here (and in your iCal feed) automatically. Looking for something new? <a href="/browse" class="text-violet-400 hover:underline">Browse by genre</a>.
       </EmptyState>
     ) : (
-      <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
-        {items.map((it) => {
-          const d = airDateLabel(it.airDate);
+      <div class="space-y-6">
+        {[...new Set(items.map((it) => it.airDate))].map((date) => {
+          const d = airDateLabel(date);
+          const dayItems = items.filter((it) => it.airDate === date);
           return (
-          <li class={d.today ? "flex items-center gap-4 bg-violet-950/40 px-4 py-3" : "flex items-center gap-4 bg-slate-900/40 px-4 py-3"}>
-            <span class={d.today ? "w-24 shrink-0 text-sm font-semibold text-violet-300" : "w-24 shrink-0 text-sm text-violet-300"} title={it.airDate}>{d.label}</span>
-            <img src={poster(it.posterPath, "w92")} alt="" class="aspect-[2/3] h-14 w-auto rounded border border-slate-800 object-cover" />
-            <div class="min-w-0">
-              <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
-                {it.title}
-              </a>
-              <p class="text-sm text-slate-400">
-                {it.mediaType === "tv" && it.season != null && it.episode != null
-                  ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` · ${it.episodeName}` : ""}`
-                  : "🎬 Movie release"}
-              </p>
-            </div>
-          </li>
+            <section>
+              <h2 class={d.today ? "mb-2 text-sm font-semibold uppercase tracking-wide text-violet-300" : "mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400"} title={date}>
+                {d.label}
+              </h2>
+              <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
+                {dayItems.map((it) => (
+                  <li class={d.today ? "flex items-center gap-4 bg-violet-950/40 px-4 py-3" : "flex items-center gap-4 bg-slate-900/40 px-4 py-3"}>
+                    <img src={poster(it.posterPath, "w92")} alt="" class="aspect-[2/3] h-14 w-auto rounded border border-slate-800 object-cover" />
+                    <div class="min-w-0">
+                      <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
+                        {it.title}
+                      </a>
+                      <p class="text-sm text-slate-400">
+                        {it.mediaType === "tv" && it.season != null && it.episode != null
+                          ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` · ${it.episodeName}` : ""}`
+                          : "🎬 Movie release"}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
           );
         })}
-      </ul>
+      </div>
     )}
   </div>
 );

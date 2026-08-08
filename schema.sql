@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS episode_watches (
   episode INTEGER NOT NULL,
   watched_at TEXT NOT NULL DEFAULT (datetime('now')),
   plays INTEGER NOT NULL DEFAULT 1,
+  rating INTEGER,
   UNIQUE(user_id, tmdb_id, season, episode)
 );
 CREATE INDEX IF NOT EXISTS idx_epw_user_show ON episode_watches(user_id, tmdb_id);

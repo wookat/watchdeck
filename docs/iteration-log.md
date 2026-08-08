@@ -19,6 +19,108 @@
 
 ---
 
+## Rounds 131-133 — 2026-08-08（SEO 扩容 + robots 对齐 + 500 错误页）
+
+**发现（SEO/数据 + 合规走查 + 错误处理审查）**
+- sitemap 仅 254 URL（popular/top-rated 各只取 2 页）；robots.txt 未覆盖 /lists、/roulette 及新增退订/确认路由（与 noindex 头不一致）；无 app.onError——未捕获异常返回 Hono 默认纯文本 "Internal Server Error"。
+
+**修复**
+- R131 sitemap 扩容：discoverPopular/topRated 各取 4 页，URL 254→401（shows 167 / movies 149），周一 IndexNow Cron 自动提交新 URL。
+- R132 robots.txt 对齐：补 Disallow /lists、/roulette、/unsubscribe/、/confirm-email/。
+- R133 品牌化 500 页：app.onError 输出与 404 同风格的深色错误页（重载/回 deck/回首页出路），并 console.error 保留日志。
+
+**证据**：线上 sitemap 计数与 robots.txt 实测，见 PR。
+
+---
+
+## Round 134 — 2026-08-08（Core Web Vitals：海报加载优先级）
+
+**发现（性能走查）**
+- 全站海报均来自 image.tmdb.org 但无 preconnect（首图请求多付 DNS+TLS 往返）；详情页主海报（LCP 元素）未标记 fetchpriority。
+
+**修复**
+- Layout head 加 `<link rel="preconnect" href="https://image.tmdb.org">`；剧集/电影详情页主海报加 `fetchpriority="high"`（backdrop 维持 low、网格图维持 lazy）。
+
+**证据**：线上 HTML 标记实测，见 PR。
+
+---
+
+## Round 135 — 2026-08-08（回归修复：一键退订 POST 被 CSRF 拦截）
+
+**发现（R130-134 回归，P1）**
+- 邮箱服务商发起的 RFC 8058 一键退订 POST 不带 Origin 头，被全局 csrf() 以 403 HTTPException 拒绝，且 R133 onError 又将其吞成 500——List-Unsubscribe-Post 指向死端点。
+
+**修复**
+- POST /unsubscribe/:token 豁免 CSRF（token 即鉴权，必须接受外部 POST）；onError 对 HTTPException 直接返回 err.getResponse()（403 等原样透传，不再 500）。线上复验：无 Origin POST → 200 "OK"；evil.com Origin POST /login → 403（CSRF 负例不回退）。
+
+**证据**：见 PR #46 回归评论。
+
+---
+
+## Rounds 136-139 — 2026-08-08（确认语义 + 结构化数据 + 隐私缓存头）
+
+**发现（UX 走查 + SEO/结构化数据审查 + 安全走查）**
+- R135 回归遗留 P3：已确认的订阅 token 重访仍显示「You're subscribed ✓」（语义不精确）；browse pSEO 页（genre/network/year，60+ URL）无 BreadcrumbList；/pricing 无结构化数据；已登录私密页（/home /library /stats 等）HTML 无 Cache-Control——登出后浏览器返回键可能回显缓存内容。
+
+**修复**
+- R136 确认页三态：先查 confirmed 再更新，「You're subscribed ✓」/「Already confirmed ✓」/「Link not recognized」明确区分。
+- R137 browse genre/network/year 页加 BreadcrumbList JSON-LD（复用详情页三级结构）。
+- R138 /pricing 加 WebApplication + 三档 Offer JSON-LD。
+- R139 私密应用页 HTML 响应加 `Cache-Control: private, no-store`（登出后回退不再回显个人数据）。
+
+**证据**：线上实测三态确认页、JSON-LD 与响应头，见 PR。
+
+---
+
+## Rounds 140-141 — 2026-08-08（数据驱动：favicon.ico 404 + og:type）
+
+**发现（用户/数据分析 + 分享卡走查）**
+- 第一方统计 7 天内 /favicon.ico 请求 20 次全部 404（旧客户端/爬虫默认路径）；全站 OG 标记缺 og:type——分享解析器回退默认值，详情页丢失 video.tv_show/video.movie 语义。
+
+**修复**
+- R140 生成多尺寸 public/favicon.ico（48/32/16，自 icon-192 转出）并加 7 天缓存头。
+- R141 Layout 加 og:type（默认 website），剧集详情页 video.tv_show、电影详情页 video.movie。
+
+**证据**：线上 curl 实测 favicon 200 与 og:type 标记，见 PR。
+
+---
+
+## Round 142 — 2026-08-08（日历按日分组）
+
+**发现（UX 走查 + 竞品模式）**
+- /calendar 为逐行平铺列表，每行重复日期标签；TV Time/Trakt 均按日分组展示，同日多条时扫读效率更高。
+
+**修复**
+- 日历改为按日分组：日期节标题（Today/Tomorrow/Fri, Aug 8 · in N days，Today 组紫色高亮），组内条目免去重复日期列；排序与 iCal/邮件摘要逻辑不变。
+
+**证据**：线上登录实测分组渲染与 375px 布局，见 PR。
+
+---
+
+## Round 143 — 2026-08-08（陈旧 next-episode 数据防护）
+
+**发现（R142 回归观察）**
+- TMDB 详情 KV 缓存 6 小时，跨午夜后 next_episode_to_air 可能已是过去日期：详情页仍标「Next episode · 昨日」，日历可能出现过期条目。
+
+**修复**
+- 详情页徽章按日期分流：过去日期改标「New episode aired」、当天显示「today」、未来维持原样；日历 upcomingItems 过滤过去日期的 TV 条目（与电影既有过滤对齐）。
+
+**证据**：线上详情页徽章实测，见 PR。
+
+---
+
+## Round 144 — 2026-08-08（剧集级评分）
+
+**发现（竞品再挖掘）**
+- TV Time 的 emoji 集评分 / Trakt 的 per-episode rating 是留存核心互动；我们只有剧/电影整体评分，集级互动缺失。
+
+**修复**
+- episode_watches 加 rating 列（远程 D1 已迁移）；已看集行内 ★ 下拉（1-5，autosubmit，可清除回「☆ rate」）；POST /api/episode-rating 服务端校验 1-5；JSON/CSV 导出带集评分。
+
+**证据**：线上实测评分/清除与导出，见 PR。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**
