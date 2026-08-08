@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 150;
+export const CSS_VERSION = 160;
 
 export interface ListRef {
   id: number;
@@ -2188,7 +2188,7 @@ export const WrappedPage: FC<{ stats: WrappedStats; name: string; shareUrl?: str
                         <span class="absolute -left-2 -top-2 flex h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-sm font-bold text-white">{i + 1}</span>
                       </div>
                       <p class="mt-2 truncate text-xs text-slate-300 group-hover:text-violet-300">{s.title}</p>
-                      <p class="text-xs text-slate-500">{s.eps} eps</p>
+                      <p class="text-xs text-slate-400">{s.eps} eps</p>
                     </a>
                   </li>
                 ))}
@@ -2208,7 +2208,7 @@ export const WrappedPage: FC<{ stats: WrappedStats; name: string; shareUrl?: str
               </div>
               {stats.busiestMonth && (
                 <p class="mt-3 text-sm text-slate-400">
-                  Busiest month: <span class="font-semibold text-violet-300">{stats.busiestMonth.month}</span> ({stats.busiestMonth.count} watches)
+                  Busiest month: <span class="font-semibold text-violet-300">{stats.busiestMonth.month}</span> ({stats.busiestMonth.count} watch{stats.busiestMonth.count === 1 ? "" : "es"})
                 </p>
               )}
               {stats.bestStreak >= 2 && (
