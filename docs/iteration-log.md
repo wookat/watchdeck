@@ -1784,3 +1784,15 @@
 - 日历：TVmaze/Hobi 式相对倒计时「· in N days」（30 天内）。
 - 统计：Hobi 式 🔥 watching streak（当前连续天数+历史最佳，D1 distinct 日期 JS 折算）。
 - Version c1f59160，线上验证落地页新文案渲染。
+
+---
+
+# 专项：设计系统深度升级（2026-08-08）
+
+## Rounds 162-166 — 字体/组件/适配/特效/用户心智（Version 76ebc1b4）
+- R162 字体排版：自托管 Sora（latin 子集 woff2 ~25KB，font-display:swap+preload+immutable 缓存），h1/h2/h3 与品牌 logo 使用；h1 text-wrap:balance；统计数字 tabular-nums（.stat-num/time/td）；品牌紫 ::selection。
+- R163 组件精修：全站 input/select/textarea 统一品牌 focus ring（violet 边框+3px 光晕）；.card 统一层级与 hover 提升（hover 设备+非减动效下）；沿用既有按钮 active 微缩。
+- R164 全设备适配：main/nav/footer 容器 xl:max-w-7xl，海报网格新增 xl:grid-cols-7（1440 宽屏利用）；coarse pointer 下导航/页脚链接 min-height 44px、按钮与输入 ≥40px。
+- R165 特效：海报网格 stagger-in 逐个上浮入场（前 12 项错峰）、统计图表 bar-grow 从左生长动画，全部 prefers-reduced-motion 降级为静态。
+- R166 用户心智（人话解释层）：新增 Hint 组件（CSS tooltip，键盘可聚焦 aria-label）；/stats 五张统计卡+watching streak、Wrapped 四张卡逐一配大白话解释；Wrapped「Watching rhythm/Taste profile」加一句话说明；导入未匹配标题加安抚性解释（为什么会发生+数据没丢）；日历 iCal 按钮配「贴进 Google/Apple 日历自动更新」说明。
+- CSS_VERSION 163→164。
