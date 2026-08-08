@@ -217,6 +217,45 @@ export interface CastMember {
   profile_path: string | null;
 }
 
+export interface PersonDetails {
+  id: number;
+  name: string;
+  biography: string | null;
+  profile_path: string | null;
+  known_for_department: string | null;
+  birthday: string | null;
+}
+
+export interface PersonCredit {
+  id: number;
+  media_type: "tv" | "movie";
+  title?: string;
+  name?: string;
+  poster_path: string | null;
+  vote_count: number;
+  popularity: number;
+  character?: string | null;
+}
+
+export async function personDetails(env: Env, id: number): Promise<PersonDetails> {
+  return tmdb<PersonDetails>(env, `/person/${id}`, 7 * 24 * 3600);
+}
+
+export async function personCredits(env: Env, id: number, limit = 24): Promise<PersonCredit[]> {
+  const res = await tmdb<{ cast: PersonCredit[] }>(env, `/person/${id}/combined_credits`, 7 * 24 * 3600);
+  const seen = new Set<string>();
+  return (res.cast ?? [])
+    .filter((c) => (c.media_type === "tv" || c.media_type === "movie") && c.poster_path)
+    .filter((c) => {
+      const k = `${c.media_type}:${c.id}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    })
+    .sort((a, b) => b.vote_count - a.vote_count || b.popularity - a.popularity)
+    .slice(0, limit);
+}
+
 export async function topCast(env: Env, type: "tv" | "movie", id: number, limit = 8): Promise<CastMember[]> {
   const res = await tmdb<{ cast: CastMember[] }>(env, `/${type}/${id}/${type === "tv" ? "aggregate_credits" : "credits"}`, 7 * 24 * 3600);
   return (res.cast ?? []).slice(0, limit).map((m) => ({

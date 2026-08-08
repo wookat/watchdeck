@@ -1,6 +1,6 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
-import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember } from "./tmdb";
+import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 export interface ListRef {
   id: number;
@@ -592,19 +592,64 @@ export const CastSection: FC<{ cast: CastMember[] }> = ({ cast }) =>
       <ul class="grid grid-cols-2 gap-4 sm:grid-cols-4 lg:grid-cols-8">
         {cast.map((m) => (
           <li class="text-center">
-            <img
-              src={m.profile_path ? `https://image.tmdb.org/t/p/w185${m.profile_path}` : "/placeholder-poster.svg"}
-              alt={m.name}
-              loading="lazy"
-              class="mx-auto aspect-[2/3] w-full max-w-[7rem] rounded-xl border border-slate-800 object-cover"
-            />
-            <p class="mt-2 line-clamp-1 text-sm font-medium">{m.name}</p>
+            <a href={`/person/${m.id}-${slugify(m.name)}`} class="group block">
+              <img
+                src={m.profile_path ? `https://image.tmdb.org/t/p/w185${m.profile_path}` : "/placeholder-poster.svg"}
+                alt={m.name}
+                loading="lazy"
+                class="mx-auto aspect-[2/3] w-full max-w-[7rem] rounded-xl border border-slate-800 object-cover"
+              />
+              <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{m.name}</p>
+            </a>
             {m.character && <p class="line-clamp-1 text-xs text-slate-400">{m.character}</p>}
           </li>
         ))}
       </ul>
     </div>
   );
+
+export const PersonPage: FC<{ person: PersonDetails; credits: PersonCredit[] }> = ({ person, credits }) => (
+  <div>
+    <div class="flex flex-col gap-6 sm:flex-row">
+      <img
+        src={person.profile_path ? `https://image.tmdb.org/t/p/w342${person.profile_path}` : "/placeholder-poster.svg"}
+        alt={person.name}
+        fetchpriority="high"
+        class="aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover sm:w-52"
+      />
+      <div class="min-w-0 flex-1">
+        <h1 class="text-3xl font-bold">{person.name}</h1>
+        <p class="mt-1 text-sm text-slate-400">
+          {person.known_for_department ?? "Acting"}
+          {person.birthday ? ` · born ${person.birthday}` : ""}
+        </p>
+        {person.biography && <p class="mt-4 line-clamp-[8] max-w-2xl whitespace-pre-line text-slate-300">{person.biography}</p>}
+      </div>
+    </div>
+    {credits.length > 0 && (
+      <div class="mt-12">
+        <h2 class="mb-4 text-xl font-semibold">Known for</h2>
+        <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+          {credits.map((cr) => {
+            const title = cr.title ?? cr.name ?? "";
+            return (
+              <a href={`/${cr.media_type === "tv" ? "shows" : "movies"}/${cr.id}-${slugify(title)}`} class="poster-card group block">
+                <img
+                  src={poster(cr.poster_path)}
+                  alt={title}
+                  loading="lazy"
+                  class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover"
+                />
+                <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{title}</p>
+                {cr.character && <p class="line-clamp-1 text-xs text-slate-400">as {cr.character}</p>}
+              </a>
+            );
+          })}
+        </div>
+      </div>
+    )}
+  </div>
+);
 
 export const RecsSection: FC<{ recs: SearchResult[]; type: "tv" | "movie" }> = ({ recs, type }) =>
   recs.length === 0 ? null : (

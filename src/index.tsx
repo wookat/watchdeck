@@ -27,6 +27,8 @@ import {
   metaDescription,
   type SearchResult,
   topCast,
+  personDetails,
+  personCredits,
   type CastMember,
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, isNetflixCsv, parseNetflixCsv, type ParsedImport } from "./importer";
@@ -44,6 +46,7 @@ import {
   TrendingSection,
   ShowPage,
   MoviePage,
+  PersonPage,
   LibraryPage,
   CalendarPage,
   ImportPage,
@@ -598,6 +601,54 @@ app.get("/movies/:idslug", async (c) => {
       }}
     >
       <MoviePage movie={movie} watchCount={watchCount} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} />
+    </Layout>
+  );
+});
+
+app.get("/person/:idslug", async (c) => {
+  const user = c.get("user");
+  const id = parseInt(c.req.param("idslug"), 10);
+  if (!Number.isFinite(id)) return c.notFound();
+  let person;
+  try {
+    person = await personDetails(c.env, id);
+  } catch {
+    return c.notFound();
+  }
+  const personSlug = `${person.id}-${slugify(person.name)}`;
+  if (c.req.param("idslug") !== personSlug) return c.redirect(`/person/${personSlug}`, 301);
+  const credits = await personCredits(c.env, id).catch(() => []);
+  const canonical = `${c.env.SITE_URL}/person/${personSlug}`;
+  return c.html(
+    <Layout
+      user={user}
+      title={person.name}
+      description={metaDescription(person.biography ?? `TV shows and movies featuring ${person.name}.`)}
+      canonical={canonical}
+      ogType="profile"
+      ogImage={person.profile_path ? `https://image.tmdb.org/t/p/w500${person.profile_path}` : undefined}
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Person",
+            name: person.name,
+            url: canonical,
+            ...(person.profile_path ? { image: `https://image.tmdb.org/t/p/w500${person.profile_path}` } : {}),
+            ...(person.birthday ? { birthDate: person.birthday } : {}),
+          },
+          {
+            "@type": "BreadcrumbList",
+            itemListElement: [
+              { "@type": "ListItem", position: 1, name: "WatchDeck", item: c.env.SITE_URL + "/" },
+              { "@type": "ListItem", position: 2, name: "Browse", item: c.env.SITE_URL + "/browse" },
+              { "@type": "ListItem", position: 3, name: person.name, item: canonical },
+            ],
+          },
+        ],
+      }}
+    >
+      <PersonPage person={person} credits={credits} />
     </Layout>
   );
 });

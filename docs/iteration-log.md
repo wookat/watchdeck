@@ -133,6 +133,18 @@
 
 ---
 
+## Round 147 — 2026-08-08（演职人员页 pSEO）
+
+**发现（竞品再挖掘）**
+- Trakt/Letterboxd/TMDB 均有人物页承接「演员名」搜索流量；我们详情页 Top cast 只是静态卡不可点，长尾入口缺失。
+
+**修复**
+- 新增 /person/:idslug（TMDB person + combined_credits，7 天缓存）：简介+「Known for」作品网格（去重、按热度排序、可点回详情页）；错 slug 301 规范化、Person+BreadcrumbList JSON-LD、og:type=profile；详情页 Top cast 头像/姓名改为可点链接。
+
+**证据**：线上 /person/1223786-emilia-clarke 实测（301/JSON-LD/网格），见 PR。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**
