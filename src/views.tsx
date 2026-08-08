@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 162;
+export const CSS_VERSION = 163;
 
 export interface ListRef {
   id: number;
@@ -2545,7 +2545,7 @@ export const PricingPage: FC<{ loggedIn?: boolean }> = ({ loggedIn }) => (
         </ul>
       </div>
       <div class="relative rounded-2xl border border-violet-600 bg-violet-950/30 p-6">
-        <span class="absolute -top-3 left-6 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-500 px-3 py-0.5 text-xs font-semibold text-white">Free during beta</span>
+        <span class="absolute -top-3 left-6 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-3 py-0.5 text-xs font-semibold text-white">Free during beta</span>
         <h2 class="text-lg font-bold">Plus</h2>
         <p class="mt-1 text-sm text-slate-400">For serious trackers — keeps WatchDeck independent.</p>
         <p class="mt-4 text-3xl font-extrabold">$1.99<span class="text-base font-normal text-slate-400"> / month</span></p>
