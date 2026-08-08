@@ -1304,27 +1304,36 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
         The shows you track have no announced upcoming episodes — new dates show up here (and in your iCal feed) automatically. Looking for something new? <a href="/browse" class="text-violet-400 hover:underline">Browse by genre</a>.
       </EmptyState>
     ) : (
-      <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
-        {items.map((it) => {
-          const d = airDateLabel(it.airDate);
+      <div class="space-y-6">
+        {[...new Set(items.map((it) => it.airDate))].map((date) => {
+          const d = airDateLabel(date);
+          const dayItems = items.filter((it) => it.airDate === date);
           return (
-          <li class={d.today ? "flex items-center gap-4 bg-violet-950/40 px-4 py-3" : "flex items-center gap-4 bg-slate-900/40 px-4 py-3"}>
-            <span class={d.today ? "w-24 shrink-0 text-sm font-semibold text-violet-300" : "w-24 shrink-0 text-sm text-violet-300"} title={it.airDate}>{d.label}</span>
-            <img src={poster(it.posterPath, "w92")} alt="" class="aspect-[2/3] h-14 w-auto rounded border border-slate-800 object-cover" />
-            <div class="min-w-0">
-              <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
-                {it.title}
-              </a>
-              <p class="text-sm text-slate-400">
-                {it.mediaType === "tv" && it.season != null && it.episode != null
-                  ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` · ${it.episodeName}` : ""}`
-                  : "🎬 Movie release"}
-              </p>
-            </div>
-          </li>
+            <section>
+              <h2 class={d.today ? "mb-2 text-sm font-semibold uppercase tracking-wide text-violet-300" : "mb-2 text-sm font-semibold uppercase tracking-wide text-slate-400"} title={date}>
+                {d.label}
+              </h2>
+              <ul class="divide-y divide-slate-800 overflow-hidden rounded-2xl border border-slate-800">
+                {dayItems.map((it) => (
+                  <li class={d.today ? "flex items-center gap-4 bg-violet-950/40 px-4 py-3" : "flex items-center gap-4 bg-slate-900/40 px-4 py-3"}>
+                    <img src={poster(it.posterPath, "w92")} alt="" class="aspect-[2/3] h-14 w-auto rounded border border-slate-800 object-cover" />
+                    <div class="min-w-0">
+                      <a href={`/${it.mediaType === "tv" ? "shows" : "movies"}/${it.tmdbId}-${slugify(it.title)}`} class="line-clamp-1 font-medium hover:text-violet-400">
+                        {it.title}
+                      </a>
+                      <p class="text-sm text-slate-400">
+                        {it.mediaType === "tv" && it.season != null && it.episode != null
+                          ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` · ${it.episodeName}` : ""}`
+                          : "🎬 Movie release"}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
           );
         })}
-      </ul>
+      </div>
     )}
   </div>
 );
