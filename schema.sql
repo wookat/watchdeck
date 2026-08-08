@@ -92,6 +92,15 @@ CREATE TABLE IF NOT EXISTS share_tokens (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- public year-in-review (Wrapped) share tokens, one per user per year
+CREATE TABLE IF NOT EXISTS wrapped_shares (
+  token TEXT PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  year INTEGER NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (user_id, year)
+);
+
 -- one-time password reset tokens
 CREATE TABLE IF NOT EXISTS password_resets (
   token TEXT PRIMARY KEY,

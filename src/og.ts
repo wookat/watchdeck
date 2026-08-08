@@ -1,6 +1,6 @@
 import { ImageResponse, loadGoogleFont } from "workers-og";
 import type { Env } from "./types";
-import type { UserStats } from "./views";
+import type { UserStats, WrappedStats } from "./views";
 
 // workers-og renders text nodes verbatim (no entity decoding), so strip markup
 // characters instead of entity-escaping them
@@ -37,6 +37,49 @@ export async function shareOgImage(env: Env, name: string, stats: UserStats): Pr
       ${stat(stats.showsTracked, "shows tracked")}
     </div>
     <span style="font-size:24px;color:#64748b;">watchdeck.zalize.com — track your TV shows and movies on the web</span>
+  </div>`;
+  return new ImageResponse(html, {
+    width: 1200,
+    height: 630,
+    fonts: [
+      { name: "Inter", data: regular, weight: 400, style: "normal" },
+      { name: "Inter", data: bold, weight: 700, style: "normal" },
+    ],
+  });
+}
+
+export async function wrappedOgImage(env: Env, name: string, stats: WrappedStats): Promise<Response> {
+  const [regular, bold] = await Promise.all([interFont(env, 400), interFont(env, 700)]);
+  const posters = stats.topShows
+    .filter((s) => s.poster_path)
+    .slice(0, 5)
+    .map(
+      (s) =>
+        `<img src="https://image.tmdb.org/t/p/w185${s.poster_path}" width="140" height="210" style="border-radius:14px;border:2px solid #4c1d95;" />`
+    )
+    .join("");
+  const stat = (n: string, label: string) => `
+    <div style="display:flex;flex-direction:column;align-items:center;padding:20px 30px;background:#1e1b4b;border-radius:20px;">
+      <span style="font-size:48px;font-weight:700;color:#c4b5fd;">${n}</span>
+      <span style="font-size:20px;color:#94a3b8;">${label}</span>
+    </div>`;
+  const html = `
+  <div style="display:flex;flex-direction:column;width:1200px;height:630px;background:linear-gradient(180deg,#2e1065 0%,#020617 60%);color:#f1f5f9;font-family:Inter;padding:56px 64px;justify-content:space-between;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+      <div style="display:flex;flex-direction:column;">
+        <span style="font-size:26px;color:#a78bfa;font-weight:700;letter-spacing:6px;">WATCHDECK WRAPPED</span>
+        <span style="font-size:72px;font-weight:700;margin-top:8px;">${stats.year}</span>
+        <span style="font-size:26px;color:#cbd5e1;margin-top:4px;">${ogText(name)}'s year in TV and film</span>
+      </div>
+      <div style="display:flex;gap:12px;">${posters}</div>
+    </div>
+    <div style="display:flex;gap:20px;">
+      ${stat(stats.hours.toLocaleString("en-US"), "hours")}
+      ${stat(String(stats.eps), "episodes")}
+      ${stat(String(stats.movies), "movies")}
+      ${stats.topGenres[0] ? stat(ogText(stats.topGenres[0].name), "top genre") : ""}
+    </div>
+    <span style="font-size:22px;color:#64748b;">watchdeck.zalize.com — get your own Wrapped</span>
   </div>`;
   return new ImageResponse(html, {
     width: 1200,

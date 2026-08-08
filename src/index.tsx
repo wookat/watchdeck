@@ -35,7 +35,7 @@ import {
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, isNetflixCsv, parseNetflixCsv, type ParsedImport } from "./importer";
 import { sendEmail, welcomeEmail, resetEmail, confirmSignupEmail } from "./email";
-import { shareOgImage, listOgImage } from "./og";
+import { shareOgImage, listOgImage, wrappedOgImage } from "./og";
 import {
   Layout,
   Landing,
@@ -74,6 +74,8 @@ import {
   ListsPage,
   ListDetailPage,
   PublicListPage,
+  WrappedPage,
+  type WrappedStats,
 } from "./views";
 
 const SERVICE_IDS = new Set(STREAMING_SERVICES.map(([id]) => id));
@@ -109,10 +111,10 @@ app.use("*", async (c, next) => {
   h.set("referrer-policy", "strict-origin-when-cross-origin");
   h.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
   const path = new URL(c.req.url).pathname;
-  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|forgot|reset|unsubscribe|confirm-email|u)(\/|$)/.test(path)) {
+  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|forgot|reset|unsubscribe|confirm-email|u|wrapped)(\/|$)/.test(path)) {
     h.set("x-robots-tag", "noindex");
   }
-  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings)(\/|$)/.test(path) && c.res.headers.get("content-type")?.includes("text/html")) {
+  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|wrapped)(\/|$)/.test(path) && c.res.headers.get("content-type")?.includes("text/html")) {
     h.set("cache-control", "private, no-store");
   }
   if (c.res.headers.get("content-type")?.includes("text/html")) {
@@ -1132,6 +1134,202 @@ async function userStats(env: Env, userId: number): Promise<UserStats> {
   };
 }
 
+const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+
+async function wrappedStats(env: Env, userId: number, year: number): Promise<WrappedStats> {
+  const y = String(year);
+  const [epsRow, movieRows, topShowRows, monthRows, dayRows, showRatings, epRatings, firstEp, firstMovie] = await Promise.all([
+    env.DB.prepare("SELECT COUNT(*) AS n, SUM(plays) AS plays FROM episode_watches WHERE user_id = ? AND strftime('%Y', watched_at) = ?").bind(userId, y).first<{ n: number; plays: number | null }>(),
+    env.DB.prepare("SELECT tmdb_id FROM movie_watches WHERE user_id = ? AND strftime('%Y', watched_at) = ?").bind(userId, y).all<{ tmdb_id: number }>(),
+    env.DB.prepare(
+      `SELECT t.title, w.tmdb_id, COUNT(*) AS eps FROM episode_watches w
+       JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
+       WHERE w.user_id = ? AND strftime('%Y', w.watched_at) = ? GROUP BY w.tmdb_id ORDER BY eps DESC, t.title LIMIT 5`
+    ).bind(userId, y).all<{ title: string; tmdb_id: number; eps: number }>(),
+    env.DB.prepare(
+      `SELECT m AS month, COUNT(*) AS n FROM (
+         SELECT strftime('%m', watched_at) AS m FROM episode_watches WHERE user_id = ?1 AND strftime('%Y', watched_at) = ?2
+         UNION ALL
+         SELECT strftime('%m', watched_at) AS m FROM movie_watches WHERE user_id = ?1 AND strftime('%Y', watched_at) = ?2
+       ) GROUP BY m ORDER BY m`
+    ).bind(userId, y).all<{ month: string; n: number }>(),
+    env.DB.prepare(
+      `SELECT DISTINCT d FROM (
+         SELECT date(watched_at) AS d FROM episode_watches WHERE user_id = ?1 AND strftime('%Y', watched_at) = ?2
+         UNION
+         SELECT date(watched_at) AS d FROM movie_watches WHERE user_id = ?1 AND strftime('%Y', watched_at) = ?2
+       ) WHERE d IS NOT NULL ORDER BY d`
+    ).bind(userId, y).all<{ d: string }>(),
+    env.DB.prepare(
+      `SELECT t.title, t.rating FROM tracked t
+       WHERE t.user_id = ?1 AND t.rating IS NOT NULL AND t.tmdb_id IN (
+         SELECT tmdb_id FROM episode_watches WHERE user_id = ?1 AND strftime('%Y', watched_at) = ?2
+         UNION SELECT tmdb_id FROM movie_watches WHERE user_id = ?1 AND strftime('%Y', watched_at) = ?2
+       ) ORDER BY t.rating DESC, t.title LIMIT 1`
+    ).bind(userId, y).first<{ title: string; rating: number }>(),
+    env.DB.prepare("SELECT COUNT(*) AS n, AVG(rating) AS avg FROM episode_watches WHERE user_id = ? AND strftime('%Y', watched_at) = ? AND rating IS NOT NULL").bind(userId, y).first<{ n: number; avg: number | null }>(),
+    env.DB.prepare(
+      `SELECT t.title, date(w.watched_at) AS d FROM episode_watches w
+       JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'tv'
+       WHERE w.user_id = ? AND strftime('%Y', w.watched_at) = ? ORDER BY w.watched_at LIMIT 1`
+    ).bind(userId, y).first<{ title: string; d: string }>(),
+    env.DB.prepare(
+      `SELECT t.title, date(w.watched_at) AS d FROM movie_watches w
+       JOIN tracked t ON t.user_id = w.user_id AND t.tmdb_id = w.tmdb_id AND t.media_type = 'movie'
+       WHERE w.user_id = ? AND strftime('%Y', w.watched_at) = ? ORDER BY w.watched_at LIMIT 1`
+    ).bind(userId, y).first<{ title: string; d: string }>(),
+  ]);
+  const dayNums = dayRows.results.map((r) => Math.round(Date.parse(r.d + "T00:00:00Z") / 86400000));
+  let bestStreak = 0;
+  let run = 0;
+  for (let i = 0; i < dayNums.length; i++) {
+    run = i > 0 && dayNums[i] === dayNums[i - 1] + 1 ? run + 1 : 1;
+    if (run > bestStreak) bestStreak = run;
+  }
+  const topShows = await Promise.all(
+    topShowRows.results.map(async (s) => {
+      try {
+        const d = await tvDetails(env, s.tmdb_id);
+        return { ...s, poster_path: d.poster_path };
+      } catch {
+        return { ...s, poster_path: null };
+      }
+    })
+  );
+  // hours + genres from this year's distinct shows and movies
+  const showEps = await env.DB.prepare(
+    "SELECT tmdb_id, SUM(plays) AS n FROM episode_watches WHERE user_id = ? AND strftime('%Y', watched_at) = ? GROUP BY tmdb_id"
+  ).bind(userId, y).all<{ tmdb_id: number; n: number }>();
+  const genreCounts = new Map<string, number>();
+  let minutes = 0;
+  await Promise.all([
+    ...showEps.results.map(async (s) => {
+      try {
+        const d = await tvDetails(env, s.tmdb_id);
+        minutes += s.n * (d.last_episode_to_air?.runtime || d.episode_run_time?.[0] || 40);
+        for (const g of d.genres ?? []) genreCounts.set(g.name, (genreCounts.get(g.name) ?? 0) + s.n);
+      } catch {
+        minutes += s.n * 40;
+      }
+    }),
+    ...movieRows.results.map(async (m) => {
+      try {
+        const d = await movieDetails(env, m.tmdb_id);
+        minutes += d.runtime || 110;
+        for (const g of d.genres ?? []) genreCounts.set(g.name, (genreCounts.get(g.name) ?? 0) + 1);
+      } catch {
+        minutes += 110;
+      }
+    }),
+  ]);
+  const topGenres = [...genreCounts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name))
+    .slice(0, 5);
+  const byMonth = monthRows.results.map((m) => ({ month: parseInt(m.month, 10), count: m.n }));
+  const busiest = byMonth.reduce<{ month: number; count: number } | null>((best, m) => (best && best.count >= m.count ? best : m), null);
+  const firstWatch = [firstEp, firstMovie].filter((f): f is { title: string; d: string } => !!f).sort((a, b) => a.d.localeCompare(b.d))[0] ?? null;
+  return {
+    year,
+    eps: epsRow?.n ?? 0,
+    movies: movieRows.results.length,
+    hours: Math.round(minutes / 60),
+    days: dayNums.length,
+    bestStreak,
+    topShows,
+    topGenres,
+    byMonth,
+    busiestMonth: busiest ? { month: MONTH_NAMES[busiest.month - 1], count: busiest.count } : null,
+    ratingsGiven: epRatings?.n ?? 0,
+    avgEpisodeRating: epRatings?.avg != null ? Math.round(epRatings.avg * 10) / 10 : null,
+    topRated: showRatings ?? null,
+    firstWatch: firstWatch ? { title: firstWatch.title, date: firstWatch.d } : null,
+  };
+}
+
+function wrappedYear(raw: string | undefined): number | null {
+  const year = parseInt(raw ?? "", 10);
+  const current = new Date().getUTCFullYear();
+  return Number.isFinite(year) && year >= 2000 && year <= current ? year : null;
+}
+
+app.get("/wrapped", (c) => c.redirect(`/wrapped/${new Date().getUTCFullYear()}`));
+
+app.get("/wrapped/:year", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const year = wrappedYear(c.req.param("year"));
+  if (!year) return c.notFound();
+  const [stats, share, years] = await Promise.all([
+    wrappedStats(c.env, user.id, year),
+    c.env.DB.prepare("SELECT token FROM wrapped_shares WHERE user_id = ? AND year = ?").bind(user.id, year).first<{ token: string }>(),
+    c.env.DB.prepare(
+      `SELECT DISTINCT y FROM (
+         SELECT strftime('%Y', watched_at) AS y FROM episode_watches WHERE user_id = ?1
+         UNION SELECT strftime('%Y', watched_at) AS y FROM movie_watches WHERE user_id = ?1
+       ) WHERE y IS NOT NULL ORDER BY y DESC LIMIT 15`
+    ).bind(user.id).all<{ y: string }>(),
+  ]);
+  return c.html(
+    <Layout user={user} title={`Your ${year} Wrapped`}>
+      <WrappedPage stats={stats} name={user.display_name || user.email.split("@")[0]} shareUrl={share ? `${c.env.SITE_URL}/w/${share.token}` : null} years={years.results.map((r) => parseInt(r.y, 10))} />
+    </Layout>
+  );
+});
+
+app.post("/api/wrapped/share", async (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  const form = await c.req.parseBody();
+  const year = wrappedYear(String(form.year ?? ""));
+  if (!year) return c.redirect("/wrapped");
+  if (form.enabled === "1") {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+    await c.env.DB.prepare("INSERT OR IGNORE INTO wrapped_shares (token, user_id, year) VALUES (?, ?, ?)").bind(token, user.id, year).run();
+  } else {
+    await c.env.DB.prepare("DELETE FROM wrapped_shares WHERE user_id = ? AND year = ?").bind(user.id, year).run();
+  }
+  return c.redirect(`/wrapped/${year}`);
+});
+
+async function wrappedShare(env: Env, token: string): Promise<{ name: string; stats: WrappedStats } | null> {
+  if (!/^[0-9a-f]{32}$/.test(token)) return null;
+  const row = await env.DB.prepare(
+    "SELECT u.id, u.display_name, u.email, s.year FROM wrapped_shares s JOIN users u ON u.id = s.user_id WHERE s.token = ?"
+  ).bind(token).first<{ id: number; display_name: string | null; email: string; year: number }>();
+  if (!row) return null;
+  const stats = await wrappedStats(env, row.id, row.year);
+  return { name: row.display_name || row.email.split("@")[0], stats };
+}
+
+app.get("/w/:token", async (c) => {
+  const token = c.req.param("token");
+  const share = await wrappedShare(c.env, token);
+  if (!share) return c.notFound();
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={`${share.name}'s ${share.stats.year} Wrapped`}
+      description={`${share.stats.hours} hours, ${share.stats.eps} episodes and ${share.stats.movies} movies in ${share.stats.year} \u2014 a year in TV & film, wrapped on WatchDeck.`}
+      canonical={`${c.env.SITE_URL}/w/${token}`}
+      ogImage={`${c.env.SITE_URL}/w/${token}/og.png`}
+    >
+      <WrappedPage stats={share.stats} name={share.name} public />
+    </Layout>
+  );
+});
+
+app.get("/w/:token/og.png", async (c) => {
+  const token = c.req.param("token");
+  const share = await wrappedShare(c.env, token);
+  if (!share) return c.notFound();
+  const res = await wrappedOgImage(c.env, share.name, share.stats);
+  res.headers.set("cache-control", "public, max-age=3600");
+  return res;
+});
+
 app.post("/api/history/date", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
@@ -1570,6 +1768,7 @@ app.post("/api/settings/delete", async (c) => {
     c.env.DB.prepare("DELETE FROM movie_watches WHERE user_id = ?").bind(user.id),
     c.env.DB.prepare("DELETE FROM tracked WHERE user_id = ?").bind(user.id),
     c.env.DB.prepare("DELETE FROM share_tokens WHERE user_id = ?").bind(user.id),
+    c.env.DB.prepare("DELETE FROM wrapped_shares WHERE user_id = ?").bind(user.id),
     c.env.DB.prepare("DELETE FROM feed_tokens WHERE user_id = ?").bind(user.id),
     c.env.DB.prepare("DELETE FROM password_resets WHERE user_id = ?").bind(user.id),
     c.env.DB.prepare("DELETE FROM imports WHERE user_id = ?").bind(user.id),
@@ -2113,7 +2312,7 @@ app.post("/api/import/batch", async (c) => {
 // ---------- seo ----------
 app.get("/robots.txt", (c) =>
   c.text(
-    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /lists\nDisallow: /roulette\nDisallow: /calendar\nDisallow: /import\nDisallow: /stats\nDisallow: /history\nDisallow: /settings\nDisallow: /forgot\nDisallow: /reset\nDisallow: /unsubscribe/\nDisallow: /confirm-email/\nDisallow: /u/\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`
+    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /lists\nDisallow: /roulette\nDisallow: /calendar\nDisallow: /import\nDisallow: /stats\nDisallow: /history\nDisallow: /settings\nDisallow: /forgot\nDisallow: /reset\nDisallow: /unsubscribe/\nDisallow: /confirm-email/\nDisallow: /u/\nDisallow: /wrapped\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`
   )
 );
 
