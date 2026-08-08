@@ -57,6 +57,21 @@
 
 ---
 
+## Rounds 136-139 — 2026-08-08（确认语义 + 结构化数据 + 隐私缓存头）
+
+**发现（UX 走查 + SEO/结构化数据审查 + 安全走查）**
+- R135 回归遗留 P3：已确认的订阅 token 重访仍显示「You're subscribed ✓」（语义不精确）；browse pSEO 页（genre/network/year，60+ URL）无 BreadcrumbList；/pricing 无结构化数据；已登录私密页（/home /library /stats 等）HTML 无 Cache-Control——登出后浏览器返回键可能回显缓存内容。
+
+**修复**
+- R136 确认页三态：先查 confirmed 再更新，「You're subscribed ✓」/「Already confirmed ✓」/「Link not recognized」明确区分。
+- R137 browse genre/network/year 页加 BreadcrumbList JSON-LD（复用详情页三级结构）。
+- R138 /pricing 加 WebApplication + 三档 Offer JSON-LD。
+- R139 私密应用页 HTML 响应加 `Cache-Control: private, no-store`（登出后回退不再回显个人数据）。
+
+**证据**：线上实测三态确认页、JSON-LD 与响应头，见 PR。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**

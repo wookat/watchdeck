@@ -107,6 +107,9 @@ app.use("*", async (c, next) => {
   if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|forgot|reset|unsubscribe|confirm-email|u)(\/|$)/.test(path)) {
     h.set("x-robots-tag", "noindex");
   }
+  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings)(\/|$)/.test(path) && c.res.headers.get("content-type")?.includes("text/html")) {
+    h.set("cache-control", "private, no-store");
+  }
   if (c.res.headers.get("content-type")?.includes("text/html")) {
     h.set(
       "content-security-policy",
@@ -772,6 +775,18 @@ function browseYears(): number[] {
   return Array.from({ length: 15 }, (_, i) => current - i);
 }
 
+function browseCrumbs(siteUrl: string, name: string, item: string) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "WatchDeck", item: siteUrl + "/" },
+      { "@type": "ListItem", position: 2, name: "Browse", item: siteUrl + "/browse" },
+      { "@type": "ListItem", position: 3, name, item },
+    ],
+  };
+}
+
 app.get("/browse", async (c) => {
   const [tv, movie] = await Promise.all([genreList(c.env, "tv"), genreList(c.env, "movie")]);
   return c.html(
@@ -802,6 +817,7 @@ app.get("/browse/network/:idslug", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
+      jsonLd={browseCrumbs(c.env.SITE_URL, network.name, base)}
     >
       <BrowseNetwork network={network} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
@@ -825,6 +841,7 @@ app.get("/browse/year/:type/:year", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
+      jsonLd={browseCrumbs(c.env.SITE_URL, `${type === "tv" ? "TV shows" : "Movies"} of ${year}`, base)}
     >
       <BrowseYear type={type} year={year} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
@@ -850,6 +867,7 @@ app.get("/browse/:type/:genreslug", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
+      jsonLd={browseCrumbs(c.env.SITE_URL, `${genre.name} ${type === "tv" ? "TV shows" : "movies"}`, base)}
     >
       <BrowseGenre type={type} genre={genre} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
@@ -1112,6 +1130,19 @@ app.get("/pricing", (c) =>
       title="Pricing"
       description="WatchDeck pricing: a free plan plus a Plus plan from $1.99/month. Everything is free while WatchDeck is in beta — no payment required."
       canonical={`${c.env.SITE_URL}/pricing`}
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        name: "WatchDeck",
+        url: c.env.SITE_URL,
+        applicationCategory: "EntertainmentApplication",
+        operatingSystem: "Web",
+        offers: [
+          { "@type": "Offer", name: "Free", price: "0", priceCurrency: "USD" },
+          { "@type": "Offer", name: "Plus (monthly)", price: "1.99", priceCurrency: "USD" },
+          { "@type": "Offer", name: "Plus (yearly)", price: "19", priceCurrency: "USD" },
+        ],
+      }}
     >
       <PricingPage loggedIn={!!c.get("user")} />
     </Layout>
@@ -1554,16 +1585,21 @@ app.post("/api/waitlist", async (c) => {
 
 app.get("/confirm-email/:token", async (c) => {
   const token = c.req.param("token");
-  const res = await c.env.DB.prepare("UPDATE email_signups SET confirmed = 1 WHERE confirm_token = ?").bind(token).run();
+  const row = await c.env.DB.prepare("SELECT confirmed FROM email_signups WHERE confirm_token = ?").bind(token).first<{ confirmed: number }>();
+  if (row && !row.confirmed) {
+    await c.env.DB.prepare("UPDATE email_signups SET confirmed = 1 WHERE confirm_token = ?").bind(token).run();
+  }
+  const heading = !row ? "Link not recognized" : row.confirmed ? "Already confirmed \u2713" : "You're subscribed \u2713";
+  const body = !row
+    ? "This confirmation link is invalid."
+    : row.confirmed
+      ? "This subscription was already confirmed \u2014 you're all set. You can unsubscribe from any email we send."
+      : "Thanks for confirming \u2014 we'll send occasional product updates. You can unsubscribe from any email we send.";
   return c.html(
     <Layout user={c.get("user")} title="Subscription confirmed">
       <div class="mx-auto max-w-md py-16 text-center">
-        <h1 class="text-2xl font-bold">{res.meta.changes > 0 ? "You're subscribed \u2713" : "Link not recognized"}</h1>
-        <p class="mt-3 text-slate-400">
-          {res.meta.changes > 0
-            ? "Thanks for confirming \u2014 we'll send occasional product updates. You can unsubscribe from any email we send."
-            : "This confirmation link is invalid or was already used."}
-        </p>
+        <h1 class="text-2xl font-bold">{heading}</h1>
+        <p class="mt-3 text-slate-400">{body}</p>
         <a href="/" class="mt-6 inline-block rounded-xl bg-violet-600 px-5 py-2.5 font-semibold text-white hover:bg-violet-500">Back to WatchDeck</a>
       </div>
     </Layout>
