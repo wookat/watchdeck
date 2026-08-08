@@ -650,27 +650,35 @@ export const PersonPage: FC<{ person: PersonDetails; credits: PersonCredit[] }> 
         {person.biography && <p class="mt-4 line-clamp-[8] max-w-2xl whitespace-pre-line text-slate-300">{person.biography}</p>}
       </div>
     </div>
-    {credits.length > 0 && (
-      <div class="mt-12">
-        <h2 class="mb-4 text-xl font-semibold">Known for</h2>
-        <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
-          {credits.map((cr) => {
-            const title = cr.title ?? cr.name ?? "";
-            return (
-              <a href={`/${cr.media_type === "tv" ? "shows" : "movies"}/${cr.id}-${slugify(title)}`} class="poster-card group block">
-                <img
-                  src={poster(cr.poster_path)}
-                  alt={title}
-                  loading="lazy"
-                  class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover"
-                />
-                <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{title}</p>
-                {cr.character && <p class="line-clamp-1 text-xs text-slate-400">as {cr.character}</p>}
-              </a>
-            );
-          })}
-        </div>
-      </div>
+    {(
+      [
+        ["TV shows", credits.filter((cr) => cr.media_type === "tv")],
+        ["Movies", credits.filter((cr) => cr.media_type === "movie")],
+      ] as const
+    ).map(
+      ([label, group]) =>
+        group.length > 0 && (
+          <div class="mt-12">
+            <h2 class="mb-4 text-xl font-semibold">{label}</h2>
+            <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+              {group.map((cr) => {
+                const title = cr.title ?? cr.name ?? "";
+                return (
+                  <a href={`/${cr.media_type === "tv" ? "shows" : "movies"}/${cr.id}-${slugify(title)}`} class="poster-card group block">
+                    <img
+                      src={poster(cr.poster_path)}
+                      alt={title}
+                      loading="lazy"
+                      class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover"
+                    />
+                    <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{title}</p>
+                    {cr.character && <p class="line-clamp-1 text-xs text-slate-400">as {cr.character}</p>}
+                  </a>
+                );
+              })}
+            </div>
+          </div>
+        )
     )}
   </div>
 );
