@@ -33,6 +33,10 @@ export function searchMulti(env: Env, query: string) {
   return tmdb<{ results: SearchResult[] }>(env, `/search/multi?query=${encodeURIComponent(query)}&include_adult=false`);
 }
 
+export function searchPerson(env: Env, query: string) {
+  return tmdb<{ results: SearchResult[] }>(env, `/search/person?query=${encodeURIComponent(query)}&include_adult=false`, 3600);
+}
+
 export function searchTv(env: Env, query: string) {
   return tmdb<{ results: SearchResult[] }>(env, `/search/tv?query=${encodeURIComponent(query)}&include_adult=false`, 7 * 24 * 3600);
 }
