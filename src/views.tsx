@@ -253,13 +253,13 @@ export const landingFaqs: [string, string][] = [
 const GuideLayout: FC<PropsWithChildren<{ title: string; updated: string }>> = ({ title, updated, children }) => (
   <article class="mx-auto max-w-2xl space-y-4 text-slate-300">
     <p class="text-sm">
-      <a href="/guides" class="text-violet-400 hover:underline">Guides</a> <span class="text-slate-500">/</span>
+      <a href="/guides" class="text-violet-400 underline underline-offset-2">Guides</a> <span class="text-slate-500">/</span>
     </p>
     <h1 class="text-2xl font-bold text-white">{title}</h1>
     <p class="text-sm text-slate-400">Last updated: {updated}</p>
     {children}
     <p class="rounded-2xl border border-violet-900/60 bg-violet-950/30 p-5">
-      Ready to try it? <a href="/signup" class="font-medium text-violet-400 hover:underline">Join the WatchDeck beta</a> — every
+      Ready to try it? <a href="/signup" class="font-medium text-violet-400 underline underline-offset-2">Join the WatchDeck beta</a> — every
       feature is free while the beta lasts, and your data exports back out any time.
     </p>
   </article>
@@ -286,14 +286,14 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
         </p>
         <h2 class="text-lg font-semibold text-white">Importing it into WatchDeck</h2>
         <p>
-          On the <a href="/import" class="text-violet-400 hover:underline">Import page</a>, upload the ZIP as-is. WatchDeck parses the CSVs,
+          On the <a href="/import" class="text-violet-400 underline underline-offset-2">Import page</a>, upload the ZIP as-is. WatchDeck parses the CSVs,
           matches shows/episodes/movies against TMDB, shows you exactly what it found, and only writes after you confirm.
           Anything it can't match automatically is listed for one-click manual binding — nothing is silently dropped.
-          Afterwards your <a href="/home" class="text-violet-400 hover:underline">Next Up</a> screen picks up from the exact episode you left off.
+          Afterwards your <a href="/home" class="text-violet-400 underline underline-offset-2">Next Up</a> screen picks up from the exact episode you left off.
         </p>
         <p>
           Also importable: Trakt- and Serializd-style CSVs and Netflix viewing history — see{" "}
-          <a href="/guides/import-netflix-history" class="text-violet-400 hover:underline">importing your Netflix history</a>.
+          <a href="/guides/import-netflix-history" class="text-violet-400 underline underline-offset-2">importing your Netflix history</a>.
         </p>
       </>
     ),
@@ -325,13 +325,13 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
         <p>
           Web-first and built specifically around the TV Time export: upload the GDPR ZIP unchanged and episodes, movies
           and ratings all come across, with a confirmation step and manual binding for edge cases. Next-episode home
-          screen, airing <a href="/calendar" class="text-violet-400 hover:underline">calendar</a> with iCal + email reminders,{" "}
-          <a href="/stats" class="text-violet-400 hover:underline">stats</a>, shareable lists and a year-end Wrapped.
-          Every feature is <a href="/pricing" class="text-violet-400 hover:underline">free while in beta</a>, with full JSON/CSV export always.
+          screen, airing <a href="/calendar" class="text-violet-400 underline underline-offset-2">calendar</a> with iCal + email reminders,{" "}
+          <a href="/stats" class="text-violet-400 underline underline-offset-2">stats</a>, shareable lists and a year-end Wrapped.
+          Every feature is <a href="/pricing" class="text-violet-400 underline underline-offset-2">free while in beta</a>, with full JSON/CSV export always.
         </p>
         <p>
           Whichever you pick: get your data in writing. A tracker worth your history lets you export it back out —{" "}
-          <a href="/guides/export-tv-time-data" class="text-violet-400 hover:underline">start from your TV Time ZIP</a>.
+          <a href="/guides/export-tv-time-data" class="text-violet-400 underline underline-offset-2">start from your TV Time ZIP</a>.
         </p>
       </>
     ),
@@ -349,14 +349,14 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
         </p>
         <h2 class="text-lg font-semibold text-white">What WatchDeck does with it</h2>
         <p>
-          Upload the CSV on the <a href="/import" class="text-violet-400 hover:underline">Import page</a>. Series rows (Netflix formats them as
+          Upload the CSV on the <a href="/import" class="text-violet-400 underline underline-offset-2">Import page</a>. Series rows (Netflix formats them as
           "Show: Season: Episode") add the show to your library; movie rows are marked watched with their date. As with
           every import, you see the matched list first and confirm before anything is written, and unmatched titles can
           be bound manually.
         </p>
         <h2 class="text-lg font-semibold text-white">Tips</h2>
         <p>
-          Import your <a href="/guides/export-tv-time-data" class="text-violet-400 hover:underline">TV Time export</a> first if you have one —
+          Import your <a href="/guides/export-tv-time-data" class="text-violet-400 underline underline-offset-2">TV Time export</a> first if you have one —
           it carries episode-level history that Netflix's file lacks, and the Netflix import then fills gaps like
           movies you only watched there. Afterwards, "⇤ up to here" bulk-marking makes squaring up partial seasons fast.
         </p>
@@ -372,7 +372,7 @@ export const GuidesIndexPage: FC = () => (
     <ul class="mt-6 space-y-4">
       {GUIDES.map((g) => (
         <li class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
-          <a href={`/guides/${g.slug}`} class="font-semibold text-violet-400 hover:underline">{g.title}</a>
+          <a href={`/guides/${g.slug}`} class="font-semibold text-violet-400 underline underline-offset-2">{g.title}</a>
           <p class="mt-1 text-sm text-slate-400">{g.description}</p>
         </li>
       ))}
@@ -2016,13 +2016,13 @@ export const PrivacyPage: FC = () => (
     <h2 class="text-lg font-semibold text-white">Your rights</h2>
     <p>
       You can delete your account and all associated data at any time from{" "}
-      <a href="/settings" class="text-violet-400 hover:underline">Settings</a> — deletion is immediate and permanent.
+      <a href="/settings" class="text-violet-400 underline underline-offset-2">Settings</a> — deletion is immediate and permanent.
       For questions or data requests, contact{" "}
-      <a href="mailto:watchdeck@zalize.com" class="text-violet-400 hover:underline">watchdeck@zalize.com</a>.
+      <a href="mailto:watchdeck@zalize.com" class="text-violet-400 underline underline-offset-2">watchdeck@zalize.com</a>.
     </p>
     <h2 class="text-lg font-semibold text-white">Third parties</h2>
     <p>
-      Show and movie metadata comes from <a href="https://www.themoviedb.org/" rel="noopener" class="text-violet-400 hover:underline">TMDB</a>.
+      Show and movie metadata comes from <a href="https://www.themoviedb.org/" rel="noopener" class="text-violet-400 underline underline-offset-2">TMDB</a>.
       Poster images are loaded from TMDB's image CDN. Transactional email is delivered by Resend. Hosting is provided by Cloudflare.
     </p>
   </div>
@@ -2043,8 +2043,8 @@ export const AboutPage: FC = () => (
       phone and desktop. WatchDeck is currently in beta, and every feature is free while the beta lasts.
     </p>
     <p>
-      WatchDeck is built by the team behind <a href="https://zalize.com" rel="noopener" class="text-violet-400 hover:underline">zalize.com</a>.
-      Metadata comes from <a href="https://www.themoviedb.org/" rel="noopener" class="text-violet-400 hover:underline">TMDB</a>
+      WatchDeck is built by the team behind <a href="https://zalize.com" rel="noopener" class="text-violet-400 underline underline-offset-2">zalize.com</a>.
+      Metadata comes from <a href="https://www.themoviedb.org/" rel="noopener" class="text-violet-400 underline underline-offset-2">TMDB</a>
       {" "}(this product uses the TMDB API but is not endorsed or certified by TMDB).
     </p>
     <h2 class="text-lg font-semibold text-white">Press & media kit</h2>
@@ -2056,19 +2056,19 @@ export const AboutPage: FC = () => (
     </p>
     <ul class="list-inside list-disc space-y-1 text-sm">
       <li>
-        Logo (SVG): <a href="/favicon.svg" download class="text-violet-400 hover:underline">favicon.svg</a> — violet clapperboard with play
+        Logo (SVG): <a href="/favicon.svg" download class="text-violet-400 underline underline-offset-2">favicon.svg</a> — violet clapperboard with play
         triangle; keep clear space around it and don't recolor it.
       </li>
       <li>
-        Social/OG card (PNG 1200×630): <a href="/og-default.png" download class="text-violet-400 hover:underline">og-default.png</a>
+        Social/OG card (PNG 1200×630): <a href="/og-default.png" download class="text-violet-400 underline underline-offset-2">og-default.png</a>
       </li>
-      <li>App icon (PNG 512×512): <a href="/icon-512.png" download class="text-violet-400 hover:underline">icon-512.png</a></li>
+      <li>App icon (PNG 512×512): <a href="/icon-512.png" download class="text-violet-400 underline underline-offset-2">icon-512.png</a></li>
       <li>Name: always “WatchDeck” — one word, capital W and D. Not “Watchdeck”, “Watch Deck” or “WD”.</li>
       <li>Brand colors: violet #7c3aed on near-black #020617.</li>
     </ul>
     <p>
       Press, partnership or data questions:{" "}
-      <a href="mailto:watchdeck@zalize.com" class="text-violet-400 hover:underline">watchdeck@zalize.com</a>.
+      <a href="mailto:watchdeck@zalize.com" class="text-violet-400 underline underline-offset-2">watchdeck@zalize.com</a>.
     </p>
   </div>
 );
