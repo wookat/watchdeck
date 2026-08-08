@@ -674,7 +674,7 @@ async function upcomingItems(env: AppContext["Bindings"], userId: number): Promi
       try {
         if (t.media_type === "tv") {
           const d = await tvDetails(env, t.tmdb_id);
-          if (!d.next_episode_to_air?.air_date) return null;
+          if (!d.next_episode_to_air?.air_date || d.next_episode_to_air.air_date < todayIso) return null;
           return {
             tmdbId: d.id,
             title: d.name,
