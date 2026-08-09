@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 170;
+export const CSS_VERSION = 172;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -396,6 +396,35 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
       </>
     ),
   },
+  {
+    slug: "import-trakt-csv",
+    title: "How to import your Trakt or Serializd data",
+    description: "Export your watched history as CSV from Trakt or Serializd and bring it into WatchDeck in one upload.",
+    body: () => (
+      <>
+        <h2 class="text-lg font-semibold text-white">Getting a CSV out of Trakt</h2>
+        <p>
+          Trakt offers CSV exports of your data from the account settings area (some export types are VIP-gated on
+          Trakt's side). Any CSV that includes a title column works with WatchDeck — watched-history and watchlist
+          exports both import cleanly. Serializd's diary and watched exports follow the same shape and work the same way.
+        </p>
+        <h2 class="text-lg font-semibold text-white">What WatchDeck does with it</h2>
+        <p>
+          Upload the CSV on the <a href="/import" class="text-violet-400 underline underline-offset-2">Import page</a>. Each row is matched against TMDB by
+          title (and year when present); shows land in your library and movies are marked watched with their dates.
+          You review the matched list and confirm before anything is written, and unmatched titles are listed for
+          one-click manual binding — nothing is silently dropped.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Tips</h2>
+        <p>
+          CSV exports usually carry show-level rather than episode-level data, so after importing, open a show and use
+          "⇤ up to here" bulk-marking to square up your episode progress in seconds. If you also have a{" "}
+          <a href="/guides/export-tv-time-data" class="text-violet-400 underline underline-offset-2">TV Time export</a>, import that first — it includes
+          episode-level history that CSVs lack.
+        </p>
+      </>
+    ),
+  },
 ];
 
 export const GuidesIndexPage: FC = () => (
@@ -456,16 +485,16 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
         {mode === "login" ? "Log in" : "Sign up"}
       </button>
       {mode === "signup" && (
-        <p class="text-xs text-slate-500">
+        <p class="text-xs text-slate-400">
           We only email you for things you ask for — a welcome note, password resets, and reminders you switch on. No marketing without consent.
         </p>
       )}
     </form>
     <p class="mt-4 text-sm text-slate-400">
       {mode === "login" ? (
-        <>No account? <a href="/signup" class="text-violet-400 hover:underline">Sign up</a> · <a href="/forgot" class="text-violet-400 hover:underline">Forgot password?</a></>
+        <>No account? <a href="/signup" class="text-violet-400 underline">Sign up</a> · <a href="/forgot" class="text-violet-400 underline">Forgot password?</a></>
       ) : (
-        <>Already a member? <a href="/login" class="text-violet-400 hover:underline">Log in</a></>
+        <>Already a member? <a href="/login" class="text-violet-400 underline">Log in</a></>
       )}
     </p>
   </div>
@@ -591,21 +620,21 @@ export const HomePage: FC<{
         <ol class="mt-3 space-y-2 text-sm">
           <li class="flex items-center gap-2">
             <span aria-hidden="true">{hasAnything ? "✅" : "1️⃣"}</span>
-            <span class={hasAnything ? "text-slate-500 line-through" : ""}>
-              Add your shows — <a href="/import" class="text-violet-400 hover:underline">import your TV Time export</a> or{" "}
-              <a href="/search" class="text-violet-400 hover:underline">search for one</a>
+            <span class={hasAnything ? "text-slate-400 line-through" : ""}>
+              Add your shows — <a href="/import" class="text-violet-400 underline">import your TV Time export</a> or{" "}
+              <a href="/search" class="text-violet-400 underline">search for one</a>
             </span>
           </li>
           <li class="flex items-center gap-2">
             <span aria-hidden="true">{hasWatch ? "✅" : "2️⃣"}</span>
-            <span class={hasWatch ? "text-slate-500 line-through" : ""}>Mark your first episode watched — Next Up keeps your place from there</span>
+            <span class={hasWatch ? "text-slate-400 line-through" : ""}>Mark your first episode watched — Next Up keeps your place from there</span>
           </li>
           <li class="flex items-center gap-2">
             <span aria-hidden="true">3️⃣</span>
             <span>
-              Explore the extras — <a href="/calendar" class="text-violet-400 hover:underline">calendar</a>,{" "}
-              <a href="/stats" class="text-violet-400 hover:underline">stats</a> and{" "}
-              <a href="/wrapped" class="text-violet-400 hover:underline">your Wrapped</a>
+              Explore the extras — <a href="/calendar" class="text-violet-400 underline">calendar</a>,{" "}
+              <a href="/stats" class="text-violet-400 underline">stats</a> and{" "}
+              <a href="/wrapped" class="text-violet-400 underline">your Wrapped</a>
             </span>
           </li>
         </ol>
@@ -644,7 +673,7 @@ export const HomePage: FC<{
       <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-10 text-center">
         {hasAnything ? (
           <>
-            <p class="text-slate-400">You're all caught up! 🎉 Check the <a href="/calendar" class="text-violet-400 hover:underline">calendar</a> for what's coming.</p>
+            <p class="text-slate-400">You're all caught up! 🎉 Check the <a href="/calendar" class="text-violet-400 underline">calendar</a> for what's coming.</p>
             {(watchlistPreview?.length ?? 0) > 0 && (
               <div class="mt-8 text-left">
                 <p class="mb-3 font-semibold">Start something from your watchlist</p>
@@ -919,7 +948,7 @@ export const PersonPage: FC<{ person: PersonDetails; credits: PersonCredit[] }> 
                   <a href={`/${cr.media_type === "tv" ? "shows" : "movies"}/${cr.id}-${slugify(title)}`} class="poster-card group block">
                     <img
                       src={poster(cr.poster_path)}
-                      alt={title}
+                      alt=""
                       loading="lazy"
                       class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover"
                     />
@@ -1773,6 +1802,13 @@ export const BrowseIndex: FC<{
   <div>
     <h1 class="mb-2 text-2xl font-bold">Browse TV shows &amp; movies</h1>
     <p class="mb-8 text-slate-400">Find your next watch by genre, year or network — powered by TMDB.</p>
+    <section class="mb-10">
+      <h2 class="mb-4 text-xl font-semibold">All-time greats</h2>
+      <div class="flex flex-wrap gap-2">
+        <a href="/browse/top-rated/tv" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🏆 Top rated TV shows</a>
+        <a href="/browse/top-rated/movie" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🏆 Top rated movies</a>
+      </div>
+    </section>
     {(
       [
         ["TV shows", "tv", tvGenres],
@@ -1867,7 +1903,7 @@ export const BrowseGenre: FC<{
       </h1>
       <p class="mb-6 text-slate-400">
         Popular {genre.name.toLowerCase()} {type === "tv" ? "series" : "films"} to track on WatchDeck.{" "}
-        <a href="/browse" class="text-violet-400 hover:underline">All genres</a>
+        <a href="/browse" class="text-violet-400 underline">All genres</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
@@ -1895,11 +1931,39 @@ export const BrowseNetwork: FC<{
       <h1 class="mb-2 text-2xl font-bold">{network.name} TV shows</h1>
       <p class="mb-6 text-slate-400">
         Popular series on {network.name} to track on WatchDeck.{" "}
-        <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; networks</a>
+        <a href="/browse" class="text-violet-400 underline">All genres &amp; networks</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
           <MediaCard item={r} type="tv" />
+        ))}
+      </div>
+      <div class="mt-8 flex items-center gap-3 text-sm">
+        {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+        <span class="text-slate-400">Page {page} of {Math.min(totalPages, 20)}</span>
+        {page < Math.min(totalPages, 20) && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+      </div>
+    </div>
+  );
+};
+
+export const BrowseTopRated: FC<{
+  type: "tv" | "movie";
+  results: SearchResult[];
+  page: number;
+  totalPages: number;
+}> = ({ type, results, page, totalPages }) => {
+  const base = `/browse/top-rated/${type}`;
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">Top rated {type === "tv" ? "TV shows" : "movies"} of all time</h1>
+      <p class="mb-6 text-slate-400">
+        The highest-rated {type === "tv" ? "series" : "films"} ever, ranked by viewer ratings — track the ones you've seen on WatchDeck.{" "}
+        <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
+      </p>
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
+        {results.map((r) => (
+          <MediaCard item={r} type={type} />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">
@@ -1926,7 +1990,7 @@ export const BrowseYear: FC<{
       </h1>
       <p class="mb-6 text-slate-400">
         The most popular {type === "tv" ? `series that premiered in ${year}` : `films released in ${year}`}, ready to track on WatchDeck.{" "}
-        <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; years</a>
+        <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
@@ -2224,7 +2288,7 @@ export const TermsPage: FC = () => (
     <h2 class="text-lg font-semibold text-white">Changes</h2>
     <p>
       We may update these terms; material changes will be noted on this page. Continued use after changes constitutes
-      acceptance. Contact: <a href="mailto:watchdeck@zalize.com" class="text-violet-400 hover:underline">watchdeck@zalize.com</a>.
+      acceptance. Contact: <a href="mailto:watchdeck@zalize.com" class="text-violet-400 underline">watchdeck@zalize.com</a>.
     </p>
   </div>
 );

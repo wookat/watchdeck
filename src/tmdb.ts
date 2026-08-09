@@ -170,7 +170,7 @@ export function discoverByGenre(env: Env, type: "tv" | "movie", genreId: number,
 }
 
 export function topRated(env: Env, type: "tv" | "movie", page = 1) {
-  return tmdb<{ results: SearchResult[] }>(env, `/${type}/top_rated?page=${Math.min(Math.max(page, 1), 20)}`, 24 * 3600);
+  return tmdb<{ results: SearchResult[]; total_pages: number }>(env, `/${type}/top_rated?page=${Math.min(Math.max(page, 1), 20)}`, 24 * 3600);
 }
 
 export function discoverPopular(env: Env, type: "tv" | "movie", page = 1) {

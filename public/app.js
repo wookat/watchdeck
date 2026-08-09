@@ -170,7 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
         span.textContent = r.t;
         a.appendChild(span);
         const meta = document.createElement("small");
-        meta.textContent = (r.y ? r.y + " · " : "") + (r.m === "tv" ? "TV" : "Movie");
+        meta.textContent = (r.y ? r.y + " · " : "") + (r.m === "tv" ? "TV" : r.m === "person" ? "Person" : "Movie");
         a.appendChild(meta);
         li.appendChild(a);
         list.appendChild(li);

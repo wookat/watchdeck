@@ -60,6 +60,84 @@
 
 ---
 
+## Round 184 — 2026-08-09（回归反馈修复：/home 清单对比度 + link 下划线 + person 页 alt 残留）
+
+**发现（①测试代理 R180-183 全量回归上报）**
+- 登录 /home「Getting started」清单 2 个 serious axe 既有节点：已完成步骤 `text-slate-500 line-through` 对比度不足；清单内联链接（import/search/calendar/stats/wrapped）`link-in-text-block`。
+- person 页 credits 海报 alt 与下方可见标题重复（minor `image-redundant-alt` 残留）。
+
+**修复**
+- 已完成步骤改 `text-slate-400`；清单 5 个内联链接改常显 `underline`；credits 海报 `alt=""`。CSS v171。
+
+**证据**
+- 部署 Version 30016b15。person 页复扫 0 violations；/home 清单修复按代码级核对（与测试代理建议方案一致），列入下批回归复验。
+- R180-183 全量回归结论：12/12 项通过（对照表见 PR #61 评论），D1 回基线 users=8。
+
+---
+
+## Round 185 — 2026-08-09（pSEO 扩容：Top rated 全时段榜单页）
+
+**发现（⑤数据分析 + ④竞品）**
+- 自然流量仍为零，pSEO 面继续扩容是低成本获客动作；Trakt/IMDb 均有「Top rated / Top 250」常青榜单页（高搜索量 evergreen 词），我们 browse 只有 genre/year/network 三维。
+
+**修复**
+- 新增 /browse/top-rated/:type（tv|movie）：TMDB top_rated 榜单、20 页分页、rel prev/next、BreadcrumbList+ItemList JSON-LD；/browse 首屏加「All-time greats」互链区；sitemap +2 URL（468 总量，随周更 IndexNow 提交）。
+
+**证据**
+- 部署 Version 4cc69800。线上：/browse/top-rated/tv 200（20 张海报卡、title/JSON-LD 正确）、?page=2 200、非法 type 404、sitemap 含 2 个 top-rated URL。
+
+---
+
+## Round 186 — 2026-08-09（公开页 axe 全量扫描：20 页归零）
+
+**发现（③视觉/无障碍全量复扫）**
+- 对 20 个公开页面全量 axe 扫描：browse genre/network/year 三组模板的「All genres」内联链接、/terms mailto 链接、/signup「Log in」链接均 `link-in-text-block`（serious）；/signup 邮件用途微文案 `text-slate-500` 对比度 4.23<4.5（serious）。
+
+**修复**
+- 上述内联链接统一改常显 `underline`；signup 微文案改 `text-slate-400`。
+
+**证据**
+- 部署 Version ced81ca3。复扫 20 个公开页（含新 top-rated 页）+ /login /forgot 全部 0 violations。
+
+---
+
+## Round 187 — 2026-08-09（竞品深度复访 + 新竞品扫描，10 轮节拍内）
+
+**发现（④竞品）**
+- Trakt 首页真实浏览器复访：结构与卖点（discover/track/share + app 推广）无新增功能信号，无新差距项。
+- Serializd、Simkl、ryot.io 均有 Cloudflare 盾，按红线不绕，跳过。
+- 新竞品扫描（开源赛道）：Showly（6.7k★，Android）、SeriesGuide（2.1k★，Android）、MediaTracker（924★，self-host）、Ryot（self-host，GPLv3）。逐一对功能面：均无 web 端托管产品与我们直接竞争；Ryot 的多领域（健身/书籍）超出我们定位。无需借鉴的新缺口。
+
+**结论**：无新增 P0-P2 差距项；下一次深度复访安排在 R197 前后。
+
+---
+
+## Round 188 — 2026-08-09（typeahead 支持人物建议）
+
+**发现（②新用户 UX + ⑤搜索词）**
+- 搜索词 Top20 中人名类占比高（tom/chris/lee/emilia clarke/tom hanks），但 /api/suggest 只回 tv/movie——输入人名时下拉全是片名噪音，R147 人物页从 typeahead 不可达。
+
+**修复**
+- /api/suggest 纳入 person（profile_path 头像、链接到 /person/:idslug）；下拉 meta 显示「Person」；app.js v172。
+
+**证据**
+- 部署 Version bbb76f12。API：q=tom hanks 首位 person→/person/31-tom-hanks；线上 UI 实测「emilia clar」下拉出「Emilia Clarke · Person」并可点入人物页（截图 r188_person_suggest.png）。
+
+---
+
+## Round 189 — 2026-08-09（内容营销扩容：Trakt/Serializd 导入指南）
+
+**发现（⑤数据 + 内容缺口）**
+- /guides 只有 3 篇（TV Time 导出/替代品对比/Netflix 导入），四大导入源里 Trakt/Serializd CSV 无指南——「trakt export csv」类常青搜索词是目标人群的迁移入口。
+
+**修复**
+- 新增 /guides/import-trakt-csv（Article JSON-LD 随模板自动生成，与既有指南互链，sitemap guides 5 URL）。
+
+**证据**
+- 部署 Version 623531c0。线上 200、title 正确；375px 无溢出、axe 0。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
