@@ -60,6 +60,21 @@
 
 ---
 
+## Round 184 — 2026-08-09（回归反馈修复：/home 清单对比度 + link 下划线 + person 页 alt 残留）
+
+**发现（①测试代理 R180-183 全量回归上报）**
+- 登录 /home「Getting started」清单 2 个 serious axe 既有节点：已完成步骤 `text-slate-500 line-through` 对比度不足；清单内联链接（import/search/calendar/stats/wrapped）`link-in-text-block`。
+- person 页 credits 海报 alt 与下方可见标题重复（minor `image-redundant-alt` 残留）。
+
+**修复**
+- 已完成步骤改 `text-slate-400`；清单 5 个内联链接改常显 `underline`；credits 海报 `alt=""`。CSS v171。
+
+**证据**
+- 部署 Version 30016b15。person 页复扫 0 violations；/home 清单修复按代码级核对（与测试代理建议方案一致），列入下批回归复验。
+- R180-183 全量回归结论：12/12 项通过（对照表见 PR #61 评论），D1 回基线 users=8。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

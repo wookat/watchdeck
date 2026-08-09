@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 170;
+export const CSS_VERSION = 171;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -591,21 +591,21 @@ export const HomePage: FC<{
         <ol class="mt-3 space-y-2 text-sm">
           <li class="flex items-center gap-2">
             <span aria-hidden="true">{hasAnything ? "✅" : "1️⃣"}</span>
-            <span class={hasAnything ? "text-slate-500 line-through" : ""}>
-              Add your shows — <a href="/import" class="text-violet-400 hover:underline">import your TV Time export</a> or{" "}
-              <a href="/search" class="text-violet-400 hover:underline">search for one</a>
+            <span class={hasAnything ? "text-slate-400 line-through" : ""}>
+              Add your shows — <a href="/import" class="text-violet-400 underline">import your TV Time export</a> or{" "}
+              <a href="/search" class="text-violet-400 underline">search for one</a>
             </span>
           </li>
           <li class="flex items-center gap-2">
             <span aria-hidden="true">{hasWatch ? "✅" : "2️⃣"}</span>
-            <span class={hasWatch ? "text-slate-500 line-through" : ""}>Mark your first episode watched — Next Up keeps your place from there</span>
+            <span class={hasWatch ? "text-slate-400 line-through" : ""}>Mark your first episode watched — Next Up keeps your place from there</span>
           </li>
           <li class="flex items-center gap-2">
             <span aria-hidden="true">3️⃣</span>
             <span>
-              Explore the extras — <a href="/calendar" class="text-violet-400 hover:underline">calendar</a>,{" "}
-              <a href="/stats" class="text-violet-400 hover:underline">stats</a> and{" "}
-              <a href="/wrapped" class="text-violet-400 hover:underline">your Wrapped</a>
+              Explore the extras — <a href="/calendar" class="text-violet-400 underline">calendar</a>,{" "}
+              <a href="/stats" class="text-violet-400 underline">stats</a> and{" "}
+              <a href="/wrapped" class="text-violet-400 underline">your Wrapped</a>
             </span>
           </li>
         </ol>
@@ -644,7 +644,7 @@ export const HomePage: FC<{
       <div class="rounded-2xl border border-slate-800 bg-slate-900/50 p-10 text-center">
         {hasAnything ? (
           <>
-            <p class="text-slate-400">You're all caught up! 🎉 Check the <a href="/calendar" class="text-violet-400 hover:underline">calendar</a> for what's coming.</p>
+            <p class="text-slate-400">You're all caught up! 🎉 Check the <a href="/calendar" class="text-violet-400 underline">calendar</a> for what's coming.</p>
             {(watchlistPreview?.length ?? 0) > 0 && (
               <div class="mt-8 text-left">
                 <p class="mb-3 font-semibold">Start something from your watchlist</p>
@@ -919,7 +919,7 @@ export const PersonPage: FC<{ person: PersonDetails; credits: PersonCredit[] }> 
                   <a href={`/${cr.media_type === "tv" ? "shows" : "movies"}/${cr.id}-${slugify(title)}`} class="poster-card group block">
                     <img
                       src={poster(cr.poster_path)}
-                      alt={title}
+                      alt=""
                       loading="lazy"
                       class="aspect-[2/3] w-full rounded-xl border border-slate-800 object-cover"
                     />
