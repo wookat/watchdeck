@@ -20,6 +20,19 @@
 
 ---
 
+## Round 181 — 2026-08-09（Finale 徽章：清 R171 遗留 P3 backlog）
+
+**发现（④竞品复刻 backlog）**
+- R168-171 Trakt 对照遗留 P3：Season finale 徽章，当时误判需逐集请求；实际 TMDB show details `next_episode_to_air.episode_type` 字段直接给出 "finale"，零额外请求。
+
+**修复**
+- `CalendarItem` 增 `episodeType`；日历与 /home Coming up 在 episode≠1 且 episode_type=finale 时渲染 amber「Season finale」徽章（premiere 徽章保持 violet，互斥不叠加）。CSS v169。
+
+**证据**
+- 部署 Version b4fc71e3。徽章正例待批量回归时用 finale 在播剧 fixture 实测（列入下次测试代理回归项）。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

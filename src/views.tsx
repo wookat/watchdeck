@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 168;
+export const CSS_VERSION = 169;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -728,6 +728,11 @@ export const HomePage: FC<{
               {it.mediaType === "tv" && it.episode === 1 && (
                 <span class="shrink-0 rounded-full border border-violet-800 bg-violet-950/50 px-2 py-0.5 text-xs font-medium text-violet-300">
                   {it.season === 1 ? "Series premiere" : "Season premiere"}
+                </span>
+              )}
+              {it.mediaType === "tv" && it.episode !== 1 && it.episodeType === "finale" && (
+                <span class="shrink-0 rounded-full border border-amber-800 bg-amber-950/50 px-2 py-0.5 text-xs font-medium text-amber-300">
+                  Season finale
                 </span>
               )}
             </li>
@@ -1669,6 +1674,7 @@ export interface CalendarItem {
   season: number | null;
   episode: number | null;
   episodeName: string | null;
+  episodeType?: string;
   airDate: string;
 }
 
@@ -1737,6 +1743,11 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
                         {it.mediaType === "tv" && it.episode === 1 && (
                           <span class="ml-2 inline-block rounded-full border border-violet-800 bg-violet-950/50 px-2 py-0.5 text-xs font-medium text-violet-300">
                             {it.season === 1 ? "Series premiere" : "Season premiere"}
+                          </span>
+                        )}
+                        {it.mediaType === "tv" && it.episode !== 1 && it.episodeType === "finale" && (
+                          <span class="ml-2 inline-block rounded-full border border-amber-800 bg-amber-950/50 px-2 py-0.5 text-xs font-medium text-amber-300">
+                            Season finale
                           </span>
                         )}
                       </p>

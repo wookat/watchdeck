@@ -804,6 +804,7 @@ async function upcomingItems(env: AppContext["Bindings"], userId: number): Promi
             season: d.next_episode_to_air.season_number,
             episode: d.next_episode_to_air.episode_number,
             episodeName: d.next_episode_to_air.name,
+            episodeType: d.next_episode_to_air.episode_type,
             airDate: d.next_episode_to_air.air_date,
           };
         }
