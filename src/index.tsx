@@ -5,6 +5,7 @@ import type { AppContext, Env } from "./types";
 import { hashPassword, verifyPassword, createSession, destroySession, loadUser } from "./auth";
 import {
   searchMulti,
+  searchPerson,
   searchTv,
   searchMovie,
   tvDetails,
@@ -433,7 +434,12 @@ app.get("/search", async (c) => {
       </Layout>
     );
   }
-  const res = await searchMulti(c.env, q);
+  const typeQ = c.req.query("type");
+  const type = typeQ === "tv" || typeQ === "movie" || typeQ === "person" ? typeQ : "all";
+  const res =
+    type === "person"
+      ? { results: (await searchPerson(c.env, q)).results.map((r) => ({ ...r, media_type: "person" })) }
+      : await searchMulti(c.env, q);
   let libraryIds: Set<string> | undefined;
   if (user) {
     const rows = await c.env.DB.prepare("SELECT tmdb_id, media_type FROM tracked WHERE user_id = ?")
@@ -447,8 +453,6 @@ app.get("/search", async (c) => {
       .run()
       .catch(() => {})
   );
-  const typeQ = c.req.query("type");
-  const type = typeQ === "tv" || typeQ === "movie" ? typeQ : "all";
   const hasMedia = res.results.some((r) => r.media_type === "tv" || r.media_type === "movie" || (r.media_type === "person" && r.profile_path));
   if (!hasMedia) {
     const [shows, movies] = await Promise.all([trendingTv(c.env), trendingMovies(c.env)]);
@@ -842,14 +846,30 @@ function browseYears(): number[] {
   return Array.from({ length: 15 }, (_, i) => current - i);
 }
 
-function browseCrumbs(siteUrl: string, name: string, item: string) {
-  return {
-    "@context": "https://schema.org",
+function browseCrumbs(siteUrl: string, name: string, item: string, results?: SearchResult[], type?: "tv" | "movie") {
+  const crumbs = {
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "WatchDeck", item: siteUrl + "/" },
       { "@type": "ListItem", position: 2, name: "Browse", item: siteUrl + "/browse" },
       { "@type": "ListItem", position: 3, name, item },
+    ],
+  };
+  if (!results?.length || !type) return { "@context": "https://schema.org", ...crumbs };
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      crumbs,
+      {
+        "@type": "ItemList",
+        name,
+        itemListElement: results.slice(0, 20).map((r, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          name: (type === "tv" ? r.name : r.title) ?? "",
+          url: `${siteUrl}/${type === "tv" ? "shows" : "movies"}/${r.id}-${slugify((type === "tv" ? r.name : r.title) ?? "")}`,
+        })),
+      },
     ],
   };
 }
@@ -889,7 +909,7 @@ app.get("/browse/network/:idslug", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
-      jsonLd={browseCrumbs(c.env.SITE_URL, network.name, base)}
+      jsonLd={browseCrumbs(c.env.SITE_URL, network.name, base, res.results, "tv")}
     >
       <BrowseNetwork network={network} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
@@ -913,7 +933,7 @@ app.get("/browse/year/:type/:year", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
-      jsonLd={browseCrumbs(c.env.SITE_URL, `${type === "tv" ? "TV shows" : "Movies"} of ${year}`, base)}
+      jsonLd={browseCrumbs(c.env.SITE_URL, `${type === "tv" ? "TV shows" : "Movies"} of ${year}`, base, res.results, type)}
     >
       <BrowseYear type={type} year={year} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
@@ -939,7 +959,7 @@ app.get("/browse/:type/:genreslug", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
-      jsonLd={browseCrumbs(c.env.SITE_URL, `${genre.name} ${type === "tv" ? "TV shows" : "movies"}`, base)}
+      jsonLd={browseCrumbs(c.env.SITE_URL, `${genre.name} ${type === "tv" ? "TV shows" : "movies"}`, base, res.results, type)}
     >
       <BrowseGenre type={type} genre={genre} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>

@@ -502,10 +502,13 @@ export const HomePage: FC<{
   </div>
 );
 
-export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: Set<string>; type?: "all" | "tv" | "movie"; loggedIn?: boolean }> = ({ q, results, libraryIds, type = "all", loggedIn }) => {
+export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: Set<string>; type?: "all" | "tv" | "movie" | "person"; loggedIn?: boolean }> = ({ q, results, libraryIds, type = "all", loggedIn }) => {
   const backTo = `/search?q=${encodeURIComponent(q)}${type === "all" ? "" : `&type=${type}`}`;
   const filtered = results.filter((r) => (r.media_type === "tv" || r.media_type === "movie") && (type === "all" || r.media_type === type));
-  const people = type === "all" ? results.filter((r) => r.media_type === "person" && r.profile_path).slice(0, 8) : [];
+  const people =
+    type === "all" || type === "person"
+      ? results.filter((r) => r.media_type === "person" && r.profile_path).slice(0, type === "person" ? 20 : 8)
+      : [];
   return (
     <div>
       <form action="/search" method="get" class="mb-6">
@@ -526,6 +529,7 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
               ["all", "All"],
               ["tv", "TV shows"],
               ["movie", "Movies"],
+              ["person", "People"],
             ] as const
           ).map(([t, label]) => (
             <a
@@ -581,7 +585,9 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
       </div>
       {q && filtered.length === 0 && people.length === 0 && (
         <EmptyState title="Nothing found">
-          {type !== "all" ? `No ${type === "tv" ? "TV shows" : "movies"} matched — try the All tab.` : "Check the spelling, or browse what's trending below."}
+          {type !== "all"
+            ? `No ${type === "tv" ? "TV shows" : type === "movie" ? "movies" : "people"} matched — try the All tab.`
+            : "Check the spelling, or browse what's trending below."}
         </EmptyState>
       )}
     </div>

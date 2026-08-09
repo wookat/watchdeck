@@ -196,6 +196,31 @@
 
 ---
 
+## Rounds 156-157 — 2026-08-08（搜索 People 标签 + browse ItemList 结构化数据）
+
+**发现（数据分析 + SEO）**
+- 搜索词统计出现真实人名查询（tom hanks/emilia clarke），但 All 标签 People 行仅 8 人且无独立过滤标签；browse 列表页（genre/year/network）JSON-LD 只有面包屑、无 ItemList，列表语义未暴露给搜索引擎。
+
+**修复**
+- R156 /search 新增「People」标签（type=person，最多 20 人，空结果有专属文案），All 行为不变。
+- R157 browseCrumbs 扩展：genre/year/network 页 JSON-LD 改 @graph=[BreadcrumbList, ItemList]（当前页前 20 条含 name+url）。
+
+**证据**：线上 ?q=tom+hanks&type=person 与 /browse/tv/18-drama JSON-LD 实测，见 PR。
+
+---
+
+## Round 158 — 2026-08-08（People 标签改用 TMDB /search/person 专用端点）
+
+**发现（R156 回归覆盖缺口）**
+- 回归代理指出：People 标签仍复用 multi-search 第一页过滤，真实查询最多只出 4-6 人，20 人上限不可达也不可测。
+
+**修复**
+- 新增 tmdb searchPerson()（/search/person，1h 缓存），/search 在 type=person 时改用该端点（结果统一补 media_type=person），其他标签仍走 multi-search。
+
+**证据**：线上 ?q=chris&type=person 出满 20 人（此前 multi 过滤仅个位数），All/tv/movie 行为不变，见 PR。
+
+---
+
 ## 视觉专项 Rounds 127-129 — 2026-08-05（视觉/品牌/特效升级·第二批）
 
 **发现（R126 回归 axe + 组件走查）**
