@@ -3,6 +3,38 @@
 @source "./**/*.tsx";
 @source "../public/**/*.js";
 
+/* brand display face: Sora (latin subset, self-hosted, swap so text never blocks) */
+@font-face {
+  font-family: "Sora";
+  font-style: normal;
+  font-weight: 600 800;
+  font-display: swap;
+  src: url("/fonts/sora-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* typographic rhythm: display face for headings + brand, tuned tracking */
+h1,
+h2,
+h3,
+[data-logo] {
+  font-family: "Sora", ui-sans-serif, system-ui, sans-serif;
+  letter-spacing: -0.015em;
+}
+h1 {
+  text-wrap: balance;
+}
+/* stat figures line up: tabular numerals wherever counts are shown */
+.stat-num,
+time,
+td {
+  font-variant-numeric: tabular-nums;
+}
+::selection {
+  background: rgb(124 58 237 / 0.45);
+}
+
 /* keyboard focus visibility (a11y) */
 :focus-visible {
   outline: 2px solid #8b5cf6;
@@ -112,5 +144,148 @@ select {
       opacity: 1;
       transform: none;
     }
+  }
+}
+
+/* card surfaces: consistent elevation + hover lift on interactive cards */
+.card {
+  border-radius: 1rem;
+  border: 1px solid #1e293b;
+  background: rgb(15 23 42 / 0.5);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.3);
+}
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  a.card,
+  .card:has(> a:first-child) {
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  }
+  a.card:hover,
+  .card:has(> a:first-child):hover {
+    border-color: rgb(124 58 237 / 0.5);
+    box-shadow: 0 8px 24px -12px rgb(124 58 237 / 0.35);
+  }
+}
+
+/* form inputs: shared focus ring matching the brand */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #8b5cf6;
+  box-shadow: 0 0 0 3px rgb(139 92 246 / 0.25);
+}
+
+/* comfortable touch targets on coarse pointers (≥44px) */
+@media (pointer: coarse) {
+  #site-nav a,
+  #site-nav button,
+  footer a {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+  button,
+  input,
+  select {
+    min-height: 40px;
+  }
+}
+
+/* stats chart bars grow in from the left; static under reduced motion */
+@media (prefers-reduced-motion: no-preference) {
+  .bar-grow {
+    animation: bar-grow 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+    transform-origin: left center;
+  }
+  @keyframes bar-grow {
+    from {
+      transform: scaleX(0);
+    }
+  }
+}
+
+/* staggered rise-in for poster grids (first 12 children) */
+@media (prefers-reduced-motion: no-preference) {
+  .stagger-in > * {
+    animation: rise-in 0.45s ease-out both;
+  }
+  .stagger-in > *:nth-child(1) { animation-delay: 0.02s; }
+  .stagger-in > *:nth-child(2) { animation-delay: 0.05s; }
+  .stagger-in > *:nth-child(3) { animation-delay: 0.08s; }
+  .stagger-in > *:nth-child(4) { animation-delay: 0.11s; }
+  .stagger-in > *:nth-child(5) { animation-delay: 0.14s; }
+  .stagger-in > *:nth-child(6) { animation-delay: 0.17s; }
+  .stagger-in > *:nth-child(7) { animation-delay: 0.2s; }
+  .stagger-in > *:nth-child(8) { animation-delay: 0.23s; }
+  .stagger-in > *:nth-child(9) { animation-delay: 0.26s; }
+  .stagger-in > *:nth-child(10) { animation-delay: 0.29s; }
+  .stagger-in > *:nth-child(11) { animation-delay: 0.32s; }
+  .stagger-in > *:nth-child(12) { animation-delay: 0.35s; }
+}
+
+/* plain-language hint: keyboard/touch-friendly tooltip for jargon terms */
+.hint {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1rem;
+  height: 1rem;
+  margin-left: 0.25rem;
+  border-radius: 9999px;
+  border: 1px solid #475569;
+  color: #94a3b8;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1;
+  cursor: help;
+  vertical-align: text-top;
+}
+.hint::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 50;
+  width: max-content;
+  max-width: min(230px, calc(100vw - 2rem));
+  padding: 0.5rem 0.65rem;
+  border-radius: 0.6rem;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #cbd5e1;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 10px 24px -8px rgb(0 0 0 / 0.6);
+  display: none;
+  pointer-events: none;
+}
+.hint:hover::after,
+.hint:focus-visible::after,
+.hint:focus::after {
+  display: block;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hint:hover::after,
+  .hint:focus-visible::after,
+  .hint:focus::after {
+    animation: rise-in 0.15s ease both;
+  }
+}
+/* small screens: tooltip becomes a bottom sheet so it can never leave the viewport */
+@media (max-width: 640px) {
+  .hint::after {
+    position: fixed;
+    left: 1rem;
+    right: 1rem;
+    top: auto;
+    bottom: 1rem;
+    transform: none;
+    width: auto;
+    max-width: none;
   }
 }
