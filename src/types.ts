@@ -8,6 +8,7 @@ export interface Env {
   TMDB_READ_TOKEN: string;
   INDEXNOW_KEY?: string;
   RESEND_API_KEY?: string;
+  waitUntil?: (p: Promise<unknown>) => void;
 }
 
 export interface User {

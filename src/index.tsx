@@ -104,6 +104,11 @@ function userLists(env: Env, userId: number, tmdbId: number, mediaType: "tv" | "
 const app = new Hono<AppContext>();
 
 app.use("*", (c, next) => {
+  c.env.waitUntil = (p) => c.executionCtx.waitUntil(p);
+  return next();
+});
+
+app.use("*", (c, next) => {
   // RFC 8058 one-click unsubscribe: mailbox providers POST without an Origin header
   if (c.req.method === "POST" && /^\/unsubscribe\/[^/]+$/.test(new URL(c.req.url).pathname)) return next();
   return csrf({ origin: (origin) => origin === new URL(c.env.SITE_URL).origin || origin === new URL(c.req.url).origin })(c, next);
