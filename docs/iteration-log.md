@@ -5,6 +5,61 @@
 
 ---
 
+## Round 180 — 2026-08-09（新100轮迭代第1轮：TMDB 缓存 stale-while-revalidate）
+
+**发现（①线上测试 + ⑤数据分析，P2 性能）**
+- 详情页/人物页冷缓存 TTFB 约 1.0-1.2s（KV 过期后需同步等 TMDB 多个请求）；缓存命中时 ~0.1s。TTL 到期即整页退回冷路径，重复发生。
+- 数据面：近 7 天外部 referrer 仍为 0；D1 users=8（含 08-09 09:39 新增 qa+…@example.com 验收官复验账号 id 46，未触碰待确认）。
+
+**修复**
+- `tmdb()` 改 stale-while-revalidate：KV 条目包 `{__swr: 过期时间戳, d}`，物理 TTL = 逻辑 TTL + 7 天 grace；逻辑过期时立即返回旧数据并经 `ctx.waitUntil` 后台刷新（失败静默，下次再试）。旧格式裸数据条目向后兼容直读。
+- 中间件将 `waitUntil` 注入 `env`，`tmdb.ts` 无需改动全部调用方签名。
+
+**证据**
+- 部署 Version 9915f11f。实测 GoT/黑暗骑士首访 1.1-1.2s（冷，一次性），复访 0.10-0.11s；TTL 到期后不再回冷路径（7 天窗口内恒温）。
+
+---
+
+## Round 181 — 2026-08-09（Finale 徽章：清 R171 遗留 P3 backlog）
+
+**发现（④竞品复刻 backlog）**
+- R168-171 Trakt 对照遗留 P3：Season finale 徽章，当时误判需逐集请求；实际 TMDB show details `next_episode_to_air.episode_type` 字段直接给出 "finale"，零额外请求。
+
+**修复**
+- `CalendarItem` 增 `episodeType`；日历与 /home Coming up 在 episode≠1 且 episode_type=finale 时渲染 amber「Season finale」徽章（premiere 徽章保持 violet，互斥不叠加）。CSS v169。
+
+**证据**
+- 部署 Version b4fc71e3。徽章正例待批量回归时用 finale 在播剧 fixture 实测（列入下次测试代理回归项）。
+
+---
+
+## Round 182 — 2026-08-09（实时搜索建议 typeahead）
+
+**发现（②新用户 UX + ③视觉走查 + ④竞品）**
+- 375/1440 全页截图走查：无溢出、无视觉缺陷；落地页 FAQ/结构化数据已齐。剩余体验差距：搜索需整页提交才能看结果，TV Time/Trakt 均有即输即显 typeahead。
+
+**修复**
+- 新增 `GET /api/suggest?q=`：searchMulti（KV 缓存）取前 8 个带海报的 TV/电影，返回精简 JSON，`cache-control: public, max-age=300`；q<2 直接空数组。
+- app.js 渐进增强：头部与搜索页输入框 250ms 防抖取建议，海报+标题+年份/类型下拉，↑↓ 键选中、Enter 跳转、Esc/点外关闭；无 JS 时原表单提交不受影响。CSS v170。
+
+**证据**
+- 部署 Version 1569d5be。实测桌面 1440 头部框（sever→8 条，键盘高亮）与 375 搜索页（breaking→Breaking Bad 置顶），scrollWidth 无溢出；负例 q=a 返回空。
+
+---
+
+## Round 183 — 2026-08-09（axe 全零回归：image-redundant-alt 清零）
+
+**发现（①线上测试/无障碍巡检）**
+- axe 4.10 七个公开页扫描：search/详情/browse 出现 minor `image-redundant-alt` 共 24 节点——人物头像/演员卡 alt 与相邻可见姓名重复，读屏读两遍。
+
+**修复**
+- 人物头像/演员图统一 `alt=""`（装饰图，姓名已由相邻文本承载）；人物详情主照保留 alt（无相邻重复）。
+
+**证据**
+- 部署 Version 897891fe。复扫 / /search /shows/severance /browse /pricing /about /guides 全部 0 violations。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

@@ -3,17 +3,37 @@ import type { Env } from "./types";
 const BASE = "https://api.themoviedb.org/3";
 export const IMG = "https://image.tmdb.org/t/p";
 
-async function tmdb<T>(env: Env, path: string, ttl = 6 * 3600): Promise<T> {
-  const cacheKey = `tmdb:${path}`;
-  const cached = await env.CACHE.get(cacheKey, "json");
-  if (cached) return cached as T;
+const SWR_GRACE = 7 * 24 * 3600;
+
+interface SwrEntry<T> {
+  __swr: number;
+  d: T;
+}
+
+async function fetchAndCache<T>(env: Env, path: string, cacheKey: string, ttl: number): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     headers: { Authorization: `Bearer ${env.TMDB_READ_TOKEN}`, Accept: "application/json" },
   });
   if (!res.ok) throw new Error(`TMDB ${res.status} for ${path}`);
   const data = (await res.json()) as T;
-  await env.CACHE.put(cacheKey, JSON.stringify(data), { expirationTtl: ttl });
+  const entry: SwrEntry<T> = { __swr: Math.floor(Date.now() / 1000) + ttl, d: data };
+  await env.CACHE.put(cacheKey, JSON.stringify(entry), { expirationTtl: ttl + SWR_GRACE });
   return data;
+}
+
+async function tmdb<T>(env: Env, path: string, ttl = 6 * 3600): Promise<T> {
+  const cacheKey = `tmdb:${path}`;
+  const cached = (await env.CACHE.get(cacheKey, "json")) as SwrEntry<T> | T | null;
+  if (cached !== null && typeof cached === "object" && "__swr" in (cached as object)) {
+    const entry = cached as SwrEntry<T>;
+    if (entry.__swr < Math.floor(Date.now() / 1000)) {
+      const refresh = fetchAndCache<T>(env, path, cacheKey, ttl).catch(() => {});
+      if (env.waitUntil) env.waitUntil(refresh);
+    }
+    return entry.d;
+  }
+  if (cached !== null && cached !== undefined) return cached as T;
+  return fetchAndCache<T>(env, path, cacheKey, ttl);
 }
 
 export interface SearchResult {
@@ -60,7 +80,7 @@ export interface TvDetails {
   number_of_seasons: number;
   number_of_episodes: number;
   seasons: { season_number: number; episode_count: number; name: string; poster_path: string | null; air_date: string | null }[];
-  next_episode_to_air: { season_number: number; episode_number: number; air_date: string; name: string } | null;
+  next_episode_to_air: { season_number: number; episode_number: number; air_date: string; name: string; episode_type?: string } | null;
   created_by?: { id: number; name: string }[];
   episode_run_time: number[];
   last_episode_to_air: { runtime: number | null } | null;

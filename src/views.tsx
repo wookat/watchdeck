@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 168;
+export const CSS_VERSION = 170;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -730,6 +730,11 @@ export const HomePage: FC<{
                   {it.season === 1 ? "Series premiere" : "Season premiere"}
                 </span>
               )}
+              {it.mediaType === "tv" && it.episode !== 1 && it.episodeType === "finale" && (
+                <span class="shrink-0 rounded-full border border-amber-800 bg-amber-950/50 px-2 py-0.5 text-xs font-medium text-amber-300">
+                  Season finale
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -792,7 +797,7 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
                 <a href={`/person/${p.id}-${slugify(p.name ?? "")}`} class="group block">
                   <img
                     src={`https://image.tmdb.org/t/p/w185${p.profile_path}`}
-                    alt={p.name}
+                    alt=""
                     loading="lazy"
                     class="mx-auto aspect-square w-16 rounded-full border border-slate-800 object-cover"
                   />
@@ -866,7 +871,7 @@ export const CastSection: FC<{ cast: CastMember[] }> = ({ cast }) =>
             <a href={`/person/${m.id}-${slugify(m.name)}`} class="group block">
               <img
                 src={m.profile_path ? `https://image.tmdb.org/t/p/w185${m.profile_path}` : "/placeholder-poster.svg"}
-                alt={m.name}
+                alt=""
                 loading="lazy"
                 class="mx-auto aspect-[2/3] w-full max-w-[7rem] rounded-xl border border-slate-800 object-cover"
               />
@@ -1669,6 +1674,7 @@ export interface CalendarItem {
   season: number | null;
   episode: number | null;
   episodeName: string | null;
+  episodeType?: string;
   airDate: string;
 }
 
@@ -1737,6 +1743,11 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
                         {it.mediaType === "tv" && it.episode === 1 && (
                           <span class="ml-2 inline-block rounded-full border border-violet-800 bg-violet-950/50 px-2 py-0.5 text-xs font-medium text-violet-300">
                             {it.season === 1 ? "Series premiere" : "Season premiere"}
+                          </span>
+                        )}
+                        {it.mediaType === "tv" && it.episode !== 1 && it.episodeType === "finale" && (
+                          <span class="ml-2 inline-block rounded-full border border-amber-800 bg-amber-950/50 px-2 py-0.5 text-xs font-medium text-amber-300">
+                            Season finale
                           </span>
                         )}
                       </p>
@@ -1827,7 +1838,7 @@ export const BrowseIndex: FC<{
               <a href={`/person/${p.id}-${slugify(p.name)}`} class="group block">
                 <img
                   src={`https://image.tmdb.org/t/p/w185${p.profile_path}`}
-                  alt={p.name}
+                  alt=""
                   loading="lazy"
                   class="mx-auto aspect-square w-16 rounded-full border border-slate-800 object-cover"
                 />
