@@ -1813,3 +1813,10 @@
 - R172 全页面覆盖盘点：Trakt sitemap.xml（21 URL）+ robots + 导航/footer 爬查 + 路由探测归并 → 22 个页面类型，18 个已对照/同构（覆盖率 82%），4 个 deliberate-n/a（anticipated、social、官方 lists 库、API/Forums/Status）均写明理由；本轮补走查 discover 榜单页/电影详情/人物页/season 路由/vip/about（docs/replication-benchmark.md「页面覆盖率盘点」节）。
 - R173 技术标准反推审计：14 项黑盒对比（渲染/框架/缓存/Early Hints/Speculation Rules/字体/图片/压缩/结构化数据/SEO/性能/无障碍/安全头），修复 4 项缺口后 14/14 达标、7 项反超（对照表「技术标准反推审计」节）。
 - R174 缺陷修复：① styles.css/app.js 改 1 年 immutable（URL 带 ?v=CSS_VERSION）；② HTML 响应加 Link preload 头（styles+字体，Cloudflare 自动升 103 Early Hints）；③ Speculation-Rules 头 + /speculationrules.json（moderate prefetch，排除 logout/api/退订）；④ og:image:alt + og:locale 补全；⑤ 页面覆盖补漏：电影详情页 Directed by 行（TMDB credits crew → /person 互链，与剧集 Created by 同构）。
+
+## Rounds 175-179 — 2026-08-09（验收官整改：76 分报告 P1/P2 全清）
+- R175 P1 移动端导航重构：登录态 <640px 顶导链接行收起，新增底部 5 tab（Next Up/Search/Library/Calendar/More，SVG 图标+文字，safe-area 适配，≥52px 触控），More 页聚合 Lists/Discover/Import/History/Stats/Wrapped/Roulette/Settings/登出；app.js 高亮当前 tab；main 加 max-sm:pb-24 防遮挡。
+- R176 P2 注册承接：注册成功跳 /import?welcome=1，欢迎横幅三步引导（导入或搜索→标记已看→Next Up）；带 next 时仍回原详情页。
+- R177 P2 详情页按钮层级：未追踪时「▶ Start watching」升实心 violet 主 CTA（其余描边降级）；已追踪时当前状态实心。
+- R178 P2 集数勾选即时反馈：episode watch 表单 fetch 渐进增强（失败回退原生提交）——行内 ep-flash 闪光、新增季进度条（seen/aired，500ms 过渡）即时更新、toast 确认（aria-live，移动端避开底部 tab）；reduced-motion 降级。
+- R179 共性自查：注册表单补邮箱用途微文案（只发你要求的邮件）；空态/错误态与数据可信度层（TMDB 署名、Hint 人话层）已有覆盖，核对无新缺口。

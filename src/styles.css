@@ -289,3 +289,47 @@ textarea:focus {
     max-width: none;
   }
 }
+
+/* episode-row flash on mark-watched; skipped under reduced motion */
+@media (prefers-reduced-motion: no-preference) {
+  .ep-flash {
+    animation: ep-flash 0.7s ease-out;
+  }
+  @keyframes ep-flash {
+    0% {
+      background-color: rgb(124 58 237 / 0.35);
+    }
+    100% {
+      background-color: transparent;
+    }
+  }
+}
+
+/* action-confirmation toast */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 1.25rem;
+  transform: translate(-50%, 8px);
+  z-index: 60;
+  padding: 0.6rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  box-shadow: 0 10px 30px -8px rgb(0 0 0 / 0.6);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.toast-show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+/* clear the mobile bottom tab bar */
+@media (max-width: 640px) {
+  .toast {
+    bottom: calc(4.5rem + env(safe-area-inset-bottom));
+  }
+}
