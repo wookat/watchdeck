@@ -138,6 +138,19 @@
 
 ---
 
+## Round 190 — 2026-08-09（Charts 补全：Trending 周榜页）
+
+**发现（④竞品对齐）**
+- Trakt 有完整 charts 体系（trending/popular/anticipated），我们 R185 只补了 top-rated；trending 数据（TMDB /trending/*/week，12h 缓存）已在用（搜索空态），但无独立可索引页面。
+
+**修复**
+- 新增 /browse/trending/:type（tv|movie）周榜页（BreadcrumbList+ItemList JSON-LD、canonical）；/browse「All-time greats」区更名「Charts」并加 🔥 Trending 两链接；sitemap +2（470 总量）。
+
+**证据**
+- 部署 Version f0680f72。线上 /browse/trending/tv|movie 200、非法 type 404、sitemap 含 2 个 trending URL；375px 无溢出、axe 0（/browse 与两新页）。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
