@@ -149,7 +149,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
             . This product uses the TMDB API but is not endorsed or certified by TMDB.
           </p>
           <p>
-            <a href="/about" class="hover:underline">About & Press</a> · <a href="/guides" class="hover:underline">Guides</a> · <a href="/pricing" class="hover:underline">Pricing</a> · <a href="/privacy" class="hover:underline">Privacy</a> · <a href="/terms" class="hover:underline">Terms</a>
+            <a href="/browse" class="hover:underline">Browse</a> · <a href="/browse/trending/tv" class="hover:underline">Trending</a> · <a href="/browse/top-rated/tv" class="hover:underline">Top rated</a> · <a href="/about" class="hover:underline">About & Press</a> · <a href="/guides" class="hover:underline">Guides</a> · <a href="/pricing" class="hover:underline">Pricing</a> · <a href="/privacy" class="hover:underline">Privacy</a> · <a href="/terms" class="hover:underline">Terms</a>
           </p>
           <p>
             More from us:{" "}

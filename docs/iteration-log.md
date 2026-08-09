@@ -161,6 +161,19 @@
 
 ---
 
+## Round 192 — 2026-08-09（内链深度优化：footer 加 Charts 入口）
+
+**发现（⑤SEO 内链）**
+- R185/R190 新增的 charts 页只能从 /browse 一层进入，footer 无 Browse/Charts 内链——爬虫抓取深度与 PageRank 流动欠佳。
+
+**修复**
+- 全站 footer 增 Browse / Trending / Top rated 三链接（与既有 About/Guides 等同排）。
+
+**证据**
+- 部署 Version 18ebfc73。线上 footer 三链接可见；375px 无溢出、landing axe 0。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
