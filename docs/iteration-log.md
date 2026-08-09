@@ -187,6 +187,28 @@
 
 ---
 
+## Round 194 — 2026-08-09（数据轮：搜索词/referrer/漏斗复查，无可行动项）
+
+**发现（⑤用户/数据分析）**
+- 近 7 天 search_queries 全部为 QA 轮次词（severance/dark/dune/负例 zzzqqqxx 等），零结果词无真实需求信号。
+- 外部 referrer 仍为 0；导入漏斗 parse-ok 21 → batch-done 17（均 QA）。
+- 结论：无自然流量前数据驱动收敛，QA 数据不计业务成果；本轮不改代码。
+
+---
+
+## Round 195 — 2026-08-09（内容营销：What to watch tonight 指南）
+
+**发现（⑤内容/pSEO + ②UX）**
+- 「what should i watch tonight」是长青高频搜索意图；R190/193 新增的 charts 页与既有 roulette 缺一篇把它们串成使用场景的内容页。
+
+**修复**
+- 新增 /guides/what-to-watch-tonight（60 秒决策系统：Next Up → charts → roulette），内链 5 个产品页面；guides 索引与 sitemap 自动收录（Article JSON-LD 沿用 GuidePage）。
+
+**证据**
+- 部署 Version ac2d799e。线上 200、sitemap 收录；/guides 与新页 375px 无溢出、axe 0。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

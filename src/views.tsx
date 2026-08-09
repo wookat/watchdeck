@@ -425,6 +425,36 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
       </>
     ),
   },
+  {
+    slug: "what-to-watch-tonight",
+    title: "What should I watch tonight? A 60-second decision system",
+    description: "Stop scrolling and start watching: a simple system using your watchlist, weekly charts and a roulette wheel.",
+    body: () => (
+      <>
+        <h2 class="text-lg font-semibold text-white">Step 1 — Check what's already waiting</h2>
+        <p>
+          The best answer is usually something you already planned to watch. Your{" "}
+          <a href="/home" class="text-violet-400 underline underline-offset-2">Next Up</a> queue lists the exact next
+          episode for every show you track, so a "what now?" moment becomes a one-click resume.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Step 2 — Let the charts decide</h2>
+        <p>
+          Nothing in the queue calling to you? Browse{" "}
+          <a href="/browse/trending/tv" class="text-violet-400 underline underline-offset-2">what's trending this week</a>,{" "}
+          <a href="/browse/on-the-air/tv" class="text-violet-400 underline underline-offset-2">shows airing right now</a> or the{" "}
+          <a href="/browse/top-rated/tv" class="text-violet-400 underline underline-offset-2">all-time top rated</a> — three
+          lists that cover "what everyone's talking about", "what's fresh" and "what's guaranteed good".
+        </p>
+        <h2 class="text-lg font-semibold text-white">Step 3 — Spin the wheel</h2>
+        <p>
+          Still stuck after two minutes? That's decision fatigue, and the cure is removing the decision: the{" "}
+          <a href="/roulette" class="text-violet-400 underline underline-offset-2">roulette</a> picks one title at random
+          from your own watchlist — things you already vetted — optionally filtered to the streaming services you pay
+          for. Commit to whatever it lands on for at least 15 minutes.
+        </p>
+      </>
+    ),
+  },
 ];
 
 export const GuidesIndexPage: FC = () => (
