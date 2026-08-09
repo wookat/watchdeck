@@ -3,12 +3,35 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 165;
+export const CSS_VERSION = 168;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
     ?
   </span>
+);
+
+const BOTTOM_TABS: [string, string, string][] = [
+  ["/home", "Next Up", "M8 5.5v13l10.5-6.5L8 5.5Z"],
+  ["/search", "Search", "M10.5 4a6.5 6.5 0 1 0 4.1 11.55L19.5 20.5l1-1-4.9-4.95A6.5 6.5 0 0 0 10.5 4Zm0 1.5a5 5 0 1 1 0 10 5 5 0 0 1 0-10Z"],
+  ["/library", "Library", "M5 4h10a2 2 0 0 1 2 2v14l-7-3.5L3 20V6a2 2 0 0 1 2-2Zm14 0a2 2 0 0 1 2 2v12.5l-1.5-.75V6a.5.5 0 0 0-.5-.5V4Z"],
+  ["/calendar", "Calendar", "M7 3v2H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2V3h-2v2H9V3H7Zm-2 6h14v10H5V9Z"],
+  ["/more", "More", "M6 10.5a1.75 1.75 0 1 1 0 3.5 1.75 1.75 0 0 1 0-3.5Zm6 0a1.75 1.75 0 1 1 0 3.5 1.75 1.75 0 0 1 0-3.5Zm6 0a1.75 1.75 0 1 1 0 3.5 1.75 1.75 0 0 1 0-3.5Z"],
+];
+
+const BottomNav: FC = () => (
+  <nav id="bottom-nav" aria-label="Primary" class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-800 bg-slate-950/95 backdrop-blur sm:hidden" style="padding-bottom:env(safe-area-inset-bottom)">
+    <div class="grid grid-cols-5">
+      {BOTTOM_TABS.map(([href, label, d]) => (
+        <a href={href} class="flex min-h-[52px] flex-col items-center justify-center gap-0.5 py-1.5 text-[11px] font-medium text-slate-400 hover:text-slate-200">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+            <path d={d} />
+          </svg>
+          {label}
+        </a>
+      ))}
+    </div>
+  </nav>
 );
 
 export interface ListRef {
@@ -47,6 +70,8 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
       <meta property="og:site_name" content="WatchDeck" />
       <meta property="og:type" content={ogType ?? "website"} />
       <meta property="og:image" content={ogImage ?? "https://watchdeck.zalize.com/og-default.png"} />
+      <meta property="og:image:alt" content={title ? `${title} — WatchDeck` : "WatchDeck — Track your TV shows & movies on the web"} />
+      <meta property="og:locale" content="en_US" />
       <meta name="twitter:card" content="summary_large_image" />
       {jsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />}
       <link rel="preconnect" href="https://image.tmdb.org" />
@@ -81,8 +106,8 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
               class="w-full max-w-md rounded-lg border border-slate-700 bg-slate-900 px-3 py-1.5 text-sm placeholder-slate-500 focus:border-violet-500 focus:outline-none"
             />
           </form>
-          <div class="ml-auto flex items-center gap-2 text-sm sm:gap-3 whitespace-nowrap max-sm:w-full max-sm:overflow-x-auto max-sm:[scrollbar-width:none] max-sm:[&::-webkit-scrollbar]:hidden [&>*]:shrink-0">
-            <a href="/search" class="sm:hidden" aria-label="Search">🔍</a>
+          <div class={`ml-auto items-center gap-2 text-sm sm:gap-3 whitespace-nowrap [&>*]:shrink-0 ${user ? "hidden sm:flex" : "flex"}`}>
+            {!user && <a href="/search" class="sm:hidden" aria-label="Search">🔍</a>}
             <a href="/browse" class="px-1 py-2 hover:text-violet-400">Browse</a>
             {user ? (
               <>
@@ -109,7 +134,8 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
           </div>
         </div>
       </nav>
-      <main id="main" class="mx-auto max-w-6xl px-4 py-6 xl:max-w-7xl">{children}</main>
+      {user && <BottomNav />}
+      <main id="main" class={`mx-auto max-w-6xl px-4 py-6 xl:max-w-7xl${user ? " max-sm:pb-24" : ""}`}>{children}</main>
       <footer class="mt-16 border-t border-slate-800 py-8 text-sm text-slate-400">
         <div class="mx-auto max-w-6xl space-y-3 px-4 xl:max-w-7xl">
           <p>
@@ -429,6 +455,11 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
       <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">
         {mode === "login" ? "Log in" : "Sign up"}
       </button>
+      {mode === "signup" && (
+        <p class="text-xs text-slate-500">
+          We only email you for things you ask for — a welcome note, password resets, and reminders you switch on. No marketing without consent.
+        </p>
+      )}
     </form>
     <p class="mt-4 text-sm text-slate-400">
       {mode === "login" ? (
@@ -547,7 +578,8 @@ export const HomePage: FC<{
   upcoming?: CalendarItem[];
   hasWatch?: boolean;
   wrappedYear?: number;
-}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview, upcoming, hasWatch, wrappedYear }) => (
+  streak?: number;
+}> = ({ nextUp, watchlistCount, hasAnything, justWatched, watchlistPreview, upcoming, hasWatch, wrappedYear, streak }) => (
   <div>
     <h1 class="mb-6 text-2xl font-bold">Next up</h1>
     {!(hasAnything && hasWatch) && (
@@ -584,6 +616,14 @@ export const HomePage: FC<{
         <span>✨ New: your {wrappedYear} Wrapped is ready — <a href={`/wrapped/${wrappedYear}`} class="font-medium text-violet-300 hover:underline">see your year in TV & film</a></span>
         <button data-dismiss class="ml-auto rounded px-2 text-slate-400 hover:text-slate-200" aria-label="Dismiss Wrapped announcement">✕</button>
       </div>
+    )}
+    {(streak ?? 0) >= 2 && (
+      <a href="/stats" class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-orange-900/60 bg-orange-950/30 px-4 py-2.5 text-sm hover:border-orange-700">
+        <span class="text-orange-300">
+          🔥 <span class="stat-num font-semibold">{streak}-day</span> watching streak
+        </span>
+        <span class="text-xs text-slate-400">Watch anything today to keep it going →</span>
+      </a>
     )}
     {justWatched && (
       <div class="mb-4 flex flex-wrap items-center gap-3 rounded-xl border border-emerald-800 bg-emerald-950/40 px-4 py-2.5 text-sm text-emerald-300">
@@ -685,6 +725,11 @@ export const HomePage: FC<{
                   ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}`
                   : "🎬 Movie release"}
               </span>
+              {it.mediaType === "tv" && it.episode === 1 && (
+                <span class="shrink-0 rounded-full border border-violet-800 bg-violet-950/50 px-2 py-0.5 text-xs font-medium text-violet-300">
+                  {it.season === 1 ? "Series premiere" : "Season premiere"}
+                </span>
+              )}
             </li>
           ))}
         </ul>
@@ -1032,6 +1077,16 @@ export const AddToList: FC<{ lists: ListRef[]; tmdbId: number; mediaType: "tv" |
   </details>
 );
 
+const StatusBadge: FC<{ status: string }> = ({ status }) => {
+  const cls =
+    status === "Returning Series" || status === "In Production" || status === "Planned"
+      ? "border-emerald-800 bg-emerald-950/50 text-emerald-300"
+      : status === "Canceled"
+        ? "border-red-900 bg-red-950/50 text-red-300"
+        : "border-slate-700 bg-slate-900/60 text-slate-300";
+  return <span class={`inline-block rounded-full border px-2 py-0.5 text-xs font-medium ${cls}`}>{status}</span>;
+};
+
 export const ShowPage: FC<{
   show: TvDetails;
   season: SeasonDetails | null;
@@ -1061,8 +1116,19 @@ export const ShowPage: FC<{
           <h1 class="text-3xl font-bold">{show.name}</h1>
           <p class="mt-1 text-sm text-slate-400">
             {show.first_air_date?.slice(0, 4)} · {show.number_of_seasons} season{show.number_of_seasons === 1 ? "" : "s"} ·{" "}
-            {show.number_of_episodes} episodes · {show.status} · ★ {show.vote_average?.toFixed(1)}
+            {show.number_of_episodes} episodes · <StatusBadge status={show.status} /> · ★ {show.vote_average?.toFixed(1)}
           </p>
+          {(show.created_by?.length ?? 0) > 0 && (
+            <p class="mt-1 text-sm text-slate-400">
+              Created by{" "}
+              {show.created_by!.map((p, i) => (
+                <>
+                  {i > 0 && ", "}
+                  <a href={`/person/${p.id}-${slugify(p.name)}`} class="text-violet-400 hover:underline">{p.name}</a>
+                </>
+              ))}
+            </p>
+          )}
           <p class="mt-1 text-sm text-slate-400">
             {show.genres.map((g) => g.name).join(", ")}
             {trailer && (
@@ -1096,11 +1162,13 @@ export const ShowPage: FC<{
                   <button
                     class={
                       tracked?.status === s
-                        ? "rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white"
-                        : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500"
+                        ? "rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-medium text-white shadow-lg shadow-violet-950/50"
+                        : !tracked && s === "watching"
+                          ? "rounded-lg bg-violet-600 px-3 py-1.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/50 hover:bg-violet-500"
+                          : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm text-slate-300 hover:border-violet-500"
                     }
                   >
-                    {s === "watching" ? "▶ Watching" : s === "watchlist" ? "+ Watchlist" : s === "completed" ? "✓ Completed" : "✕ Dropped"}
+                    {s === "watching" ? (tracked ? "▶ Watching" : "▶ Start watching") : s === "watchlist" ? "+ Watchlist" : s === "completed" ? "✓ Completed" : "✕ Dropped"}
                   </button>
                 </form>
               ))}
@@ -1148,7 +1216,9 @@ export const ShowPage: FC<{
                   <span
                     class={`ml-1.5 text-xs ${
                       s.episode_count > 0 && seen >= s.episode_count
-                        ? "text-emerald-300"
+                        ? season?.season_number === s.season_number
+                          ? "text-emerald-100"
+                          : "text-emerald-300"
                         : season?.season_number === s.season_number
                           ? "text-violet-100"
                           : "text-slate-300"
@@ -1164,7 +1234,23 @@ export const ShowPage: FC<{
           const today = new Date().toISOString().slice(0, 10);
           const aired = season.episodes.filter((ep) => ep.air_date && ep.air_date <= today);
           const allWatched = aired.length > 0 && aired.every((ep) => watched.has(`${ep.season_number}x${ep.episode_number}`));
+          const seen = aired.filter((ep) => watched.has(`${ep.season_number}x${ep.episode_number}`)).length;
           return (
+            <>
+            {aired.length > 0 && (
+              <div class="mb-3 flex items-center gap-3">
+                <div class="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-slate-800">
+                  <div
+                    id="season-progress-bar"
+                    class="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-500"
+                    style={`width:${Math.round((100 * seen) / aired.length)}%`}
+                    data-seen={String(seen)}
+                    data-total={String(aired.length)}
+                  />
+                </div>
+                <span id="season-progress-text" class="stat-num shrink-0 text-xs text-slate-400">{seen}/{aired.length} aired watched</span>
+              </div>
+            )}
             <form action="/api/watch-season" method="post" class="mb-4">
               <input type="hidden" name="tmdb_id" value={String(show.id)} />
               <input type="hidden" name="season" value={String(season.season_number)} />
@@ -1180,6 +1266,7 @@ export const ShowPage: FC<{
                 {allWatched ? `✓ Season ${season.season_number} watched — unmark all` : `✓ Mark season ${season.season_number} watched`}
               </button>
             </form>
+            </>
           );
         })()}
         {season && (
@@ -1248,7 +1335,7 @@ export const ShowPage: FC<{
                           </button>
                         </form>
                       )}
-                      <form action="/api/watch" method="post">
+                      <form action="/api/watch" method="post" data-ep-watch data-ep-label={`S${String(ep.season_number).padStart(2, "0")}E${String(ep.episode_number).padStart(2, "0")}`}>
                         <input type="hidden" name="tmdb_id" value={String(show.id)} />
                         <input type="hidden" name="season" value={String(ep.season_number)} />
                         <input type="hidden" name="episode" value={String(ep.episode_number)} />
@@ -1289,7 +1376,8 @@ export const MoviePage: FC<{
   trailer?: string | null;
   myServices?: Set<number>;
   lists?: ListRef[];
-}> = ({ movie, watchCount, tracked, user, recs, providers, cast, trailer, myServices, lists }) => {
+  directors?: { id: number; name: string }[];
+}> = ({ movie, watchCount, tracked, user, recs, providers, cast, trailer, myServices, lists, directors }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
   const watched = watchCount > 0;
   return (
@@ -1306,6 +1394,19 @@ export const MoviePage: FC<{
         <p class="mt-1 text-sm text-slate-400">
           {movie.release_date?.slice(0, 4)} {movie.runtime ? `· ${movie.runtime} min` : ""} · ★ {movie.vote_average?.toFixed(1)}
         </p>
+        {(directors?.length ?? 0) > 0 && (
+          <p class="mt-1 text-sm text-slate-400">
+            Directed by{" "}
+            {directors!.map((p, i) => (
+              <>
+                {i > 0 && ", "}
+                <a href={`/person/${p.id}-${slugify(p.name)}`} class="text-violet-400 hover:underline">
+                  {p.name}
+                </a>
+              </>
+            ))}
+          </p>
+        )}
         <p class="mt-1 text-sm text-slate-400">
           {movie.genres.map((g) => g.name).join(", ")}
           {trailer && (
@@ -1633,6 +1734,11 @@ export const CalendarPage: FC<{ items: CalendarItem[]; feedUrl: string; remindEm
                         {it.mediaType === "tv" && it.season != null && it.episode != null
                           ? `S${String(it.season).padStart(2, "0")}E${String(it.episode).padStart(2, "0")}${it.episodeName ? ` · ${it.episodeName}` : ""}`
                           : "🎬 Movie release"}
+                        {it.mediaType === "tv" && it.episode === 1 && (
+                          <span class="ml-2 inline-block rounded-full border border-violet-800 bg-violet-950/50 px-2 py-0.5 text-xs font-medium text-violet-300">
+                            {it.season === 1 ? "Series premiere" : "Season premiere"}
+                          </span>
+                        )}
                       </p>
                     </div>
                   </li>
@@ -2593,8 +2699,19 @@ export const PricingPage: FC<{ loggedIn?: boolean }> = ({ loggedIn }) => (
   </div>
 );
 
-export const ImportPage: FC = () => (
+export const ImportPage: FC<{ welcome?: boolean }> = ({ welcome }) => (
   <div class="mx-auto max-w-2xl">
+    {welcome && (
+      <section class="mb-8 rounded-2xl border border-violet-900/60 bg-violet-950/30 p-5" aria-label="Welcome">
+        <h2 class="text-lg font-semibold">Welcome to WatchDeck 🎬</h2>
+        <p class="mt-1 text-sm text-slate-300">You're in — three quick steps and you're tracking:</p>
+        <ol class="mt-2 list-inside list-decimal space-y-1 text-sm text-slate-300">
+          <li>Drop in your TV Time export below — or <a href="/search" class="text-violet-400 hover:underline">search a show</a> and hit Track.</li>
+          <li>Mark the episodes you've already seen.</li>
+          <li><a href="/home" class="text-violet-400 hover:underline">Next Up</a> tells you exactly what to watch next.</li>
+        </ol>
+      </section>
+    )}
     <h1 class="text-2xl font-bold">Import from TV Time</h1>
     <p class="mt-2 text-slate-400">
       Upload the ZIP you got from{" "}
@@ -2771,5 +2888,31 @@ export const PublicListPage: FC<{ name: string; owner: string; items: { tmdb_id:
       <p class="text-slate-300">Make lists like this for your own shows &amp; movies.</p>
       <a href="/signup" class="mt-3 inline-block rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-500 px-5 py-2.5 text-sm font-semibold text-white hover:opacity-90">Start tracking — free in beta</a>
     </div>
+  </div>
+);
+
+export const MorePage: FC = () => (
+  <div class="mx-auto max-w-2xl">
+    <h1 class="mb-6 text-2xl font-bold">More</h1>
+    <div class="grid grid-cols-2 gap-3">
+      {[
+        ["/lists", "☰ Lists", "Your custom lists"],
+        ["/browse", "🧭 Discover", "Trending & browse by genre"],
+        ["/import", "📥 Import", "TV Time, Trakt, Netflix & more"],
+        ["/history", "🕘 History", "Everything you've watched"],
+        ["/stats", "📊 Stats", "Hours, streaks & top shows"],
+        [`/wrapped/${new Date().getFullYear()}`, "✨ Wrapped", "Your year in review"],
+        ["/roulette", "🎲 Roulette", "Can't decide? Spin one"],
+        ["/settings", "⚙ Settings", "Account & preferences"],
+      ].map(([href, label, sub]) => (
+        <a href={href} class="card block p-4">
+          <p class="font-medium">{label}</p>
+          <p class="mt-0.5 text-xs text-slate-400">{sub}</p>
+        </a>
+      ))}
+    </div>
+    <form action="/logout" method="post" class="mt-6">
+      <button class="w-full rounded-lg border border-slate-700 px-4 py-2.5 text-sm text-slate-400 hover:border-red-900 hover:text-red-400">Log out</button>
+    </form>
   </div>
 );

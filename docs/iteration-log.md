@@ -1801,3 +1801,22 @@
 - 回归发现：① 隐藏 tooltip（opacity:0）仍占布局，/stats、/wrapped 375px 下 scrollWidth 439；② 日历 iCal tooltip z-index 30 < 导航 40，被 sticky nav 遮挡。
 - 修复：.hint::after 空闲态 display:none（hover/focus 时 block）、z-index 50、max-width min(230px, 100vw-2rem)；≤640px 改 fixed 底部弹层（left/right/bottom 1rem）永不越界；显示时快速 rise-in（reduced-motion 降级）。
 - 复验：375px scrollWidth 恢复 375（开着 tooltip 也是）、日历 tooltip 桌面全可见、hover+键盘均可触发、/stats axe 0。CSS_VERSION 164→165。
+
+## Rounds 168-171 — 2026-08-08（一比一复刻基准：Trakt）
+- R168 标杆走查：真实浏览器逐页走查 app.trakt.tv（home/详情/calendar/discover/profile/search），只用公开可访问部分，未绕 bot wall；其 trakt-web 为 GPLv3 开源，为避免 license 传染同样不复制代码。
+- R169 还原度对照表：docs/replication-benchmark.md（7 大页面/流程逐维度评分+差距+有意不复刻项说明）。
+- R170 缺陷修复：P1 首页 streak 激励条（🔥 N-day，D1 连续日期计算，≥2 天显示）；P1 详情页 Created by 行（TMDB created_by → /person 页互链）；P2 详情页生命周期 StatusBadge 彩色 chip；P2 日历/首页 Airing「Series/Season premiere」徽章（E01 自动识别）。
+- R171 超越项+洞察优化：对照表末尾列 6 项超越项；2 个复刻洞察优化 = streak 前置到首屏 + premiere 徽章内联化（比 Trakt 过滤器交互成本更低）。
+- CSS_VERSION 165→166。
+
+## Rounds 172-174 — 2026-08-08（复刻升级：页面覆盖率 + 技术标准审计）
+- R172 全页面覆盖盘点：Trakt sitemap.xml（21 URL）+ robots + 导航/footer 爬查 + 路由探测归并 → 22 个页面类型，18 个已对照/同构（覆盖率 82%），4 个 deliberate-n/a（anticipated、social、官方 lists 库、API/Forums/Status）均写明理由；本轮补走查 discover 榜单页/电影详情/人物页/season 路由/vip/about（docs/replication-benchmark.md「页面覆盖率盘点」节）。
+- R173 技术标准反推审计：14 项黑盒对比（渲染/框架/缓存/Early Hints/Speculation Rules/字体/图片/压缩/结构化数据/SEO/性能/无障碍/安全头），修复 4 项缺口后 14/14 达标、7 项反超（对照表「技术标准反推审计」节）。
+- R174 缺陷修复：① styles.css/app.js 改 1 年 immutable（URL 带 ?v=CSS_VERSION）；② HTML 响应加 Link preload 头（styles+字体，Cloudflare 自动升 103 Early Hints）；③ Speculation-Rules 头 + /speculationrules.json（moderate prefetch，排除 logout/api/退订）；④ og:image:alt + og:locale 补全；⑤ 页面覆盖补漏：电影详情页 Directed by 行（TMDB credits crew → /person 互链，与剧集 Created by 同构）。
+
+## Rounds 175-179 — 2026-08-09（验收官整改：76 分报告 P1/P2 全清）
+- R175 P1 移动端导航重构：登录态 <640px 顶导链接行收起，新增底部 5 tab（Next Up/Search/Library/Calendar/More，SVG 图标+文字，safe-area 适配，≥52px 触控），More 页聚合 Lists/Discover/Import/History/Stats/Wrapped/Roulette/Settings/登出；app.js 高亮当前 tab；main 加 max-sm:pb-24 防遮挡。
+- R176 P2 注册承接：注册成功跳 /import?welcome=1，欢迎横幅三步引导（导入或搜索→标记已看→Next Up）；带 next 时仍回原详情页。
+- R177 P2 详情页按钮层级：未追踪时「▶ Start watching」升实心 violet 主 CTA（其余描边降级）；已追踪时当前状态实心。
+- R178 P2 集数勾选即时反馈：episode watch 表单 fetch 渐进增强（失败回退原生提交）——行内 ep-flash 闪光、新增季进度条（seen/aired，500ms 过渡）即时更新、toast 确认（aria-live，移动端避开底部 tab）；reduced-motion 降级。
+- R179 共性自查：注册表单补邮箱用途微文案（只发你要求的邮件）；空态/错误态与数据可信度层（TMDB 署名、Hint 人话层）已有覆盖，核对无新缺口。

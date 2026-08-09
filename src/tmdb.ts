@@ -61,6 +61,7 @@ export interface TvDetails {
   number_of_episodes: number;
   seasons: { season_number: number; episode_count: number; name: string; poster_path: string | null; air_date: string | null }[];
   next_episode_to_air: { season_number: number; episode_number: number; air_date: string; name: string } | null;
+  created_by?: { id: number; name: string }[];
   episode_run_time: number[];
   last_episode_to_air: { runtime: number | null } | null;
 }
@@ -267,6 +268,11 @@ export async function personCredits(env: Env, id: number, limit = 24): Promise<P
     })
     .sort((a, b) => b.vote_count - a.vote_count || b.popularity - a.popularity)
     .slice(0, limit);
+}
+
+export async function movieDirectors(env: Env, id: number): Promise<{ id: number; name: string }[]> {
+  const res = await tmdb<{ crew?: { id: number; name: string; job?: string }[] }>(env, `/movie/${id}/credits`, 7 * 24 * 3600);
+  return (res.crew ?? []).filter((m) => m.job === "Director").map((m) => ({ id: m.id, name: m.name }));
 }
 
 export async function topCast(env: Env, type: "tv" | "movie", id: number, limit = 8): Promise<CastMember[]> {
