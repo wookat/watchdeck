@@ -174,6 +174,19 @@
 
 ---
 
+## Round 193 — 2026-08-09（Charts 扩展：On the air / Coming soon）
+
+**发现（④竞品对齐）**
+- Trakt「Anticipated」此前标为 n/a（TMDB 无直接等价端点），但 TMDB 有 /tv/on_the_air（7 天内有新集）与 /movie/upcoming（院线即将上映）——可覆盖同一用户意图（「接下来看什么」）。
+
+**修复**
+- 新增 /browse/on-the-air/tv 与 /browse/coming-soon/movie（12h 缓存，BreadcrumbList+ItemList JSON-LD、canonical），复用新抽象 BrowseChartList；/browse Charts 区加 📡/🎬 两入口；sitemap +2（472 总量）。
+
+**证据**
+- 部署 Version 161bd728。两新页 200、各渲染 20 卡；375px 无溢出、axe 0；sitemap 含两 URL。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

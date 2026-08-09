@@ -1809,6 +1809,8 @@ export const BrowseIndex: FC<{
         <a href="/browse/top-rated/movie" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🏆 Top rated movies</a>
         <a href="/browse/trending/tv" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🔥 Trending TV shows</a>
         <a href="/browse/trending/movie" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🔥 Trending movies</a>
+        <a href="/browse/on-the-air/tv" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">📡 On the air</a>
+        <a href="/browse/coming-soon/movie" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🎬 Coming soon</a>
       </div>
     </section>
     {(
@@ -1985,6 +1987,26 @@ export const BrowseTrending: FC<{
     <h1 class="mb-2 text-2xl font-bold">Trending {type === "tv" ? "TV shows" : "movies"} this week</h1>
     <p class="mb-6 text-slate-400">
       What everyone is watching right now, refreshed weekly — track them on WatchDeck.{" "}
+      <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
+    </p>
+    <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
+      {results.map((r) => (
+        <MediaCard item={r} type={type} />
+      ))}
+    </div>
+  </div>
+);
+
+export const BrowseChartList: FC<{
+  heading: string;
+  intro: string;
+  type: "tv" | "movie";
+  results: SearchResult[];
+}> = ({ heading, intro, type, results }) => (
+  <div>
+    <h1 class="mb-2 text-2xl font-bold">{heading}</h1>
+    <p class="mb-6 text-slate-400">
+      {intro}{" "}
       <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
     </p>
     <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">

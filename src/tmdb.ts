@@ -173,6 +173,14 @@ export function topRated(env: Env, type: "tv" | "movie", page = 1) {
   return tmdb<{ results: SearchResult[]; total_pages: number }>(env, `/${type}/top_rated?page=${Math.min(Math.max(page, 1), 20)}`, 24 * 3600);
 }
 
+export function upcomingMovies(env: Env, page = 1) {
+  return tmdb<{ results: SearchResult[]; total_pages: number }>(env, `/movie/upcoming?page=${Math.min(Math.max(page, 1), 20)}`, 12 * 3600);
+}
+
+export function onTheAirTv(env: Env, page = 1) {
+  return tmdb<{ results: SearchResult[]; total_pages: number }>(env, `/tv/on_the_air?page=${Math.min(Math.max(page, 1), 20)}`, 12 * 3600);
+}
+
 export function discoverPopular(env: Env, type: "tv" | "movie", page = 1) {
   return tmdb<{ results: SearchResult[]; total_pages: number }>(
     env,
