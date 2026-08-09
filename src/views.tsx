@@ -1930,7 +1930,7 @@ export const BrowseTopRated: FC<{
       <h1 class="mb-2 text-2xl font-bold">Top rated {type === "tv" ? "TV shows" : "movies"} of all time</h1>
       <p class="mb-6 text-slate-400">
         The highest-rated {type === "tv" ? "series" : "films"} ever, ranked by viewer ratings — track the ones you've seen on WatchDeck.{" "}
-        <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; years</a>
+        <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
