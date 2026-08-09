@@ -14,10 +14,11 @@ document.addEventListener("keydown", (e) => {
 });
 document.addEventListener("DOMContentLoaded", () => {
   const path = location.pathname;
-  document.querySelectorAll("#site-nav a[href]:not([data-logo])").forEach((a) => {
+  document.querySelectorAll("#site-nav a[href]:not([data-logo]), #bottom-nav a[href]").forEach((a) => {
     const href = a.getAttribute("href");
     if (href === path || (href !== "/" && href.length > 1 && path.startsWith(href + "/"))) {
       a.setAttribute("aria-current", "page");
+      a.classList.remove("text-slate-400");
       a.classList.add("text-violet-400", "font-semibold");
     }
   });
@@ -66,4 +67,65 @@ document.addEventListener("click", (e) => {
 document.addEventListener("submit", (e) => {
   const form = e.target;
   if (form instanceof HTMLFormElement && form.dataset.confirm && !window.confirm(form.dataset.confirm)) e.preventDefault();
+});
+function showToast(msg) {
+  let t = document.getElementById("app-toast");
+  if (!t) {
+    t = document.createElement("div");
+    t.id = "app-toast";
+    t.className = "toast";
+    t.setAttribute("role", "status");
+    t.setAttribute("aria-live", "polite");
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.classList.remove("toast-show");
+  void t.offsetWidth;
+  t.classList.add("toast-show");
+  clearTimeout(t.dataset.timer);
+  t.dataset.timer = setTimeout(() => t.classList.remove("toast-show"), 2400);
+}
+// episode mark-watched: instant inline feedback (row flash + progress bar + toast) without a reload
+document.addEventListener("submit", (e) => {
+  const form = e.target;
+  if (!(form instanceof HTMLFormElement) || form.dataset.epWatch === undefined || !window.fetch) return;
+  e.preventDefault();
+  const btn = form.querySelector("button");
+  const undoInput = form.querySelector('input[name="undo"]');
+  const marking = undoInput.value !== "1";
+  const body = new URLSearchParams(new FormData(form));
+  btn.disabled = true;
+  fetch(form.action, { method: "POST", body: body, redirect: "manual" })
+    .then((res) => {
+      if (res.status >= 400) throw new Error("http " + res.status);
+      const row = form.closest("li");
+      undoInput.value = marking ? "1" : "";
+      btn.textContent = marking ? "\u2713 Watched" : "Mark watched";
+      btn.className = marking
+        ? "rounded-lg bg-emerald-700 px-3 py-1.5 text-sm text-white hover:bg-emerald-600"
+        : "rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500";
+      if (row) {
+        if (marking) {
+          const upTo = row.querySelector('form[action="/api/watch-up-to"]');
+          if (upTo) upTo.remove();
+        }
+        row.classList.remove("ep-flash");
+        void row.offsetWidth;
+        row.classList.add("ep-flash");
+      }
+      const bar = document.getElementById("season-progress-bar");
+      if (bar) {
+        const total = parseInt(bar.dataset.total, 10) || 1;
+        const seen = Math.max(0, Math.min(total, (parseInt(bar.dataset.seen, 10) || 0) + (marking ? 1 : -1)));
+        bar.dataset.seen = String(seen);
+        bar.style.width = Math.round((100 * seen) / total) + "%";
+        const txt = document.getElementById("season-progress-text");
+        if (txt) txt.textContent = seen + "/" + total + " aired watched";
+      }
+      showToast(marking ? "\u2713 " + form.dataset.epLabel + " marked as watched" : form.dataset.epLabel + " unmarked");
+    })
+    .catch(() => form.submit())
+    .finally(() => {
+      btn.disabled = false;
+    });
 });

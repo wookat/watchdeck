@@ -54,6 +54,7 @@ import {
   LibraryPage,
   CalendarPage,
   ImportPage,
+  MorePage,
   StatsPage,
   PublicProfilePage,
   BrowseIndex,
@@ -117,10 +118,10 @@ app.use("*", async (c, next) => {
   h.set("referrer-policy", "strict-origin-when-cross-origin");
   h.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
   const path = new URL(c.req.url).pathname;
-  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|forgot|reset|unsubscribe|confirm-email|u|wrapped)(\/|$)/.test(path)) {
+  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|more|forgot|reset|unsubscribe|confirm-email|u|wrapped)(\/|$)/.test(path)) {
     h.set("x-robots-tag", "noindex");
   }
-  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|wrapped)(\/|$)/.test(path) && c.res.headers.get("content-type")?.includes("text/html")) {
+  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|more|wrapped)(\/|$)/.test(path) && c.res.headers.get("content-type")?.includes("text/html")) {
     h.set("cache-control", "private, no-store");
   }
   if (c.res.headers.get("content-type")?.includes("text/html")) {
@@ -268,7 +269,7 @@ app.post("/signup", async (c) => {
   }
   await createSession(c, res!.id);
   c.executionCtx.waitUntil(sendEmail(c.env, email, ...welcomeEmail(c.env.SITE_URL)));
-  return c.redirect(safeNext(form.next) ?? "/import");
+  return c.redirect(safeNext(form.next) ?? "/import?welcome=1");
 });
 
 app.post("/login", async (c) => {
@@ -1541,6 +1542,16 @@ app.get("/pricing", (c) =>
   )
 );
 
+app.get("/more", (c) => {
+  const user = c.get("user");
+  if (!user) return c.redirect("/login");
+  return c.html(
+    <Layout user={user} title="More">
+      <MorePage />
+    </Layout>
+  );
+});
+
 app.get("/settings", async (c) => {
   const user = c.get("user");
   if (!user) return c.redirect("/login");
@@ -1954,7 +1965,7 @@ app.get("/import", (c) => {
   if (!user) return c.redirect("/signup");
   return c.html(
     <Layout user={user} title="Import from TV Time">
-      <ImportPage />
+      <ImportPage welcome={c.req.query("welcome") === "1"} />
     </Layout>
   );
 });
