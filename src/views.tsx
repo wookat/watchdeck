@@ -298,9 +298,10 @@ const GuideLayout: FC<PropsWithChildren<{ title: string; updated: string }>> = (
   </article>
 );
 
-export const GUIDES: { slug: string; title: string; description: string; body: FC }[] = [
+export const GUIDES: { slug: string; title: string; description: string; updated: string; body: FC }[] = [
   {
     slug: "export-tv-time-data",
+    updated: "August 5, 2026",
     title: "How to export your TV Time data (and what's inside the ZIP)",
     description: "Step-by-step: requesting the TV Time GDPR export, what the ZIP contains, and how to bring your full watch history to WatchDeck.",
     body: () => (
@@ -333,6 +334,7 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
   },
   {
     slug: "tv-time-alternatives",
+    updated: "August 5, 2026",
     title: "TV Time alternatives in 2026: an honest comparison",
     description: "TV Time shut down — here's how Trakt, Hobi, Showly, Simkl and WatchDeck compare for episode tracking, imports and price.",
     body: () => (
@@ -371,6 +373,7 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
   },
   {
     slug: "import-netflix-history",
+    updated: "August 5, 2026",
     title: "How to import your Netflix viewing history",
     description: "Download ViewingActivity.csv from Netflix and turn years of viewing into a tracked library in one upload.",
     body: () => (
@@ -398,6 +401,7 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
   },
   {
     slug: "import-trakt-csv",
+    updated: "August 9, 2026",
     title: "How to import your Trakt or Serializd data",
     description: "Export your watched history as CSV from Trakt or Serializd and bring it into WatchDeck in one upload.",
     body: () => (
@@ -427,6 +431,7 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
   },
   {
     slug: "what-to-watch-tonight",
+    updated: "August 9, 2026",
     title: "What should I watch tonight? A 60-second decision system",
     description: "Stop scrolling and start watching: a simple system using your watchlist, weekly charts and a roulette wheel.",
     body: () => (
@@ -473,7 +478,7 @@ export const GuidesIndexPage: FC = () => (
 );
 
 export const GuidePage: FC<{ guide: (typeof GUIDES)[number] }> = ({ guide }) => (
-  <GuideLayout title={guide.title} updated="August 5, 2026">
+  <GuideLayout title={guide.title} updated={guide.updated}>
     <guide.body />
   </GuideLayout>
 );
