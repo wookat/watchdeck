@@ -333,3 +333,53 @@ textarea:focus {
     bottom: calc(4.5rem + env(safe-area-inset-bottom));
   }
 }
+/* live search suggestions */
+.suggest-anchor {
+  position: relative;
+}
+.suggest-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin-top: 0.375rem;
+  max-width: 28rem;
+  overflow: hidden;
+  border-radius: 0.75rem;
+  border: 1px solid #334155;
+  background: #0f172a;
+  box-shadow: 0 16px 40px -12px rgb(0 0 0 / 0.7);
+}
+.suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  color: #e2e8f0;
+}
+.suggest-item img {
+  height: 3rem;
+  width: 2rem;
+  flex-shrink: 0;
+  border-radius: 0.25rem;
+  object-fit: cover;
+  border: 1px solid #1e293b;
+}
+.suggest-item span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.suggest-item small {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #94a3b8;
+  font-size: 0.75rem;
+}
+.suggest-item:hover,
+.suggest-item.suggest-active {
+  background: rgb(124 58 237 / 0.25);
+}

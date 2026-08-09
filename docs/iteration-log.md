@@ -33,6 +33,20 @@
 
 ---
 
+## Round 182 — 2026-08-09（实时搜索建议 typeahead）
+
+**发现（②新用户 UX + ③视觉走查 + ④竞品）**
+- 375/1440 全页截图走查：无溢出、无视觉缺陷；落地页 FAQ/结构化数据已齐。剩余体验差距：搜索需整页提交才能看结果，TV Time/Trakt 均有即输即显 typeahead。
+
+**修复**
+- 新增 `GET /api/suggest?q=`：searchMulti（KV 缓存）取前 8 个带海报的 TV/电影，返回精简 JSON，`cache-control: public, max-age=300`；q<2 直接空数组。
+- app.js 渐进增强：头部与搜索页输入框 250ms 防抖取建议，海报+标题+年份/类型下拉，↑↓ 键选中、Enter 跳转、Esc/点外关闭；无 JS 时原表单提交不受影响。CSS v170。
+
+**证据**
+- 部署 Version 1569d5be。实测桌面 1440 头部框（sever→8 条，键盘高亮）与 375 搜索页（breaking→Breaking Bad 置顶），scrollWidth 无溢出；负例 q=a 返回空。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

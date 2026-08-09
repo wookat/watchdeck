@@ -129,3 +129,84 @@ document.addEventListener("submit", (e) => {
       btn.disabled = false;
     });
 });
+
+// Live search suggestions (progressive enhancement)
+document.addEventListener("DOMContentLoaded", () => {
+  if (!window.fetch) return;
+  document.querySelectorAll('form[action="/search"] input[name="q"]').forEach((input) => {
+    const form = input.form;
+    form.classList.add("suggest-anchor");
+    const list = document.createElement("ul");
+    list.className = "suggest-list hidden";
+    list.setAttribute("role", "listbox");
+    form.appendChild(list);
+    let items = [];
+    let active = -1;
+    let timer = 0;
+    let lastQ = "";
+
+    function close() {
+      list.classList.add("hidden");
+      list.innerHTML = "";
+      items = [];
+      active = -1;
+    }
+    function render(results) {
+      list.innerHTML = "";
+      active = -1;
+      if (!results.length) return close();
+      results.forEach((r) => {
+        const li = document.createElement("li");
+        li.setAttribute("role", "option");
+        const a = document.createElement("a");
+        a.href = r.u;
+        a.className = "suggest-item";
+        const img = document.createElement("img");
+        img.src = "https://image.tmdb.org/t/p/w92" + r.p;
+        img.alt = "";
+        img.loading = "lazy";
+        a.appendChild(img);
+        const span = document.createElement("span");
+        span.textContent = r.t;
+        a.appendChild(span);
+        const meta = document.createElement("small");
+        meta.textContent = (r.y ? r.y + " · " : "") + (r.m === "tv" ? "TV" : "Movie");
+        a.appendChild(meta);
+        li.appendChild(a);
+        list.appendChild(li);
+      });
+      items = Array.from(list.querySelectorAll("a"));
+      list.classList.remove("hidden");
+    }
+    input.addEventListener("input", () => {
+      const q = input.value.trim();
+      clearTimeout(timer);
+      if (q.length < 2) return close();
+      timer = setTimeout(() => {
+        lastQ = q;
+        fetch("/api/suggest?q=" + encodeURIComponent(q))
+          .then((r) => r.json())
+          .then((d) => {
+            if (input.value.trim() === lastQ) render(d.results || []);
+          })
+          .catch(close);
+      }, 250);
+    });
+    input.addEventListener("keydown", (e) => {
+      if (list.classList.contains("hidden")) return;
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        active = e.key === "ArrowDown" ? (active + 1) % items.length : (active - 1 + items.length) % items.length;
+        items.forEach((a, i) => a.classList.toggle("suggest-active", i === active));
+      } else if (e.key === "Enter" && active >= 0) {
+        e.preventDefault();
+        location.href = items[active].href;
+      } else if (e.key === "Escape") {
+        close();
+      }
+    });
+    document.addEventListener("click", (e) => {
+      if (!form.contains(e.target)) close();
+    });
+  });
+});
