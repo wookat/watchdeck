@@ -797,7 +797,7 @@ export const SearchPage: FC<{ q: string; results: SearchResult[]; libraryIds?: S
                 <a href={`/person/${p.id}-${slugify(p.name ?? "")}`} class="group block">
                   <img
                     src={`https://image.tmdb.org/t/p/w185${p.profile_path}`}
-                    alt={p.name}
+                    alt=""
                     loading="lazy"
                     class="mx-auto aspect-square w-16 rounded-full border border-slate-800 object-cover"
                   />
@@ -871,7 +871,7 @@ export const CastSection: FC<{ cast: CastMember[] }> = ({ cast }) =>
             <a href={`/person/${m.id}-${slugify(m.name)}`} class="group block">
               <img
                 src={m.profile_path ? `https://image.tmdb.org/t/p/w185${m.profile_path}` : "/placeholder-poster.svg"}
-                alt={m.name}
+                alt=""
                 loading="lazy"
                 class="mx-auto aspect-[2/3] w-full max-w-[7rem] rounded-xl border border-slate-800 object-cover"
               />
@@ -1838,7 +1838,7 @@ export const BrowseIndex: FC<{
               <a href={`/person/${p.id}-${slugify(p.name)}`} class="group block">
                 <img
                   src={`https://image.tmdb.org/t/p/w185${p.profile_path}`}
-                  alt={p.name}
+                  alt=""
                   loading="lazy"
                   class="mx-auto aspect-square w-16 rounded-full border border-slate-800 object-cover"
                 />

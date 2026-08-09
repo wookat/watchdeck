@@ -47,6 +47,19 @@
 
 ---
 
+## Round 183 — 2026-08-09（axe 全零回归：image-redundant-alt 清零）
+
+**发现（①线上测试/无障碍巡检）**
+- axe 4.10 七个公开页扫描：search/详情/browse 出现 minor `image-redundant-alt` 共 24 节点——人物头像/演员卡 alt 与相邻可见姓名重复，读屏读两遍。
+
+**修复**
+- 人物头像/演员图统一 `alt=""`（装饰图，姓名已由相邻文本承载）；人物详情主照保留 alt（无相邻重复）。
+
+**证据**
+- 部署 Version 897891fe。复扫 / /search /shows/severance /browse /pricing /about /guides 全部 0 violations。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
