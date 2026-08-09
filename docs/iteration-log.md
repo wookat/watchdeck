@@ -88,6 +88,19 @@
 
 ---
 
+## Round 186 — 2026-08-09（公开页 axe 全量扫描：20 页归零）
+
+**发现（③视觉/无障碍全量复扫）**
+- 对 20 个公开页面全量 axe 扫描：browse genre/network/year 三组模板的「All genres」内联链接、/terms mailto 链接、/signup「Log in」链接均 `link-in-text-block`（serious）；/signup 邮件用途微文案 `text-slate-500` 对比度 4.23<4.5（serious）。
+
+**修复**
+- 上述内联链接统一改常显 `underline`；signup 微文案改 `text-slate-400`。
+
+**证据**
+- 部署 Version ced81ca3。复扫 20 个公开页（含新 top-rated 页）+ /login /forgot 全部 0 violations。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

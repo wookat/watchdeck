@@ -456,16 +456,16 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
         {mode === "login" ? "Log in" : "Sign up"}
       </button>
       {mode === "signup" && (
-        <p class="text-xs text-slate-500">
+        <p class="text-xs text-slate-400">
           We only email you for things you ask for — a welcome note, password resets, and reminders you switch on. No marketing without consent.
         </p>
       )}
     </form>
     <p class="mt-4 text-sm text-slate-400">
       {mode === "login" ? (
-        <>No account? <a href="/signup" class="text-violet-400 hover:underline">Sign up</a> · <a href="/forgot" class="text-violet-400 hover:underline">Forgot password?</a></>
+        <>No account? <a href="/signup" class="text-violet-400 underline">Sign up</a> · <a href="/forgot" class="text-violet-400 underline">Forgot password?</a></>
       ) : (
-        <>Already a member? <a href="/login" class="text-violet-400 hover:underline">Log in</a></>
+        <>Already a member? <a href="/login" class="text-violet-400 underline">Log in</a></>
       )}
     </p>
   </div>
@@ -1874,7 +1874,7 @@ export const BrowseGenre: FC<{
       </h1>
       <p class="mb-6 text-slate-400">
         Popular {genre.name.toLowerCase()} {type === "tv" ? "series" : "films"} to track on WatchDeck.{" "}
-        <a href="/browse" class="text-violet-400 hover:underline">All genres</a>
+        <a href="/browse" class="text-violet-400 underline">All genres</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
@@ -1902,7 +1902,7 @@ export const BrowseNetwork: FC<{
       <h1 class="mb-2 text-2xl font-bold">{network.name} TV shows</h1>
       <p class="mb-6 text-slate-400">
         Popular series on {network.name} to track on WatchDeck.{" "}
-        <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; networks</a>
+        <a href="/browse" class="text-violet-400 underline">All genres &amp; networks</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
@@ -1961,7 +1961,7 @@ export const BrowseYear: FC<{
       </h1>
       <p class="mb-6 text-slate-400">
         The most popular {type === "tv" ? `series that premiered in ${year}` : `films released in ${year}`}, ready to track on WatchDeck.{" "}
-        <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; years</a>
+        <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
@@ -2259,7 +2259,7 @@ export const TermsPage: FC = () => (
     <h2 class="text-lg font-semibold text-white">Changes</h2>
     <p>
       We may update these terms; material changes will be noted on this page. Continued use after changes constitutes
-      acceptance. Contact: <a href="mailto:watchdeck@zalize.com" class="text-violet-400 hover:underline">watchdeck@zalize.com</a>.
+      acceptance. Contact: <a href="mailto:watchdeck@zalize.com" class="text-violet-400 underline">watchdeck@zalize.com</a>.
     </p>
   </div>
 );
