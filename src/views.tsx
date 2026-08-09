@@ -396,6 +396,35 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
       </>
     ),
   },
+  {
+    slug: "import-trakt-csv",
+    title: "How to import your Trakt or Serializd data",
+    description: "Export your watched history as CSV from Trakt or Serializd and bring it into WatchDeck in one upload.",
+    body: () => (
+      <>
+        <h2 class="text-lg font-semibold text-white">Getting a CSV out of Trakt</h2>
+        <p>
+          Trakt offers CSV exports of your data from the account settings area (some export types are VIP-gated on
+          Trakt's side). Any CSV that includes a title column works with WatchDeck — watched-history and watchlist
+          exports both import cleanly. Serializd's diary and watched exports follow the same shape and work the same way.
+        </p>
+        <h2 class="text-lg font-semibold text-white">What WatchDeck does with it</h2>
+        <p>
+          Upload the CSV on the <a href="/import" class="text-violet-400 underline underline-offset-2">Import page</a>. Each row is matched against TMDB by
+          title (and year when present); shows land in your library and movies are marked watched with their dates.
+          You review the matched list and confirm before anything is written, and unmatched titles are listed for
+          one-click manual binding — nothing is silently dropped.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Tips</h2>
+        <p>
+          CSV exports usually carry show-level rather than episode-level data, so after importing, open a show and use
+          "⇤ up to here" bulk-marking to square up your episode progress in seconds. If you also have a{" "}
+          <a href="/guides/export-tv-time-data" class="text-violet-400 underline underline-offset-2">TV Time export</a>, import that first — it includes
+          episode-level history that CSVs lack.
+        </p>
+      </>
+    ),
+  },
 ];
 
 export const GuidesIndexPage: FC = () => (

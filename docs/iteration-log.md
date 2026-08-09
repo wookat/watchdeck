@@ -125,6 +125,19 @@
 
 ---
 
+## Round 189 — 2026-08-09（内容营销扩容：Trakt/Serializd 导入指南）
+
+**发现（⑤数据 + 内容缺口）**
+- /guides 只有 3 篇（TV Time 导出/替代品对比/Netflix 导入），四大导入源里 Trakt/Serializd CSV 无指南——「trakt export csv」类常青搜索词是目标人群的迁移入口。
+
+**修复**
+- 新增 /guides/import-trakt-csv（Article JSON-LD 随模板自动生成，与既有指南互链，sitemap guides 5 URL）。
+
+**证据**
+- 部署 Version 623531c0。线上 200、title 正确；375px 无溢出、axe 0。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
