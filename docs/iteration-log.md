@@ -75,6 +75,19 @@
 
 ---
 
+## Round 185 — 2026-08-09（pSEO 扩容：Top rated 全时段榜单页）
+
+**发现（⑤数据分析 + ④竞品）**
+- 自然流量仍为零，pSEO 面继续扩容是低成本获客动作；Trakt/IMDb 均有「Top rated / Top 250」常青榜单页（高搜索量 evergreen 词），我们 browse 只有 genre/year/network 三维。
+
+**修复**
+- 新增 /browse/top-rated/:type（tv|movie）：TMDB top_rated 榜单、20 页分页、rel prev/next、BreadcrumbList+ItemList JSON-LD；/browse 首屏加「All-time greats」互链区；sitemap +2 URL（468 总量，随周更 IndexNow 提交）。
+
+**证据**
+- 部署 Version 4cc69800。线上：/browse/top-rated/tv 200（20 张海报卡、title/JSON-LD 正确）、?page=2 200、非法 type 404、sitemap 含 2 个 top-rated URL。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

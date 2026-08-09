@@ -61,6 +61,7 @@ import {
   BrowseGenre,
   BrowseNetwork,
   BrowseYear,
+  BrowseTopRated,
   type UserStats,
   type NextUpItem,
   type HistoryItem,
@@ -983,6 +984,28 @@ app.get("/browse/network/:idslug", async (c) => {
       jsonLd={browseCrumbs(c.env.SITE_URL, network.name, base, res.results, "tv")}
     >
       <BrowseNetwork network={network} results={res.results} page={page} totalPages={res.total_pages} />
+    </Layout>
+  );
+});
+
+app.get("/browse/top-rated/:type", async (c) => {
+  const type = c.req.param("type") === "movie" ? "movie" : c.req.param("type") === "tv" ? "tv" : null;
+  if (!type) return c.notFound();
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const res = await topRated(c.env, type, page);
+  const base = `${c.env.SITE_URL}/browse/top-rated/${type}`;
+  const last = Math.min(res.total_pages, 20);
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={`Top rated ${type === "tv" ? "TV shows" : "movies"} of all time`}
+      description={`The highest-rated ${type === "tv" ? "TV shows" : "movies"} of all time, ranked by viewer ratings — discover and track them on WatchDeck.`}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
+      jsonLd={browseCrumbs(c.env.SITE_URL, `Top rated ${type === "tv" ? "TV shows" : "movies"}`, base, res.results, type)}
+    >
+      <BrowseTopRated type={type} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
   );
 });
@@ -2493,6 +2516,7 @@ app.get("/sitemap.xml", async (c) => {
     for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
     for (const g of movieGenres.genres) urls.push(`${c.env.SITE_URL}/browse/movie/${g.id}-${slugify(g.name)}`);
     for (const n of NETWORKS) urls.push(`${c.env.SITE_URL}/browse/network/${n.id}-${slugify(n.name)}`);
+    urls.push(`${c.env.SITE_URL}/browse/top-rated/tv`, `${c.env.SITE_URL}/browse/top-rated/movie`);
     for (const y of browseYears()) {
       urls.push(`${c.env.SITE_URL}/browse/year/tv/${y}`, `${c.env.SITE_URL}/browse/year/movie/${y}`);
     }

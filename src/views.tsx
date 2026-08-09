@@ -1773,6 +1773,13 @@ export const BrowseIndex: FC<{
   <div>
     <h1 class="mb-2 text-2xl font-bold">Browse TV shows &amp; movies</h1>
     <p class="mb-8 text-slate-400">Find your next watch by genre, year or network — powered by TMDB.</p>
+    <section class="mb-10">
+      <h2 class="mb-4 text-xl font-semibold">All-time greats</h2>
+      <div class="flex flex-wrap gap-2">
+        <a href="/browse/top-rated/tv" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🏆 Top rated TV shows</a>
+        <a href="/browse/top-rated/movie" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🏆 Top rated movies</a>
+      </div>
+    </section>
     {(
       [
         ["TV shows", "tv", tvGenres],
@@ -1900,6 +1907,34 @@ export const BrowseNetwork: FC<{
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
           <MediaCard item={r} type="tv" />
+        ))}
+      </div>
+      <div class="mt-8 flex items-center gap-3 text-sm">
+        {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+        <span class="text-slate-400">Page {page} of {Math.min(totalPages, 20)}</span>
+        {page < Math.min(totalPages, 20) && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+      </div>
+    </div>
+  );
+};
+
+export const BrowseTopRated: FC<{
+  type: "tv" | "movie";
+  results: SearchResult[];
+  page: number;
+  totalPages: number;
+}> = ({ type, results, page, totalPages }) => {
+  const base = `/browse/top-rated/${type}`;
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">Top rated {type === "tv" ? "TV shows" : "movies"} of all time</h1>
+      <p class="mb-6 text-slate-400">
+        The highest-rated {type === "tv" ? "series" : "films"} ever, ranked by viewer ratings — track the ones you've seen on WatchDeck.{" "}
+        <a href="/browse" class="text-violet-400 hover:underline">All genres &amp; years</a>
+      </p>
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
+        {results.map((r) => (
+          <MediaCard item={r} type={type} />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">
