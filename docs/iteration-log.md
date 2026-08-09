@@ -101,6 +101,30 @@
 
 ---
 
+## Round 187 — 2026-08-09（竞品深度复访 + 新竞品扫描，10 轮节拍内）
+
+**发现（④竞品）**
+- Trakt 首页真实浏览器复访：结构与卖点（discover/track/share + app 推广）无新增功能信号，无新差距项。
+- Serializd、Simkl、ryot.io 均有 Cloudflare 盾，按红线不绕，跳过。
+- 新竞品扫描（开源赛道）：Showly（6.7k★，Android）、SeriesGuide（2.1k★，Android）、MediaTracker（924★，self-host）、Ryot（self-host，GPLv3）。逐一对功能面：均无 web 端托管产品与我们直接竞争；Ryot 的多领域（健身/书籍）超出我们定位。无需借鉴的新缺口。
+
+**结论**：无新增 P0-P2 差距项；下一次深度复访安排在 R197 前后。
+
+---
+
+## Round 188 — 2026-08-09（typeahead 支持人物建议）
+
+**发现（②新用户 UX + ⑤搜索词）**
+- 搜索词 Top20 中人名类占比高（tom/chris/lee/emilia clarke/tom hanks），但 /api/suggest 只回 tv/movie——输入人名时下拉全是片名噪音，R147 人物页从 typeahead 不可达。
+
+**修复**
+- /api/suggest 纳入 person（profile_path 头像、链接到 /person/:idslug）；下拉 meta 显示「Person」；app.js v172。
+
+**证据**
+- 部署 Version bbb76f12。API：q=tom hanks 首位 person→/person/31-tom-hanks；线上 UI 实测「emilia clar」下拉出「Emilia Clarke · Person」并可点入人物页（截图 r188_person_suggest.png）。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

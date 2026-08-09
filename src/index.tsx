@@ -527,14 +527,19 @@ app.get("/api/suggest", async (c) => {
   if (q.length < 2) return c.json({ results: [] });
   const res = await searchMulti(c.env, q);
   const results = res.results
-    .filter((r) => (r.media_type === "tv" || r.media_type === "movie") && r.poster_path)
+    .filter((r) =>
+      r.media_type === "person" ? !!r.profile_path : (r.media_type === "tv" || r.media_type === "movie") && !!r.poster_path
+    )
     .slice(0, 8)
     .map((r) => ({
       t: r.name ?? r.title ?? "",
       y: (r.first_air_date ?? r.release_date ?? "").slice(0, 4),
       m: r.media_type,
-      u: `/${r.media_type === "tv" ? "shows" : "movies"}/${r.id}-${slugify(r.name ?? r.title ?? "")}`,
-      p: r.poster_path,
+      u:
+        r.media_type === "person"
+          ? `/person/${r.id}-${slugify(r.name ?? "")}`
+          : `/${r.media_type === "tv" ? "shows" : "movies"}/${r.id}-${slugify(r.name ?? r.title ?? "")}`,
+      p: r.media_type === "person" ? r.profile_path : r.poster_path,
     }));
   c.header("cache-control", "public, max-age=300");
   return c.json({ results });
