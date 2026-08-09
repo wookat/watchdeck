@@ -1614,7 +1614,7 @@ app.get("/guides/:slug", (c) => {
         "@type": "Article",
         headline: guide.title,
         description: guide.description,
-        dateModified: "2026-08-05",
+        dateModified: new Date(guide.updated).toISOString().slice(0, 10),
         author: { "@type": "Organization", name: "WatchDeck" },
         mainEntityOfPage: `${c.env.SITE_URL}/guides/${guide.slug}`,
       }}
