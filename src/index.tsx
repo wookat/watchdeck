@@ -62,6 +62,7 @@ import {
   BrowseNetwork,
   BrowseYear,
   BrowseTopRated,
+  BrowseTrending,
   type UserStats,
   type NextUpItem,
   type HistoryItem,
@@ -989,6 +990,24 @@ app.get("/browse/network/:idslug", async (c) => {
       jsonLd={browseCrumbs(c.env.SITE_URL, network.name, base, res.results, "tv")}
     >
       <BrowseNetwork network={network} results={res.results} page={page} totalPages={res.total_pages} />
+    </Layout>
+  );
+});
+
+app.get("/browse/trending/:type", async (c) => {
+  const type = c.req.param("type") === "movie" ? "movie" : c.req.param("type") === "tv" ? "tv" : null;
+  if (!type) return c.notFound();
+  const res = type === "tv" ? await trendingTv(c.env) : await trendingMovies(c.env);
+  const base = `${c.env.SITE_URL}/browse/trending/${type}`;
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={`Trending ${type === "tv" ? "TV shows" : "movies"} this week`}
+      description={`The ${type === "tv" ? "TV shows" : "movies"} everyone is watching this week — discover and track them on WatchDeck.`}
+      canonical={base}
+      jsonLd={browseCrumbs(c.env.SITE_URL, `Trending ${type === "tv" ? "TV shows" : "movies"}`, base, res.results, type)}
+    >
+      <BrowseTrending type={type} results={res.results} />
     </Layout>
   );
 });
@@ -2522,6 +2541,7 @@ app.get("/sitemap.xml", async (c) => {
     for (const g of movieGenres.genres) urls.push(`${c.env.SITE_URL}/browse/movie/${g.id}-${slugify(g.name)}`);
     for (const n of NETWORKS) urls.push(`${c.env.SITE_URL}/browse/network/${n.id}-${slugify(n.name)}`);
     urls.push(`${c.env.SITE_URL}/browse/top-rated/tv`, `${c.env.SITE_URL}/browse/top-rated/movie`);
+    urls.push(`${c.env.SITE_URL}/browse/trending/tv`, `${c.env.SITE_URL}/browse/trending/movie`);
     for (const y of browseYears()) {
       urls.push(`${c.env.SITE_URL}/browse/year/tv/${y}`, `${c.env.SITE_URL}/browse/year/movie/${y}`);
     }

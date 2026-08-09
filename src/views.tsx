@@ -1803,10 +1803,12 @@ export const BrowseIndex: FC<{
     <h1 class="mb-2 text-2xl font-bold">Browse TV shows &amp; movies</h1>
     <p class="mb-8 text-slate-400">Find your next watch by genre, year or network — powered by TMDB.</p>
     <section class="mb-10">
-      <h2 class="mb-4 text-xl font-semibold">All-time greats</h2>
+      <h2 class="mb-4 text-xl font-semibold">Charts</h2>
       <div class="flex flex-wrap gap-2">
         <a href="/browse/top-rated/tv" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🏆 Top rated TV shows</a>
         <a href="/browse/top-rated/movie" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🏆 Top rated movies</a>
+        <a href="/browse/trending/tv" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🔥 Trending TV shows</a>
+        <a href="/browse/trending/movie" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🔥 Trending movies</a>
       </div>
     </section>
     {(
@@ -1974,6 +1976,24 @@ export const BrowseTopRated: FC<{
     </div>
   );
 };
+
+export const BrowseTrending: FC<{
+  type: "tv" | "movie";
+  results: SearchResult[];
+}> = ({ type, results }) => (
+  <div>
+    <h1 class="mb-2 text-2xl font-bold">Trending {type === "tv" ? "TV shows" : "movies"} this week</h1>
+    <p class="mb-6 text-slate-400">
+      What everyone is watching right now, refreshed weekly — track them on WatchDeck.{" "}
+      <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
+    </p>
+    <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
+      {results.map((r) => (
+        <MediaCard item={r} type={type} />
+      ))}
+    </div>
+  </div>
+);
 
 export const BrowseYear: FC<{
   type: "tv" | "movie";

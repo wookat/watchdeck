@@ -138,6 +138,29 @@
 
 ---
 
+## Round 190 — 2026-08-09（Charts 补全：Trending 周榜页）
+
+**发现（④竞品对齐）**
+- Trakt 有完整 charts 体系（trending/popular/anticipated），我们 R185 只补了 top-rated；trending 数据（TMDB /trending/*/week，12h 缓存）已在用（搜索空态），但无独立可索引页面。
+
+**修复**
+- 新增 /browse/trending/:type（tv|movie）周榜页（BreadcrumbList+ItemList JSON-LD、canonical）；/browse「All-time greats」区更名「Charts」并加 🔥 Trending 两链接；sitemap +2（470 总量）。
+
+**证据**
+- 部署 Version f0680f72。线上 /browse/trending/tv|movie 200、非法 type 404、sitemap 含 2 个 trending URL；375px 无溢出、axe 0（/browse 与两新页）。
+
+---
+
+## Round 191 — 2026-08-09（全面体检轮：CWV/移动端/404/OG 抽查，全绿无缺陷）
+
+**发现（①线上测试 + ③视觉 + ②UX 走查）**
+- CWV 实测（真实浏览器）：/ LCP 140ms、trending 152ms、详情页 468ms，CLS 全部 0.000，TTFB 24-339ms——远优于大厂门槛（LCP<2.5s）。
+- 375px 六页抽查（landing/pricing/about/详情×2/搜索）scrollWidth 全部 ≤375；404 页有品牌化文案与三向出口；og:image 正常。
+
+**结论**：本轮未发现 P0-P2，不修改代码。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
