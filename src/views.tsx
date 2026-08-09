@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 167;
+export const CSS_VERSION = 168;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -1216,7 +1216,9 @@ export const ShowPage: FC<{
                   <span
                     class={`ml-1.5 text-xs ${
                       s.episode_count > 0 && seen >= s.episode_count
-                        ? "text-emerald-300"
+                        ? season?.season_number === s.season_number
+                          ? "text-emerald-100"
+                          : "text-emerald-300"
                         : season?.season_number === s.season_number
                           ? "text-violet-100"
                           : "text-slate-300"
