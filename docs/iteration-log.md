@@ -244,6 +244,19 @@
 
 ---
 
+## Round 199 — 2026-08-10（深链登录返回：/login?next= 全链路）
+
+**发现（②新用户 UX 走查）**
+- 匿名点击深链（如指南内 /roulette、/home）→ 302 /login 后丢失目的地，登录固定落 /home——R195 指南的内链体验断裂；signup 已支持 next 而 login 不支持（不对称）。
+
+**修复**
+- 新增 loginRedirect helper：GET 未登录统一 302 `/login?next=<path+query>`（37 处调用点，POST 不带 next）；/login GET 渲染 hidden next（沿用 safeNext 防开放重定向，负例 https://evil.com 被拒）；/login POST 成功后落 next ?? /home，错误重渲染保留 next；login↔signup 交叉链接透传 next。
+
+**证据**
+- 部署 Version 9a83aa15。线上 /roulette → /login?next=%2Froulette、表单含 hidden next=/roulette、evil.com 负例 0 命中；正向登录返回流程列入下批测试代理回归。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

@@ -527,9 +527,9 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
     </form>
     <p class="mt-4 text-sm text-slate-400">
       {mode === "login" ? (
-        <>No account? <a href="/signup" class="text-violet-400 underline">Sign up</a> · <a href="/forgot" class="text-violet-400 underline">Forgot password?</a></>
+        <>No account? <a href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"} class="text-violet-400 underline">Sign up</a> · <a href="/forgot" class="text-violet-400 underline">Forgot password?</a></>
       ) : (
-        <>Already a member? <a href="/login" class="text-violet-400 underline">Log in</a></>
+        <>Already a member? <a href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} class="text-violet-400 underline">Log in</a></>
       )}
     </p>
   </div>
