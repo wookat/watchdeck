@@ -602,6 +602,22 @@
 
 ---
 
+## Round 229 — 2026-08-10（竞品深度复访 + 新竞品扫描：无新对标项）
+
+**扫描（④竞品调研，10 轮节奏深访）**
+- Trakt：trakt.tv/shows/trending 301 → app.trakt.tv，匿名态渲染为营销首页（discover/track/share 三卖点 + Join CTA + 海报墙），榜单内容全靠客户端 JS——我们 SSR 榜单页在可索引性上持续反超；未见新功能面（社交层仍为我方有意不复刻项）。
+- TV Time 仍为告别页（Thank You）；Serializd/Simkl/Reelgood 403 盾（红线跳过）；Showly/tvshowtime 域名不可达；TVmaze/Must/JustWatch 可访问无新对标项。
+- 结论：无新对标缺口，无改动。
+
+---
+
+## Round 230 — 2026-08-10（UX/视觉走查轮：0 缺陷）
+
+**扫描（②UX 走查 + ③视觉分析）**
+- 桌面端榜单页视觉走查（真实浏览器）：ChartNav pill 高亮、海报网格、分页、footer 内链均正常；零结果搜索页承接完整（拼写提示 + trending 回退网格）；受保护页 302 → /login?next= 深链保留；/pricing、og-default 正常。无新缺陷、无改动。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
