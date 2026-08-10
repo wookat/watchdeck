@@ -254,10 +254,10 @@ app.get("/signup", (c) => c.html(<Layout user={c.get("user")} title="Sign up"><A
 app.get("/login", (c) => c.html(<Layout user={c.get("user")} title="Log in"><AuthForm mode="login" next={safeNext(c.req.query("next"))} /></Layout>));
 
 app.post("/signup", async (c) => {
-  if (!(await rateLimit(c, "signup", 10))) {
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Too many attempts. Please try again in a few minutes." /></Layout>, 429);
-  }
   const form = await c.req.parseBody();
+  if (!(await rateLimit(c, "signup", 10))) {
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} /></Layout>, 429);
+  }
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || password.length < 8) {
@@ -289,10 +289,10 @@ app.post("/signup", async (c) => {
 });
 
 app.post("/login", async (c) => {
-  if (!(await rateLimit(c, "login", 15))) {
-    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Too many attempts. Please try again in a few minutes." /></Layout>, 429);
-  }
   const form = await c.req.parseBody();
+  if (!(await rateLimit(c, "login", 15))) {
+    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} /></Layout>, 429);
+  }
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
   const row = await c.env.DB.prepare("SELECT id, password_hash, salt FROM users WHERE email = ?")

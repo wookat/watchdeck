@@ -296,6 +296,19 @@
 
 ---
 
+## Round 203 — 2026-08-10（auth 429 分支补 next 保留）
+
+**发现（①线上测试，P3 顺延 R199）**
+- /login 与 /signup 的 429 速率限制分支重渲染表单时丢失 hidden next——用户触发限流后重试成功会丢深链目的地（R199 只覆盖了 401 分支）。
+
+**修复**
+- 两路由先 parseBody 再限流判断，429 分支同样传 next={safeNext(form.next)}；安全口径不变（safeNext 拒 evil.com）。
+
+**证据**
+- 部署 Version 2301fdf3。线上错密码 POST 带 next=/calendar?x=1 → 重渲染保留 hidden next；next=https://evil.com → 0 命中。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
