@@ -534,6 +534,20 @@
 
 ---
 
+## Round 223 — 2026-08-10（Guides hub 更新日期 + 竞品轻扫描）
+
+**发现（②UX/信任 + ④竞品，P3）**
+- /guides hub 卡片无更新日期——指南详情页与 sitemap lastmod 均有真实日期，hub 缺失削弱内容新鲜度信任信号。
+- 竞品轻扫描：Trakt 仍 301→app.trakt.tv（全 JS）；TV Time 仍告别页；Serializd/Simkl/Letterboxd 仍 403 盾（红线跳过）；TVmaze/Must 可访问无新缺口。无新对标项。
+
+**修复**
+- GuidesIndexPage 卡片增「Updated Mon D, YYYY」行（来源 GUIDES.updated，UTC 格式化）。
+
+**证据**
+- 部署 Version e6666563。线上 hub 6 卡片日期正确（08-05×3/08-09×2/08-10×1）。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
