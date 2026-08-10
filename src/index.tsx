@@ -1641,6 +1641,16 @@ app.get("/guides", (c) =>
       title="Guides"
       description="Practical guides for moving your watch history: TV Time exports, Netflix imports and tracker comparisons."
       canonical={`${c.env.SITE_URL}/guides`}
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        itemListElement: GUIDES.map((g, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          name: g.title,
+          url: `${c.env.SITE_URL}/guides/${g.slug}`,
+        })),
+      }}
     >
       <GuidesIndexPage />
     </Layout>

@@ -474,6 +474,20 @@
 
 ---
 
+## Round 218 — 2026-08-10（Guides hub ItemList JSON-LD + 数据/健康巡检）
+
+**发现（⑤SEO + ①线上测试，P3）**
+- /guides hub 是内容营销入口页却无 JSON-LD（各 guide 详情已有 Article）——榜单/浏览页均已有 ItemList，hub 是覆盖缺口。
+- 数据轮：外部 referrer 仍为 0（全部直连/站内），近 3 天搜索词全为 QA 信号（severance/inception/zzzqqqxx 等测试词），零结果词无真实缺口；核心页 TTFB 67-369ms 正常。
+
+**修复**
+- /guides 增 ItemList JSON-LD（6 篇指南 position+name+url）。
+
+**证据**
+- 部署 Version 7450ae7e。线上 /guides JSON-LD 解析有效（ItemList，6 项）。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
