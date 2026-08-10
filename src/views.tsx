@@ -527,6 +527,18 @@ export const GuidesIndexPage: FC = () => (
 export const GuidePage: FC<{ guide: (typeof GUIDES)[number] }> = ({ guide }) => (
   <GuideLayout title={guide.title} updated={guide.updated}>
     <guide.body />
+    <div class="mt-10 border-t border-slate-800 pt-6">
+      <h2 class="text-lg font-semibold text-white">More guides</h2>
+      <ul class="mt-3 space-y-2">
+        {GUIDES.filter((g) => g.slug !== guide.slug)
+          .slice(0, 3)
+          .map((g) => (
+            <li>
+              <a href={`/guides/${g.slug}`} class="text-violet-400 underline underline-offset-2">{g.title}</a>
+            </li>
+          ))}
+      </ul>
+    </div>
   </GuideLayout>
 );
 
