@@ -38,7 +38,7 @@ import {
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, isNetflixCsv, parseNetflixCsv, type ParsedImport } from "./importer";
 import { sendEmail, welcomeEmail, resetEmail, confirmSignupEmail } from "./email";
-import { shareOgImage, listOgImage, wrappedOgImage } from "./og";
+import { shareOgImage, listOgImage, wrappedOgImage, guideOgImage } from "./og";
 import {
   CSS_VERSION,
   Layout,
@@ -1627,6 +1627,19 @@ app.get("/guides", (c) =>
   )
 );
 
+app.get("/og/guide/:slug{[a-z0-9-]+\\.png}", async (c) => {
+  const slug = c.req.param("slug").replace(/\.png$/, "");
+  const guide = GUIDES.find((g) => g.slug === slug);
+  if (!guide) return c.notFound();
+  const cacheKey = `og:guide:${guide.slug}:${guide.updated}`;
+  const cached = await c.env.CACHE.get(cacheKey, "arrayBuffer");
+  if (cached) return c.body(cached, 200, { "content-type": "image/png", "cache-control": "public, max-age=86400" });
+  const res = await guideOgImage(c.env, guide.title, guide.description);
+  const buf = await res.arrayBuffer();
+  c.executionCtx.waitUntil(c.env.CACHE.put(cacheKey, buf, { expirationTtl: 30 * 24 * 3600 }));
+  return c.body(buf, 200, { "content-type": "image/png", "cache-control": "public, max-age=86400" });
+});
+
 app.get("/guides/:slug", (c) => {
   const guide = GUIDES.find((g) => g.slug === c.req.param("slug"));
   if (!guide) return c.notFound();
@@ -1636,6 +1649,7 @@ app.get("/guides/:slug", (c) => {
       title={guide.title}
       description={guide.description}
       canonical={`${c.env.SITE_URL}/guides/${guide.slug}`}
+      ogImage={`${c.env.SITE_URL}/og/guide/${guide.slug}.png`}
       ogType="article"
       jsonLd={{
         "@context": "https://schema.org",

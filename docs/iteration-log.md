@@ -369,6 +369,32 @@
 
 ---
 
+## Round 209 — 2026-08-10（无导出难民入口：落地页 + /import 内链新指南）
+
+**发现（②UX 走查，P2）**
+- R207 新指南只能从 /guides hub 与 sitemap 到达——落地页主 CTA「Import my TV Time data」对没有 ZIP 的难民（关停后的多数）是死胡同，/import 页也无兜底指引。
+
+**修复**
+- 落地页 hero 信任行下补一行「No export ZIP? Here's how to rebuild your history」；/import 介绍段尾补同一内链。
+
+**证据**
+- 部署 Version 3c606400。线上落地页含新内链；无效路由巡检（guides/w/u/person/shows/trending 六类）均 404 正常。
+
+---
+
+## Round 210 — 2026-08-10（指南专属 OG 分享卡）
+
+**发现（③视觉/传播 + ④营销窗口，P2）**
+- 6 篇指南分享到社媒/Reddit 全部显示同一张 og-default.png——TV Time 关停获客窗口下，指南是主要分发素材，通用卡片降低点击率且缺专业感（profile/list/wrapped 均已有专属 OG 卡，指南是缺口）。
+
+**修复**
+- og.ts 新增 guideOgImage（WATCHDECK GUIDES 眉题+标题+描述，1200×630 渐变卡）；新路由 /og/guide/:slug.png（KV 按 slug+updated 缓存 30 天，响应 max-age=86400）；guides 路由 ogImage 指向专属卡。
+
+**证据**
+- 部署 Version 98fc7229。线上 6 篇指南 og:image 均指向专属卡、PNG 渲染正常（实测 174KB）、非指南 slug 404。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

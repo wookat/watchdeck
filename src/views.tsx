@@ -191,6 +191,9 @@ export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
       <p class="mt-6 text-sm text-slate-500">
         No app to install · No ads · Your data exports any time · <a href="/pricing" class="text-violet-400 hover:underline">Free while in beta</a>
       </p>
+      <p class="mt-2 text-sm text-slate-500">
+        No export ZIP? <a href="/guides/rebuild-watch-history-without-tv-time-export" class="text-violet-400 hover:underline">Here's how to rebuild your history</a>
+      </p>
     </section>
     <section class="py-10">
       <h2 class="mb-6 text-center text-2xl font-bold">Up and running in three steps</h2>
@@ -2964,7 +2967,11 @@ export const ImportPage: FC<{ welcome?: boolean }> = ({ welcome }) => (
       Upload the GDPR export ZIP you downloaded from TV Time before it shut down — it works here as-is.
       We import your tracked episodes, followed shows <strong>and movies</strong> — then take you straight to your next episode. Coming
       from Trakt or Serializd? A CSV export with a title column works too — a rating column (1–5 or 1–10) becomes your star ratings. Netflix's ViewingActivity.csv also works — shows are added to
-      your library and movies marked watched (Netflix doesn't export episode numbers).
+      your library and movies marked watched (Netflix doesn't export episode numbers). No export at all?{" "}
+      <a href="/guides/rebuild-watch-history-without-tv-time-export" class="text-violet-400 hover:underline">
+        Here's how to rebuild your history
+      </a>
+      .
     </p>
     <div
       id="dropzone"
