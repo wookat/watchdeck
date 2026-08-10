@@ -665,6 +665,28 @@
 
 ---
 
+## Round 235 — 2026-08-10（健康巡检 + 数据轮：0 缺陷）
+
+**扫描（①线上测试 + ②UX + ⑤数据）**
+- 17 条核心公开路由全 200，TTFB 0.06-0.43s；受保护路由 302→/login?next 正常，/wrapped→/wrapped/2026。
+- 新对比指南桌面走查：排版/互链/More guides 区正常。
+- 搜索词近 7 天 top20 仍全为 QA 信号（severance/inception/zzzqqqxx 等）；D1 users=8 基线完好；外部 referrer 持续为 0。无新缺陷、无代码改动。
+
+---
+
+## Round 236 — 2026-08-10（对比页内链闭环）
+
+**发现（⑤pSEO 内链拓扑，P3）**
+- tv-time-alternatives 指南的 Trakt 段落未链到新对比页——两页主题强相关，缺互链损失权重传递与用户动线。
+
+**修复**
+- Trakt 段落补「WatchDeck vs Trakt in detail」内链；该指南 updated 同步至 Aug 10（sitemap lastmod/JSON-LD dateModified 自动跟随）。
+
+**证据**
+- 部署 Version 392a45b6。线上指南正文含新内链，sitemap lastmod 已更新为 2026-08-10。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
