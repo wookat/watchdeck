@@ -333,6 +333,50 @@ export const GUIDES: { slug: string; title: string; description: string; updated
     ),
   },
   {
+    slug: "rebuild-watch-history-without-tv-time-export",
+    updated: "August 10, 2026",
+    title: "TV Time shut down without your export? How to rebuild your watch history",
+    description: "No GDPR ZIP? Here are four practical ways to get your TV and movie history back after the TV Time shutdown.",
+    body: () => (
+      <>
+        <p>
+          TV Time has shut down completely — the apps, the website and the GDPR export portal are all gone, so a new
+          data export can no longer be requested. If you saved your ZIP before the end, you're set:{" "}
+          <a href="/import" class="text-violet-400 underline underline-offset-2">upload it as-is</a> and everything comes
+          across. If you didn't, here's how to rebuild without it.
+        </p>
+        <h2 class="text-lg font-semibold text-white">1 — Check your email and downloads first</h2>
+        <p>
+          GDPR exports were delivered as a ZIP link by email. Search your inbox for "TV Time" — many people requested an
+          export during the shutdown announcement and forgot. The ZIP works in WatchDeck unchanged, however old it is:
+          even a partial snapshot beats starting from zero.
+        </p>
+        <h2 class="text-lg font-semibold text-white">2 — Import from a service you also used</h2>
+        <p>
+          If you ever synced or double-tracked on Trakt or Serializd, their{" "}
+          <a href="/guides/import-trakt-csv" class="text-violet-400 underline underline-offset-2">CSV exports import directly</a>. And your{" "}
+          <a href="/guides/import-netflix-history" class="text-violet-400 underline underline-offset-2">Netflix viewing history</a>{" "}
+          covers years of what you actually streamed there — shows land in your library and movies are marked watched.
+        </p>
+        <h2 class="text-lg font-semibold text-white">3 — Rebuild the shows you're mid-way through</h2>
+        <p>
+          You don't need your full history to keep watching. Add your current shows via{" "}
+          <a href="/search" class="text-violet-400 underline underline-offset-2">search</a>, open the season you're on and
+          hit "⇤ up to here" on the last episode you saw — one click marks everything before it watched. Ten minutes
+          covers most people's active rotation, and <a href="/home" class="text-violet-400 underline underline-offset-2">Next Up</a>{" "}
+          takes over from there.
+        </p>
+        <h2 class="text-lg font-semibold text-white">4 — Backfill the rest as it comes back to you</h2>
+        <p>
+          Finished shows can be marked watched season-by-season whenever you remember them, and watch dates are
+          editable if you care about your stats and{" "}
+          <a href="/guides/what-to-watch-tonight" class="text-violet-400 underline underline-offset-2">what to watch next</a>.
+          Whatever you rebuild is yours to keep: WatchDeck exports your complete data as JSON any time.
+        </p>
+      </>
+    ),
+  },
+  {
     slug: "tv-time-alternatives",
     updated: "August 5, 2026",
     title: "TV Time alternatives in 2026: an honest comparison",

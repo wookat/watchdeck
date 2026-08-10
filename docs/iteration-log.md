@@ -346,6 +346,29 @@
 
 ---
 
+## Round 207 — 2026-08-10（新指南：没有 TV Time 导出如何重建历史）
+
+**发现（④竞品/市场 + ⑤pSEO，P2 机会）**
+- TV Time 关停后大量难民没来得及申请导出——「tv time shut down / get data back」是当下最高意图搜索词，我们无针对性内容承接。
+
+**修复**
+- 新增指南 /guides/rebuild-watch-history-without-tv-time-export：四步重建路径（翻邮箱找 ZIP → Trakt/Serializd CSV 或 Netflix 历史 → 搜索+「⇤ up to here」快速重建在追剧 → 随想随补）；GUIDES 数组驱动自动进 /guides hub、sitemap 与 Article JSON-LD。
+
+**证据**
+- 部署 Version 4e5dcc48。线上 200、guides hub 与 sitemap 均含新页、内链 4 条互通。
+
+---
+
+## Round 208 — 2026-08-10（数据轮扫描 + R204-207 全量回归）
+
+**发现（⑤数据分析）**
+- 近 7 天 referrer 全为站内（QA 活动），搜索词均为 QA 残留（dark/severance/dune/zzzqqqxx）——无外部自然流量，无可行动项。TV Time 关停是最大获客窗口，依赖 docs/marketing/ 需真人执行清单。
+
+**回归（测试代理，Version 4e5dcc48）**
+- 8/8 项全过、0 新缺陷：trending p1↔p2/p2↔p3 零重复（R200 遗留 P3 确认修复，p2+ 少于 20 卡为去重预期）、FAQ/import 停服文案生效且 gdpr.tvtime.com 死链清零、新指南渲染+JSON-LD+内链、375px 无溢出+axe 全零、throwaway 清理后 D1 基线 users=8 完好。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
