@@ -239,13 +239,19 @@ app.get("/", async (c) => {
 });
 
 // ---------- auth ----------
+function loginRedirect(c: { req: { method: string; url: string }; redirect: (u: string) => Response }): Response {
+  if (c.req.method !== "GET") return c.redirect("/login");
+  const u = new URL(c.req.url);
+  return c.redirect(`/login?next=${encodeURIComponent(u.pathname + u.search)}`);
+}
+
 function safeNext(raw: unknown): string | undefined {
   const s = typeof raw === "string" ? raw : "";
   return s.startsWith("/") && !s.startsWith("//") && !s.includes("\\") ? s : undefined;
 }
 
 app.get("/signup", (c) => c.html(<Layout user={c.get("user")} title="Sign up"><AuthForm mode="signup" next={safeNext(c.req.query("next"))} /></Layout>));
-app.get("/login", (c) => c.html(<Layout user={c.get("user")} title="Log in"><AuthForm mode="login" /></Layout>));
+app.get("/login", (c) => c.html(<Layout user={c.get("user")} title="Log in"><AuthForm mode="login" next={safeNext(c.req.query("next"))} /></Layout>));
 
 app.post("/signup", async (c) => {
   if (!(await rateLimit(c, "signup", 10))) {
@@ -293,11 +299,11 @@ app.post("/login", async (c) => {
     .bind(email)
     .first<{ id: number; password_hash: string; salt: string }>();
   if (!row || !(await verifyPassword(password, row.salt, row.password_hash))) {
-    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Wrong email or password." /></Layout>, 401);
+    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Wrong email or password." next={safeNext(form.next)} /></Layout>, 401);
   }
   await createSession(c, row.id);
   c.executionCtx.waitUntil(c.env.CACHE.delete(rateLimitKey(c, "login")).catch(() => {}));
-  return c.redirect("/home");
+  return c.redirect(safeNext(form.next) ?? "/home");
 });
 
 app.get("/forgot", (c) => c.html(<Layout user={c.get("user")} title="Reset password"><ForgotForm /></Layout>));
@@ -364,7 +370,7 @@ app.post("/logout", async (c) => {
 // ---------- app pages ----------
 app.get("/home", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const tracked = await c.env.DB.prepare(
     "SELECT tmdb_id, title, poster_path FROM tracked WHERE user_id = ? AND media_type = 'tv' AND status = 'watching' ORDER BY updated_at DESC LIMIT 18"
   )
@@ -752,7 +758,7 @@ app.get("/person/:idslug", async (c) => {
 
 app.get("/library", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const status = c.req.query("status") ?? "all";
   const q = (c.req.query("q") ?? "").trim();
   const cols =
@@ -860,7 +866,7 @@ async function upcomingItems(env: AppContext["Bindings"], userId: number): Promi
 
 app.get("/calendar", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   let feed = await c.env.DB.prepare("SELECT token FROM feed_tokens WHERE user_id = ?").bind(user.id).first<{ token: string }>();
   if (!feed) {
     const bytes = new Uint8Array(16);
@@ -879,7 +885,7 @@ app.get("/calendar", async (c) => {
 
 app.post("/api/feed/rotate", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
   const token = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -1418,7 +1424,7 @@ app.get("/wrapped", (c) => c.redirect(`/wrapped/${new Date().getUTCFullYear()}`)
 
 app.get("/wrapped/:year", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const year = wrappedYear(c.req.param("year"));
   if (!year) return c.notFound();
   const [stats, share, years] = await Promise.all([
@@ -1440,7 +1446,7 @@ app.get("/wrapped/:year", async (c) => {
 
 app.post("/api/wrapped/share", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const year = wrappedYear(String(form.year ?? ""));
   if (!year) return c.redirect("/wrapped");
@@ -1493,7 +1499,7 @@ app.get("/w/:token/og.png", async (c) => {
 
 app.post("/api/history/date", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   const date = String(form.date ?? "");
@@ -1524,7 +1530,7 @@ app.post("/api/history/date", async (c) => {
 
 app.get("/history", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const perPage = 100;
   const total = await c.env.DB.prepare(
     "SELECT (SELECT COUNT(*) FROM episode_watches WHERE user_id = ?1) + (SELECT COUNT(*) FROM movie_watches WHERE user_id = ?1) AS n"
@@ -1660,7 +1666,7 @@ app.get("/pricing", (c) =>
 
 app.get("/more", (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   return c.html(
     <Layout user={user} title="More">
       <MorePage />
@@ -1670,7 +1676,7 @@ app.get("/more", (c) => {
 
 app.get("/settings", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const saved = c.req.query("saved") ?? undefined;
   const error = c.req.query("error") ?? undefined;
   const services = await userServices(c.env, user.id);
@@ -1683,7 +1689,7 @@ app.get("/settings", async (c) => {
 
 app.get("/api/export", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const [tracked, episodes, movies] = await c.env.DB.batch([
     c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating, notes, created_at, updated_at FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
     c.env.DB.prepare("SELECT tmdb_id, season, episode, watched_at, plays, rating FROM episode_watches WHERE user_id = ? ORDER BY tmdb_id, season, episode").bind(user.id),
@@ -1706,7 +1712,7 @@ app.get("/api/export", async (c) => {
 
 app.get("/api/export.csv", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const [tracked, episodes, movies] = await c.env.DB.batch([
     c.env.DB.prepare("SELECT tmdb_id, media_type, title, status, rating FROM tracked WHERE user_id = ? ORDER BY title").bind(user.id),
     c.env.DB.prepare(
@@ -1743,7 +1749,7 @@ app.get("/api/export.csv", async (c) => {
 
 app.post("/api/settings/services", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody({ all: true });
   const raw = form.service;
   const picked = (Array.isArray(raw) ? raw : raw != null ? [raw] : [])
@@ -1758,7 +1764,7 @@ app.post("/api/settings/services", async (c) => {
 
 app.get("/roulette", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const pick =
     (await c.env.DB.prepare("SELECT tmdb_id, media_type, title FROM tracked WHERE user_id = ? AND status = 'watchlist' ORDER BY RANDOM() LIMIT 1")
       .bind(user.id)
@@ -1772,7 +1778,7 @@ app.get("/roulette", async (c) => {
 
 app.get("/lists", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const lists = await c.env.DB.prepare(
     `SELECT l.id, l.name, l.created_at,
        (SELECT COUNT(*) FROM list_items li WHERE li.list_id = l.id) AS item_count,
@@ -1790,7 +1796,7 @@ app.get("/lists", async (c) => {
 
 app.get("/lists/:id", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const id = parseInt(c.req.param("id"), 10);
   if (!Number.isFinite(id)) return c.notFound();
   const list = await c.env.DB.prepare("SELECT id, name, share_token FROM lists WHERE id = ? AND user_id = ?").bind(id, user.id).first<{ id: number; name: string; share_token: string | null }>();
@@ -1809,7 +1815,7 @@ app.get("/lists/:id", async (c) => {
 
 app.post("/api/lists/share", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const listId = parseInt(String(form.list_id), 10);
   if (!Number.isFinite(listId)) return c.redirect("/lists");
@@ -1882,7 +1888,7 @@ app.get("/list/:token/og.png", async (c) => {
 
 app.post("/api/lists", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const name = String(form.name ?? "").trim().slice(0, 60);
   if (!name) return c.redirect("/lists");
@@ -1894,7 +1900,7 @@ app.post("/api/lists", async (c) => {
 
 app.post("/api/lists/delete", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const listId = parseInt(String(form.list_id), 10);
   if (Number.isFinite(listId)) {
@@ -1908,7 +1914,7 @@ app.post("/api/lists/delete", async (c) => {
 
 app.post("/api/lists/add", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const listId = parseInt(String(form.list_id), 10);
   const tmdbId = parseInt(String(form.tmdb_id), 10);
@@ -1931,7 +1937,7 @@ app.post("/api/lists/add", async (c) => {
 
 app.post("/api/lists/remove", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const listId = parseInt(String(form.list_id), 10);
   const tmdbId = parseInt(String(form.tmdb_id), 10);
@@ -1949,7 +1955,7 @@ app.post("/api/lists/remove", async (c) => {
 
 app.post("/api/settings/profile", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const name = String(form.display_name ?? "").trim().slice(0, 40);
   await c.env.DB.prepare("UPDATE users SET display_name = ? WHERE id = ?").bind(name || null, user.id).run();
@@ -1958,7 +1964,7 @@ app.post("/api/settings/profile", async (c) => {
 
 app.post("/api/settings/password", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const current = String(form.current ?? "");
   const next = String(form.next ?? "");
@@ -1976,7 +1982,7 @@ app.post("/api/settings/password", async (c) => {
 
 app.post("/api/settings/delete", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const password = String(form.password ?? "");
   const row = await c.env.DB.prepare("SELECT password_hash, salt FROM users WHERE id = ?")
@@ -2006,7 +2012,7 @@ app.post("/api/settings/delete", async (c) => {
 
 app.get("/stats", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const [stats, share] = await Promise.all([
     userStats(c.env, user.id),
     c.env.DB.prepare("SELECT token FROM share_tokens WHERE user_id = ?").bind(user.id).first<{ token: string }>(),
@@ -2020,7 +2026,7 @@ app.get("/stats", async (c) => {
 
 app.post("/api/share", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   if (form.enabled === "1") {
     const bytes = new Uint8Array(16);
@@ -2156,7 +2162,7 @@ app.post("/unsubscribe/:token", async (c) => {
 
 app.post("/api/rate", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   const mediaType = String(form.media_type) === "movie" ? "movie" : "tv";
@@ -2176,7 +2182,7 @@ app.post("/api/rate", async (c) => {
 
 app.post("/api/notes", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   const mediaType = String(form.media_type) === "movie" ? "movie" : "tv";
@@ -2192,7 +2198,7 @@ app.post("/api/notes", async (c) => {
 
 app.post("/api/track", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   const mediaType = String(form.media_type) === "movie" ? "movie" : "tv";
@@ -2213,7 +2219,7 @@ app.post("/api/track", async (c) => {
 
 app.post("/api/untrack", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   const mediaType = String(form.media_type) === "movie" ? "movie" : "tv";
@@ -2225,7 +2231,7 @@ app.post("/api/untrack", async (c) => {
 
 app.post("/api/watch", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   const season = parseInt(String(form.season), 10);
@@ -2257,7 +2263,7 @@ app.post("/api/watch", async (c) => {
 
 app.post("/api/watch-again", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   const season = parseInt(String(form.season), 10);
@@ -2273,7 +2279,7 @@ app.post("/api/watch-again", async (c) => {
 
 app.post("/api/episode-rating", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   const season = parseInt(String(form.season), 10);
@@ -2288,7 +2294,7 @@ app.post("/api/episode-rating", async (c) => {
 
 app.post("/api/reminders", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const enabled = String(form.enabled) === "1" ? 1 : 0;
   await c.env.DB.prepare("UPDATE users SET remind_email = ? WHERE id = ?").bind(enabled, user.id).run();
@@ -2297,7 +2303,7 @@ app.post("/api/reminders", async (c) => {
 
 app.post("/api/watch-season", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   const seasonNum = parseInt(String(form.season), 10);
@@ -2338,7 +2344,7 @@ app.post("/api/watch-season", async (c) => {
 
 app.post("/api/watch-up-to", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   const targetSeason = parseInt(String(form.season), 10);
@@ -2383,7 +2389,7 @@ app.post("/api/watch-up-to", async (c) => {
 
 app.post("/api/watch-movie", async (c) => {
   const user = c.get("user");
-  if (!user) return c.redirect("/login");
+  if (!user) return loginRedirect(c);
   const form = await c.req.parseBody();
   const tmdbId = parseInt(String(form.tmdb_id), 10);
   if (String(form.undo) === "1") {
