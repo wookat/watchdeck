@@ -569,6 +569,39 @@
 
 ---
 
+## Round 226 — 2026-08-10（/shows /movies 顶级路径 301 承接）
+
+**发现（①线上测试 + ②UX 走查，P3）**
+- sitemap 中最大页面群是 /shows/* 与 /movies/*，但用户手动删短 URL 到 /shows、/movies 时得到 404——顶级可猜测路径无承接（Trakt 的 /shows、/movies 均为榜单落地页）。
+
+**修复**
+- /shows → 301 /browse/trending/tv、/movies → 301 /browse/trending/movie（复用已有榜单页，零新增页面）。
+
+**证据**
+- 部署 Version 7e0b7acc。线上两条 301 均生效，目标榜单页 200。
+
+---
+
+## Round 227 — 2026-08-10（尾斜杠 URL 全站 301 归一）
+
+**发现（①线上测试 + ⑤SEO，P3）**
+- 任意页面加尾斜杠（/guides/、/browse/、/shows/{id}/ 等）全部 404——用户手输/外链带斜杠即死链，且同内容双 URL 形态有稀释风险（Trakt 尾斜杠 301 归一）。
+
+**修复**
+- 新增全局 GET 中间件：路径长度 >1 且以 / 结尾时 301 到去斜杠形态（保留查询串）；`//` 开头路径不重定向（防协议相对开放重定向），安全头中间件包裹在外，301 响应仍带 HSTS 等全套头。
+
+**证据**
+- 部署 Version e34f6970。线上 /guides/、/browse/、/shows/{id}/、/search/?q=dune 均 301 至无斜杠形态，//evil.com/ 返回 404。
+
+---
+
+## Round 228 — 2026-08-10（健康巡检轮：0 缺陷）
+
+**扫描（①线上测试）**
+- 榜单页无效分页（page=0/abc）钳制正常、无效 show id/OG slug/share token 均 404、榜单页 og:title/description/og:image 完整。近 7 天搜索词仍全为 QA 信号（severance/inception/zzzqqqxx 等），外部 referrer 持续为 0，D1 users=8 基线未动。无新缺陷、无改动。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
