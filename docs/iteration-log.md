@@ -448,6 +448,59 @@
 
 ---
 
+## Round 216 — 2026-08-10（详情页 genre/network 互链）
+
+**发现（④复刻对照 + ⑤pSEO，P2）**
+- Trakt 详情页 genre 均可点击；我们详情页 genre/network 是纯文本——错失通往 29 个 genre 页与 12 个 network 页的高频内链（详情页是全站最大页面群）。
+
+**修复**
+- 剧集/电影详情页 genre 文本改为 /browse/tv|movie/{id}-{slug} 链接；TvDetails 增 networks 字段，命中 NETWORKS 白名单的首个网络渲染为 /browse/network 链接（hover 变色下划线，视觉不喧宾）。
+
+**证据**
+- 部署 Version 05704b89。线上 Severance 3 genre + Apple TV 网络链接、Dune 2 genre 链接均 200 可达。
+
+---
+
+## Round 217 — 2026-08-10（About 页 Organization JSON-LD）
+
+**发现（⑤SEO 巡检，P3）**
+- 全站 JSON-LD 覆盖已较全（WebSite/FAQ/Article/ItemList/TVSeries/Movie/Person/Breadcrumb），但品牌主体 /about 无 Organization schema——品牌知识面板与 logo 识别的标准信号缺失。
+
+**修复**
+- /about 增 Organization JSON-LD（name/url/logo=icon-512/description，与品牌指南口径一致）。
+
+**证据**
+- 部署 Version cf7a796e。线上 /about JSON-LD 解析有效、@type Organization、logo 200。
+
+---
+
+## Round 218 — 2026-08-10（Guides hub ItemList JSON-LD + 数据/健康巡检）
+
+**发现（⑤SEO + ①线上测试，P3）**
+- /guides hub 是内容营销入口页却无 JSON-LD（各 guide 详情已有 Article）——榜单/浏览页均已有 ItemList，hub 是覆盖缺口。
+- 数据轮：外部 referrer 仍为 0（全部直连/站内），近 3 天搜索词全为 QA 信号（severance/inception/zzzqqqxx 等测试词），零结果词无真实缺口；核心页 TTFB 67-369ms 正常。
+
+**修复**
+- /guides 增 ItemList JSON-LD（6 篇指南 position+name+url）。
+
+**证据**
+- 部署 Version 7450ae7e。线上 /guides JSON-LD 解析有效（ItemList，6 项）。
+
+---
+
+## Round 219 — 2026-08-10（指南尾部 More guides 互链区）
+
+**发现（②UX 走查 + ⑤pSEO，P3）**
+- 指南间互链不均衡：what-to-watch-tonight 正文 0 条指南互链、rebuild 指南 3 条、其余 1 条——读完一篇的读者无标准「下一篇」出口，指南集群内链拓扑不完整。
+
+**修复**
+- GuidePage 尾部统一渲染「More guides」区（排除当前篇，取前 3 篇），全部指南自动获得双向互链。
+
+**证据**
+- 部署 Version 044d8086。线上 what-to-watch-tonight 尾部现 3 条指南互链，各指南均含 More guides 区。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

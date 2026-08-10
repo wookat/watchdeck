@@ -1620,6 +1620,14 @@ app.get("/about", (c) =>
       title="About & Press"
       description="What WatchDeck is, why it exists, and everything press needs: boilerplate, logo downloads and brand colors."
       canonical={`${c.env.SITE_URL}/about`}
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        name: "WatchDeck",
+        url: c.env.SITE_URL,
+        logo: `${c.env.SITE_URL}/icon-512.png`,
+        description: "WatchDeck is a web-first TV show and movie tracker, free while in beta. Import your TV Time export in one click and pick up right where you left off.",
+      }}
     >
       <AboutPage />
     </Layout>
@@ -1633,6 +1641,16 @@ app.get("/guides", (c) =>
       title="Guides"
       description="Practical guides for moving your watch history: TV Time exports, Netflix imports and tracker comparisons."
       canonical={`${c.env.SITE_URL}/guides`}
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "ItemList",
+        itemListElement: GUIDES.map((g, i) => ({
+          "@type": "ListItem",
+          position: i + 1,
+          name: g.title,
+          url: `${c.env.SITE_URL}/guides/${g.slug}`,
+        })),
+      }}
     >
       <GuidesIndexPage />
     </Layout>
