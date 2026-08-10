@@ -1620,6 +1620,14 @@ app.get("/about", (c) =>
       title="About & Press"
       description="What WatchDeck is, why it exists, and everything press needs: boilerplate, logo downloads and brand colors."
       canonical={`${c.env.SITE_URL}/about`}
+      jsonLd={{
+        "@context": "https://schema.org",
+        "@type": "Organization",
+        name: "WatchDeck",
+        url: c.env.SITE_URL,
+        logo: `${c.env.SITE_URL}/icon-512.png`,
+        description: "WatchDeck is a web-first TV show and movie tracker, free while in beta. Import your TV Time export in one click and pick up right where you left off.",
+      }}
     >
       <AboutPage />
     </Layout>

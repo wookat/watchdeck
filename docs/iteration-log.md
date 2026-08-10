@@ -461,6 +461,19 @@
 
 ---
 
+## Round 217 — 2026-08-10（About 页 Organization JSON-LD）
+
+**发现（⑤SEO 巡检，P3）**
+- 全站 JSON-LD 覆盖已较全（WebSite/FAQ/Article/ItemList/TVSeries/Movie/Person/Breadcrumb），但品牌主体 /about 无 Organization schema——品牌知识面板与 logo 识别的标准信号缺失。
+
+**修复**
+- /about 增 Organization JSON-LD（name/url/logo=icon-512/description，与品牌指南口径一致）。
+
+**证据**
+- 部署 Version cf7a796e。线上 /about JSON-LD 解析有效、@type Organization、logo 200。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
