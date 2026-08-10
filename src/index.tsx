@@ -2646,8 +2646,9 @@ app.get("/sitemap.xml", async (c) => {
       urls.push(`${c.env.SITE_URL}/browse/year/tv/${y}`, `${c.env.SITE_URL}/browse/year/movie/${y}`);
     }
   } catch {}
+  const lastmod = new Map(GUIDES.map((g) => [`${c.env.SITE_URL}/guides/${g.slug}`, new Date(g.updated).toISOString().slice(0, 10)]));
   const body = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls
-    .map((u) => `  <url><loc>${u}</loc></url>`)
+    .map((u) => `  <url><loc>${u}</loc>${lastmod.has(u) ? `<lastmod>${lastmod.get(u)}</lastmod>` : ""}</url>`)
     .join("\n")}\n</urlset>`;
   return c.body(body, 200, { "content-type": "application/xml" });
 });
