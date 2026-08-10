@@ -381,7 +381,7 @@ export const GUIDES: { slug: string; title: string; description: string; updated
   },
   {
     slug: "tv-time-alternatives",
-    updated: "August 5, 2026",
+    updated: "August 10, 2026",
     title: "TV Time alternatives in 2026: an honest comparison",
     description: "TV Time shut down — here's how Trakt, Hobi, Showly, Simkl and WatchDeck compare for episode tracking, imports and price.",
     body: () => (
@@ -394,7 +394,8 @@ export const GUIDES: { slug: string; title: string; description: string; updated
         <p>
           The most established tracker with a huge ecosystem and media-center integrations. Web + apps. The free tier is
           ad-supported and gates several features (year in review, monthly stats, unlimited lists) behind VIP.
-          TV Time imports are possible but historically lossy around episode-level data.
+          TV Time imports are possible but historically lossy around episode-level data. Weighing it against us?{" "}
+          <a href="/guides/watchdeck-vs-trakt" class="text-violet-400 underline underline-offset-2">WatchDeck vs Trakt in detail</a>.
         </p>
         <h2 class="text-lg font-semibold text-white">Hobi & Showly</h2>
         <p>
