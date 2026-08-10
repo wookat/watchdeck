@@ -507,6 +507,54 @@ export const GUIDES: { slug: string; title: string; description: string; updated
       </>
     ),
   },
+  {
+    slug: "watchdeck-vs-trakt",
+    updated: "August 10, 2026",
+    title: "WatchDeck vs Trakt: which TV & movie tracker fits you?",
+    description: "An honest comparison for people picking a tracker after TV Time — where Trakt shines, where WatchDeck differs, and how to decide.",
+    body: () => (
+      <>
+        <h2 class="text-lg font-semibold text-white">The short version</h2>
+        <p>
+          Trakt is the biggest tracker around: a huge community, native mobile apps, media-center integrations and a
+          social layer of comments and followers. WatchDeck is a web-first tracker built for TV Time refugees: import
+          your export ZIP in one click, everything works in the browser on any device, and every feature is free while
+          the beta lasts.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Where Trakt shines</h2>
+        <p>
+          If you want social features — following friends, commenting, sharing ratings with a large community — or
+          scrobbling from media centers, Trakt is the mature choice. Its native iOS/Android apps are polished, and its
+          ecosystem of third-party integrations is unmatched.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Where WatchDeck differs</h2>
+        <p>
+          WatchDeck focuses on the tracking core and keeps it free: episode-level progress with{" "}
+          <a href="/home" class="text-violet-400 underline underline-offset-2">Next Up</a>, a release{" "}
+          <a href="/calendar" class="text-violet-400 underline underline-offset-2">calendar</a> with an iCal feed you can
+          subscribe to from any calendar app, yearly{" "}
+          <a href="/wrapped" class="text-violet-400 underline underline-offset-2">Wrapped</a> recaps with shareable
+          posters, and detailed <a href="/stats" class="text-violet-400 underline underline-offset-2">stats</a> — several
+          of which sit behind a paid tier elsewhere. There's no app to install: it's a fast website that works the same
+          on your phone and desktop.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Migrating your history</h2>
+        <p>
+          Coming from TV Time? WatchDeck imports the GDPR export ZIP directly — see{" "}
+          <a href="/guides/export-tv-time-data" class="text-violet-400 underline underline-offset-2">what's inside the ZIP</a>.
+          Coming from Trakt? A Trakt-style CSV export imports too — see{" "}
+          <a href="/guides/import-trakt-csv" class="text-violet-400 underline underline-offset-2">importing a Trakt CSV</a>.
+          Either way your data exports back out as JSON whenever you want, so trying WatchDeck is reversible.
+        </p>
+        <h2 class="text-lg font-semibold text-white">How to decide</h2>
+        <p>
+          Pick Trakt if the community and integrations are the point. Pick WatchDeck if you want a free, no-install,
+          import-and-continue tracker that treats your watch history as portable data. You can even run both — the CSVs
+          move either way.
+        </p>
+      </>
+    ),
+  },
 ];
 
 export const GuidesIndexPage: FC = () => (

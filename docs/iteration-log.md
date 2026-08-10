@@ -644,6 +644,27 @@
 
 ---
 
+## Round 233 — 2026-08-10（数据/CWV 巡检轮：0 缺陷）
+
+**扫描（⑤数据分析 + ①性能）**
+- 近 3 天事件：desktop 1752 / mobile 28 / funnel 2 / bot 3——仍以 QA 会话流量为主，外部 referrer 持续为 0。
+- 传输体积：落地页 gzip ~6.0KB、CSS ~10.4KB、app.js ~2.9KB，TTFB 0.22s；落地页 JSON-LD（WebSite+SearchAction+FAQPage）完整。无新缺陷、无改动。
+
+---
+
+## Round 234 — 2026-08-10（第 7 篇指南：WatchDeck vs Trakt 对比页）
+
+**发现（⑤pSEO/获客 + ④竞品，P3）**
+- 「trakt alternative / trakt vs」是选型期难民的高意图搜索词，我们缺对比页承接（对比页是工具类产品标准获客资产；tv-time-alternatives 已有但未覆盖 Trakt 对比角度）。
+
+**修复**
+- 新增 /guides/watchdeck-vs-trakt：诚实对比（Trakt 强在社区/原生 App/集成生态；我们强在免费 beta、免安装 web、TV Time ZIP 导入、iCal/Wrapped/统计免费）+ 迁移路径互链 + 数据可携带口径；hub/sitemap/OG 卡/JSON-LD 全自动挂载。
+
+**证据**
+- 部署 Version d1213df7。线上指南 200、OG 卡 200 image/png、sitemap 收录、hub 现 7 篇。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
