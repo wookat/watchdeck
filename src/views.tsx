@@ -1,6 +1,6 @@
 import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
-import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
+import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
 export const CSS_VERSION = 173;
@@ -1247,7 +1247,21 @@ export const ShowPage: FC<{
             </p>
           )}
           <p class="mt-1 text-sm text-slate-400">
-            {show.genres.map((g) => g.name).join(", ")}
+            {show.genres.map((g, i) => (
+              <>
+                {i > 0 && ", "}
+                <a href={`/browse/tv/${g.id}-${slugify(g.name)}`} class="hover:text-violet-300 hover:underline">{g.name}</a>
+              </>
+            ))}
+            {(() => {
+              const net = show.networks?.find((n) => NETWORKS.some((k) => k.id === n.id));
+              return net ? (
+                <>
+                  {" · "}
+                  <a href={`/browse/network/${net.id}-${slugify(net.name)}`} class="hover:text-violet-300 hover:underline">{net.name}</a>
+                </>
+              ) : null;
+            })()}
             {trailer && (
               <>
                 {" · "}
@@ -1538,7 +1552,12 @@ export const MoviePage: FC<{
           </p>
         )}
         <p class="mt-1 text-sm text-slate-400">
-          {movie.genres.map((g) => g.name).join(", ")}
+          {movie.genres.map((g, i) => (
+            <>
+              {i > 0 && ", "}
+              <a href={`/browse/movie/${g.id}-${slugify(g.name)}`} class="hover:text-violet-300 hover:underline">{g.name}</a>
+            </>
+          ))}
           {trailer && (
             <>
               {" · "}

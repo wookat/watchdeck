@@ -448,6 +448,19 @@
 
 ---
 
+## Round 216 — 2026-08-10（详情页 genre/network 互链）
+
+**发现（④复刻对照 + ⑤pSEO，P2）**
+- Trakt 详情页 genre 均可点击；我们详情页 genre/network 是纯文本——错失通往 29 个 genre 页与 12 个 network 页的高频内链（详情页是全站最大页面群）。
+
+**修复**
+- 剧集/电影详情页 genre 文本改为 /browse/tv|movie/{id}-{slug} 链接；TvDetails 增 networks 字段，命中 NETWORKS 白名单的首个网络渲染为 /browse/network 链接（hover 变色下划线，视觉不喧宾）。
+
+**证据**
+- 部署 Version 05704b89。线上 Severance 3 genre + Apple TV 网络链接、Dune 2 genre 链接均 200 可达。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
