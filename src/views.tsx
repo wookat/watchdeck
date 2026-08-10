@@ -1506,7 +1506,8 @@ export const MoviePage: FC<{
   myServices?: Set<number>;
   lists?: ListRef[];
   directors?: { id: number; name: string }[];
-}> = ({ movie, watchCount, tracked, user, recs, providers, cast, trailer, myServices, lists, directors }) => {
+  collection?: { name: string; parts: SearchResult[] } | null;
+}> = ({ movie, watchCount, tracked, user, recs, providers, cast, trailer, myServices, lists, directors, collection }) => {
   const movieUrl = `/movies/${movie.id}-${slugify(movie.title)}`;
   const watched = watchCount > 0;
   return (
@@ -1613,6 +1614,16 @@ export const MoviePage: FC<{
       </div>
     </div>
     <CastSection cast={cast ?? []} />
+    {collection && collection.parts.length > 0 && (
+      <div class="mt-12">
+        <h2 class="mb-4 text-xl font-semibold">Part of {collection.name}</h2>
+        <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
+          {collection.parts.slice(0, 14).map((r) => (
+            <MediaCard item={r} type="movie" />
+          ))}
+        </div>
+      </div>
+    )}
     <RecsSection recs={recs} type="movie" />
     </div>
   );

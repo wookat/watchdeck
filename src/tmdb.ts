@@ -111,10 +111,15 @@ export interface MovieDetails {
   vote_count: number;
   genres: { id: number; name: string }[];
   status: string;
+  belongs_to_collection?: { id: number; name: string } | null;
 }
 
 export function movieDetails(env: Env, id: number) {
   return tmdb<MovieDetails>(env, `/movie/${id}`, 24 * 3600);
+}
+
+export function collectionDetails(env: Env, id: number) {
+  return tmdb<{ id: number; name: string; parts: SearchResult[] }>(env, `/collection/${id}`, 24 * 3600);
 }
 
 export function trendingTv(env: Env, page = 1) {

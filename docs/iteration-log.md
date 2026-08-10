@@ -415,6 +415,39 @@
 
 ---
 
+## Round 213 — 2026-08-10（电影系列 Collection 互链区）
+
+**发现（④复刻对照 + ②UX，P2）**
+- Trakt/TMDB 电影详情页均有「所属系列」区块，我们缺失——看完 Dune 想标记 Dune: Part Two 只能靠搜索，系列互链也是 pSEO 内链缺口。
+
+**修复**
+- MovieDetails 增 belongs_to_collection；新 tmdb collectionDetails(/collection/{id}，24h 缓存)；详情页 Cast 与 More like this 之间渲染「Part of {系列名}」海报网格（排除自身、按上映日排序、最多 14 张）。
+
+**证据**
+- 部署 Version 03c336f8。线上 Dune 页显示「Part of Dune Collection」（Part Two/Part Three 互链）、非系列电影（Inception）无该区、375px 无溢出、axe 0。
+
+---
+
+## Round 214 — 2026-08-10（竞品轻扫描：无新可行动项）
+
+**扫描（④竞品调研）**
+- Trakt 主站新动向：trakt.tv 现 301 → app.trakt.tv（进一步 App 化/JS 化，公开可索引面继续收窄，利好我方 SSR 策略）；TV Time 仍为告别页；Simkl/Serializd 仍 403 盾（按红线跳过）；TVmaze/Hobi/Must 可访问但无新对标缺口。无改动。
+
+---
+
+## Round 215 — 2026-08-10（sitemap 指南 lastmod）
+
+**发现（⑤pSEO，P3）**
+- sitemap.xml 全部 URL 无 lastmod——指南有真实 updated 日期（R196 落库），搜索引擎无法感知内容更新（对新指南收录时效有影响）。
+
+**修复**
+- sitemap 对 6 篇指南 URL 输出 `<lastmod>`（来源 GUIDES.updated，ISO 日期），其余 URL 保持不变。
+
+**证据**
+- 部署 Version ed74aee9。线上 sitemap 6 条 lastmod（08-05×3/08-09×2/08-10×1）、XML 解析有效。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
