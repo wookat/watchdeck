@@ -161,6 +161,89 @@
 
 ---
 
+## Round 192 — 2026-08-09（内链深度优化：footer 加 Charts 入口）
+
+**发现（⑤SEO 内链）**
+- R185/R190 新增的 charts 页只能从 /browse 一层进入，footer 无 Browse/Charts 内链——爬虫抓取深度与 PageRank 流动欠佳。
+
+**修复**
+- 全站 footer 增 Browse / Trending / Top rated 三链接（与既有 About/Guides 等同排）。
+
+**证据**
+- 部署 Version 18ebfc73。线上 footer 三链接可见；375px 无溢出、landing axe 0。
+
+---
+
+## Round 193 — 2026-08-09（Charts 扩展：On the air / Coming soon）
+
+**发现（④竞品对齐）**
+- Trakt「Anticipated」此前标为 n/a（TMDB 无直接等价端点），但 TMDB 有 /tv/on_the_air（7 天内有新集）与 /movie/upcoming（院线即将上映）——可覆盖同一用户意图（「接下来看什么」）。
+
+**修复**
+- 新增 /browse/on-the-air/tv 与 /browse/coming-soon/movie（12h 缓存，BreadcrumbList+ItemList JSON-LD、canonical），复用新抽象 BrowseChartList；/browse Charts 区加 📡/🎬 两入口；sitemap +2（472 总量）。
+
+**证据**
+- 部署 Version 161bd728。两新页 200、各渲染 20 卡；375px 无溢出、axe 0；sitemap 含两 URL。
+
+---
+
+## Round 194 — 2026-08-09（数据轮：搜索词/referrer/漏斗复查，无可行动项）
+
+**发现（⑤用户/数据分析）**
+- 近 7 天 search_queries 全部为 QA 轮次词（severance/dark/dune/负例 zzzqqqxx 等），零结果词无真实需求信号。
+- 外部 referrer 仍为 0；导入漏斗 parse-ok 21 → batch-done 17（均 QA）。
+- 结论：无自然流量前数据驱动收敛，QA 数据不计业务成果；本轮不改代码。
+
+---
+
+## Round 195 — 2026-08-09（内容营销：What to watch tonight 指南）
+
+**发现（⑤内容/pSEO + ②UX）**
+- 「what should i watch tonight」是长青高频搜索意图；R190/193 新增的 charts 页与既有 roulette 缺一篇把它们串成使用场景的内容页。
+
+**修复**
+- 新增 /guides/what-to-watch-tonight（60 秒决策系统：Next Up → charts → roulette），内链 5 个产品页面；guides 索引与 sitemap 自动收录（Article JSON-LD 沿用 GuidePage）。
+
+**证据**
+- 部署 Version ac2d799e。线上 200、sitemap 收录；/guides 与新页 375px 无溢出、axe 0。
+
+---
+
+## Round 196 — 2026-08-09（内容准确性：指南 per-guide 更新日期）
+
+**发现（③精致度/信任感）**
+- GuidePage 硬编码「Last updated: August 5, 2026」，新发布的两篇指南（8/9）显示错误日期——影响内容可信度（验收官标准：细节真实）。
+
+**修复**
+- GUIDES 增 updated 字段，逐篇真实日期；GuidePage 改用 guide.updated。
+
+**证据**
+- 部署 Version a538ef58。新指南显示 Aug 9、老指南 Aug 5。
+
+---
+
+## Round 197 — 2026-08-09（竞品深访轮：Trakt 复访 + 新竞品扫描）
+
+**发现（④竞品调研，10 轮周期内深访）**
+- Trakt 复访（真实浏览器）：匿名访问 /shows/trending 实际渲染为登录导向的 app 化首页（全 JS、无 SSR 内容、无法索引具体榜单）——我们 R190/193 的 SSR charts 页在 SEO 可索引性上形成结构性优势。
+- 新竞品扫描：Letterboxd 有 Cloudflare 盾（按红线跳过不绕）；TVInsider（内容型站）主打「What to Watch」栏目——印证 R195 指南方向的搜索需求真实存在。
+- 无代码改动；未复制任何竞品代码/素材/文案。
+
+---
+
+## Round 198 — 2026-08-09（charts 页互链 pill 导航）
+
+**发现（②UX + ③精致度）**
+- 6 个 charts 页（trending/top-rated/on-the-air/coming-soon）彼此孤立，切换榜单需回 /browse——大厂榜单页惯例是同层 tab/pill 互链。
+
+**修复**
+- 新增 ChartNav 组件（6 pill，当前页高亮 aria-current="page"，nav[aria-label=Charts]），挂到全部 6 个 charts 页；CSS v173。
+
+**证据**
+- 部署 Version 67ad8539。三页抽查：当前 pill 高亮正确、其余 5 链接可点；375px 无溢出、axe 0。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

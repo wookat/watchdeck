@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 172;
+export const CSS_VERSION = 173;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -149,7 +149,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
             . This product uses the TMDB API but is not endorsed or certified by TMDB.
           </p>
           <p>
-            <a href="/about" class="hover:underline">About & Press</a> · <a href="/guides" class="hover:underline">Guides</a> · <a href="/pricing" class="hover:underline">Pricing</a> · <a href="/privacy" class="hover:underline">Privacy</a> · <a href="/terms" class="hover:underline">Terms</a>
+            <a href="/browse" class="hover:underline">Browse</a> · <a href="/browse/trending/tv" class="hover:underline">Trending</a> · <a href="/browse/top-rated/tv" class="hover:underline">Top rated</a> · <a href="/about" class="hover:underline">About & Press</a> · <a href="/guides" class="hover:underline">Guides</a> · <a href="/pricing" class="hover:underline">Pricing</a> · <a href="/privacy" class="hover:underline">Privacy</a> · <a href="/terms" class="hover:underline">Terms</a>
           </p>
           <p>
             More from us:{" "}
@@ -298,9 +298,10 @@ const GuideLayout: FC<PropsWithChildren<{ title: string; updated: string }>> = (
   </article>
 );
 
-export const GUIDES: { slug: string; title: string; description: string; body: FC }[] = [
+export const GUIDES: { slug: string; title: string; description: string; updated: string; body: FC }[] = [
   {
     slug: "export-tv-time-data",
+    updated: "August 5, 2026",
     title: "How to export your TV Time data (and what's inside the ZIP)",
     description: "Step-by-step: requesting the TV Time GDPR export, what the ZIP contains, and how to bring your full watch history to WatchDeck.",
     body: () => (
@@ -333,6 +334,7 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
   },
   {
     slug: "tv-time-alternatives",
+    updated: "August 5, 2026",
     title: "TV Time alternatives in 2026: an honest comparison",
     description: "TV Time shut down — here's how Trakt, Hobi, Showly, Simkl and WatchDeck compare for episode tracking, imports and price.",
     body: () => (
@@ -371,6 +373,7 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
   },
   {
     slug: "import-netflix-history",
+    updated: "August 5, 2026",
     title: "How to import your Netflix viewing history",
     description: "Download ViewingActivity.csv from Netflix and turn years of viewing into a tracked library in one upload.",
     body: () => (
@@ -398,6 +401,7 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
   },
   {
     slug: "import-trakt-csv",
+    updated: "August 9, 2026",
     title: "How to import your Trakt or Serializd data",
     description: "Export your watched history as CSV from Trakt or Serializd and bring it into WatchDeck in one upload.",
     body: () => (
@@ -425,6 +429,37 @@ export const GUIDES: { slug: string; title: string; description: string; body: F
       </>
     ),
   },
+  {
+    slug: "what-to-watch-tonight",
+    updated: "August 9, 2026",
+    title: "What should I watch tonight? A 60-second decision system",
+    description: "Stop scrolling and start watching: a simple system using your watchlist, weekly charts and a roulette wheel.",
+    body: () => (
+      <>
+        <h2 class="text-lg font-semibold text-white">Step 1 — Check what's already waiting</h2>
+        <p>
+          The best answer is usually something you already planned to watch. Your{" "}
+          <a href="/home" class="text-violet-400 underline underline-offset-2">Next Up</a> queue lists the exact next
+          episode for every show you track, so a "what now?" moment becomes a one-click resume.
+        </p>
+        <h2 class="text-lg font-semibold text-white">Step 2 — Let the charts decide</h2>
+        <p>
+          Nothing in the queue calling to you? Browse{" "}
+          <a href="/browse/trending/tv" class="text-violet-400 underline underline-offset-2">what's trending this week</a>,{" "}
+          <a href="/browse/on-the-air/tv" class="text-violet-400 underline underline-offset-2">shows airing right now</a> or the{" "}
+          <a href="/browse/top-rated/tv" class="text-violet-400 underline underline-offset-2">all-time top rated</a> — three
+          lists that cover "what everyone's talking about", "what's fresh" and "what's guaranteed good".
+        </p>
+        <h2 class="text-lg font-semibold text-white">Step 3 — Spin the wheel</h2>
+        <p>
+          Still stuck after two minutes? That's decision fatigue, and the cure is removing the decision: the{" "}
+          <a href="/roulette" class="text-violet-400 underline underline-offset-2">roulette</a> picks one title at random
+          from your own watchlist — things you already vetted — optionally filtered to the streaming services you pay
+          for. Commit to whatever it lands on for at least 15 minutes.
+        </p>
+      </>
+    ),
+  },
 ];
 
 export const GuidesIndexPage: FC = () => (
@@ -443,7 +478,7 @@ export const GuidesIndexPage: FC = () => (
 );
 
 export const GuidePage: FC<{ guide: (typeof GUIDES)[number] }> = ({ guide }) => (
-  <GuideLayout title={guide.title} updated="August 5, 2026">
+  <GuideLayout title={guide.title} updated={guide.updated}>
     <guide.body />
   </GuideLayout>
 );
@@ -1809,6 +1844,8 @@ export const BrowseIndex: FC<{
         <a href="/browse/top-rated/movie" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🏆 Top rated movies</a>
         <a href="/browse/trending/tv" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🔥 Trending TV shows</a>
         <a href="/browse/trending/movie" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🔥 Trending movies</a>
+        <a href="/browse/on-the-air/tv" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">📡 On the air</a>
+        <a href="/browse/coming-soon/movie" class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">🎬 Coming soon</a>
       </div>
     </section>
     {(
@@ -1949,6 +1986,27 @@ export const BrowseNetwork: FC<{
   );
 };
 
+const CHART_LINKS: [string, string][] = [
+  ["/browse/trending/tv", "\ud83d\udd25 Trending TV"],
+  ["/browse/trending/movie", "\ud83d\udd25 Trending movies"],
+  ["/browse/top-rated/tv", "\ud83c\udfc6 Top rated TV"],
+  ["/browse/top-rated/movie", "\ud83c\udfc6 Top rated movies"],
+  ["/browse/on-the-air/tv", "\ud83d\udce1 On the air"],
+  ["/browse/coming-soon/movie", "\ud83c\udfac Coming soon"],
+];
+
+export const ChartNav: FC<{ current: string }> = ({ current }) => (
+  <nav aria-label="Charts" class="mb-6 flex flex-wrap gap-2">
+    {CHART_LINKS.map(([href, label]) =>
+      href === current ? (
+        <span aria-current="page" class="rounded-lg border border-violet-500 bg-violet-600/20 px-3 py-1.5 text-sm text-violet-300">{label}</span>
+      ) : (
+        <a href={href} class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">{label}</a>
+      )
+    )}
+  </nav>
+);
+
 export const BrowseTopRated: FC<{
   type: "tv" | "movie";
   results: SearchResult[];
@@ -1963,6 +2021,7 @@ export const BrowseTopRated: FC<{
         The highest-rated {type === "tv" ? "series" : "films"} ever, ranked by viewer ratings — track the ones you've seen on WatchDeck.{" "}
         <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
       </p>
+      <ChartNav current={base} />
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
           <MediaCard item={r} type={type} />
@@ -1987,6 +2046,28 @@ export const BrowseTrending: FC<{
       What everyone is watching right now, refreshed weekly — track them on WatchDeck.{" "}
       <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
     </p>
+    <ChartNav current={`/browse/trending/${type}`} />
+    <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
+      {results.map((r) => (
+        <MediaCard item={r} type={type} />
+      ))}
+    </div>
+  </div>
+);
+
+export const BrowseChartList: FC<{
+  heading: string;
+  intro: string;
+  type: "tv" | "movie";
+  results: SearchResult[];
+}> = ({ heading, intro, type, results }) => (
+  <div>
+    <h1 class="mb-2 text-2xl font-bold">{heading}</h1>
+    <p class="mb-6 text-slate-400">
+      {intro}{" "}
+      <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
+    </p>
+    <ChartNav current={type === "tv" ? "/browse/on-the-air/tv" : "/browse/coming-soon/movie"} />
     <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
       {results.map((r) => (
         <MediaCard item={r} type={type} />

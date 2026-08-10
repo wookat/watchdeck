@@ -14,6 +14,8 @@ import {
   movieDirectors,
   trendingTv,
   trendingMovies,
+  upcomingMovies,
+  onTheAirTv,
   genreList,
   discoverByGenre,
   discoverByNetwork,
@@ -63,6 +65,7 @@ import {
   BrowseYear,
   BrowseTopRated,
   BrowseTrending,
+  BrowseChartList,
   type UserStats,
   type NextUpItem,
   type HistoryItem,
@@ -1012,6 +1015,48 @@ app.get("/browse/trending/:type", async (c) => {
   );
 });
 
+app.get("/browse/on-the-air/tv", async (c) => {
+  const res = await onTheAirTv(c.env);
+  const base = `${c.env.SITE_URL}/browse/on-the-air/tv`;
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title="TV shows on the air right now"
+      description="Series with new episodes airing in the next 7 days — catch them while they're fresh and track them on WatchDeck."
+      canonical={base}
+      jsonLd={browseCrumbs(c.env.SITE_URL, "TV shows on the air", base, res.results, "tv")}
+    >
+      <BrowseChartList
+        heading="On the air right now"
+        intro="Series with new episodes airing in the next 7 days — catch them while they're fresh."
+        type="tv"
+        results={res.results}
+      />
+    </Layout>
+  );
+});
+
+app.get("/browse/coming-soon/movie", async (c) => {
+  const res = await upcomingMovies(c.env);
+  const base = `${c.env.SITE_URL}/browse/coming-soon/movie`;
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title="Movies coming soon to theaters"
+      description="Upcoming theatrical releases — add them to your watchlist on WatchDeck before they hit the big screen."
+      canonical={base}
+      jsonLd={browseCrumbs(c.env.SITE_URL, "Movies coming soon", base, res.results, "movie")}
+    >
+      <BrowseChartList
+        heading="Coming soon to theaters"
+        intro="Upcoming theatrical releases — add them to your watchlist before they hit the big screen."
+        type="movie"
+        results={res.results}
+      />
+    </Layout>
+  );
+});
+
 app.get("/browse/top-rated/:type", async (c) => {
   const type = c.req.param("type") === "movie" ? "movie" : c.req.param("type") === "tv" ? "tv" : null;
   if (!type) return c.notFound();
@@ -1569,7 +1614,7 @@ app.get("/guides/:slug", (c) => {
         "@type": "Article",
         headline: guide.title,
         description: guide.description,
-        dateModified: "2026-08-05",
+        dateModified: new Date(guide.updated).toISOString().slice(0, 10),
         author: { "@type": "Organization", name: "WatchDeck" },
         mainEntityOfPage: `${c.env.SITE_URL}/guides/${guide.slug}`,
       }}
@@ -2542,6 +2587,7 @@ app.get("/sitemap.xml", async (c) => {
     for (const n of NETWORKS) urls.push(`${c.env.SITE_URL}/browse/network/${n.id}-${slugify(n.name)}`);
     urls.push(`${c.env.SITE_URL}/browse/top-rated/tv`, `${c.env.SITE_URL}/browse/top-rated/movie`);
     urls.push(`${c.env.SITE_URL}/browse/trending/tv`, `${c.env.SITE_URL}/browse/trending/movie`);
+    urls.push(`${c.env.SITE_URL}/browse/on-the-air/tv`, `${c.env.SITE_URL}/browse/coming-soon/movie`);
     for (const y of browseYears()) {
       urls.push(`${c.env.SITE_URL}/browse/year/tv/${y}`, `${c.env.SITE_URL}/browse/year/movie/${y}`);
     }
