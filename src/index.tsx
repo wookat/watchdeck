@@ -35,6 +35,7 @@ import {
   personCredits,
   popularPeople,
   type CastMember,
+  collectionDetails,
 } from "./tmdb";
 import { parseTvTimeZip, parseGenericCsv, isNetflixCsv, parseNetflixCsv, type ParsedImport } from "./importer";
 import { sendEmail, welcomeEmail, resetEmail, confirmSignupEmail } from "./email";
@@ -651,7 +652,7 @@ app.get("/movies/:idslug", async (c) => {
   }
   const movieSlug = `${movie.id}-${slugify(movie.title)}`;
   if (c.req.param("idslug") !== movieSlug) return c.redirect(`/movies/${movieSlug}`, 301);
-  const [watchedRow, tracked, recsRes, providers, cast, trailer, directors, services, listsRes] = await Promise.all([
+  const [watchedRow, tracked, recsRes, providers, cast, trailer, directors, services, listsRes, collectionRes] = await Promise.all([
     user ? c.env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first<{ n: number }>() : Promise.resolve(null),
     user
       ? c.env.DB.prepare("SELECT status, rating, notes FROM tracked WHERE user_id = ? AND tmdb_id = ? AND media_type = 'movie'")
@@ -665,9 +666,20 @@ app.get("/movies/:idslug", async (c) => {
     movieDirectors(c.env, id).catch(() => [] as { id: number; name: string }[]),
     user ? userServices(c.env, user.id) : Promise.resolve(new Set<number>()),
     user ? userLists(c.env, user.id, id, "movie") : Promise.resolve(null),
+    movie.belongs_to_collection
+      ? collectionDetails(c.env, movie.belongs_to_collection.id).catch(() => null)
+      : Promise.resolve(null),
   ]);
   const watchCount = watchedRow?.n ?? 0;
   const recs = recsRes.results;
+  const collection = collectionRes
+    ? {
+        name: collectionRes.name,
+        parts: collectionRes.parts
+          .filter((p) => p.id !== id && p.poster_path)
+          .sort((a, b) => (a.release_date ?? "9999").localeCompare(b.release_date ?? "9999")),
+      }
+    : null;
   const movieCanonical = `${c.env.SITE_URL}/movies/${movie.id}-${slugify(movie.title)}`;
   return c.html(
     <Layout
@@ -703,7 +715,7 @@ app.get("/movies/:idslug", async (c) => {
         ],
       }}
     >
-      <MoviePage movie={movie} watchCount={watchCount} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} directors={directors} />
+      <MoviePage movie={movie} watchCount={watchCount} tracked={tracked} user={user} recs={recs} providers={providers} cast={cast} trailer={trailer} myServices={services} lists={listsRes?.results ?? []} directors={directors} collection={collection} />
     </Layout>
   );
 });

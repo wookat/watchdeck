@@ -415,6 +415,19 @@
 
 ---
 
+## Round 213 — 2026-08-10（电影系列 Collection 互链区）
+
+**发现（④复刻对照 + ②UX，P2）**
+- Trakt/TMDB 电影详情页均有「所属系列」区块，我们缺失——看完 Dune 想标记 Dune: Part Two 只能靠搜索，系列互链也是 pSEO 内链缺口。
+
+**修复**
+- MovieDetails 增 belongs_to_collection；新 tmdb collectionDetails(/collection/{id}，24h 缓存)；详情页 Cast 与 More like this 之间渲染「Part of {系列名}」海报网格（排除自身、按上映日排序、最多 14 张）。
+
+**证据**
+- 部署 Version 03c336f8。线上 Dune 页显示「Part of Dune Collection」（Part Two/Part Three 互链）、非系列电影（Inception）无该区、375px 无溢出、axe 0。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
