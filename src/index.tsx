@@ -1029,6 +1029,28 @@ app.get("/browse/network/:idslug", async (c) => {
   );
 });
 
+const CHART_OG: Record<string, { title: string; description: string }> = {
+  "trending-tv": { title: "Trending TV shows this week", description: "What everyone is watching right now, refreshed weekly." },
+  "trending-movie": { title: "Trending movies this week", description: "The movies everyone is watching right now, refreshed weekly." },
+  "top-rated-tv": { title: "Top rated TV shows of all time", description: "The highest-rated series ever, ranked by viewer ratings." },
+  "top-rated-movie": { title: "Top rated movies of all time", description: "The highest-rated films ever, ranked by viewer ratings." },
+  "on-the-air-tv": { title: "TV shows on the air right now", description: "Series with new episodes airing in the next 7 days." },
+  "coming-soon-movie": { title: "Movies coming soon to theaters", description: "Upcoming theatrical releases to watchlist before the big screen." },
+};
+
+app.get("/og/chart/:slug{[a-z0-9-]+\\.png}", async (c) => {
+  const slug = c.req.param("slug").replace(/\.png$/, "");
+  const chart = CHART_OG[slug];
+  if (!chart) return c.notFound();
+  const cacheKey = `og:chart:${slug}:v1`;
+  const cached = await c.env.CACHE.get(cacheKey, "arrayBuffer");
+  if (cached) return c.body(cached, 200, { "content-type": "image/png", "cache-control": "public, max-age=86400" });
+  const res = await guideOgImage(c.env, chart.title, chart.description, "WATCHDECK CHARTS");
+  const buf = await res.arrayBuffer();
+  c.executionCtx.waitUntil(c.env.CACHE.put(cacheKey, buf, { expirationTtl: 30 * 24 * 3600 }));
+  return c.body(buf, 200, { "content-type": "image/png", "cache-control": "public, max-age=86400" });
+});
+
 app.get("/browse/trending/:type", async (c) => {
   const type = c.req.param("type") === "movie" ? "movie" : c.req.param("type") === "tv" ? "tv" : null;
   if (!type) return c.notFound();
@@ -1050,6 +1072,7 @@ app.get("/browse/trending/:type", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
+      ogImage={`${c.env.SITE_URL}/og/chart/trending-${type}.png`}
       jsonLd={browseCrumbs(c.env.SITE_URL, `Trending ${type === "tv" ? "TV shows" : "movies"}`, base, res.results, type)}
     >
       <BrowseTrending type={type} results={res.results} page={page} totalPages={res.total_pages} />
@@ -1070,6 +1093,7 @@ app.get("/browse/on-the-air/tv", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
+      ogImage={`${c.env.SITE_URL}/og/chart/on-the-air-tv.png`}
       jsonLd={browseCrumbs(c.env.SITE_URL, "TV shows on the air", base, res.results, "tv")}
     >
       <BrowseChartList
@@ -1097,6 +1121,7 @@ app.get("/browse/coming-soon/movie", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
+      ogImage={`${c.env.SITE_URL}/og/chart/coming-soon-movie.png`}
       jsonLd={browseCrumbs(c.env.SITE_URL, "Movies coming soon", base, res.results, "movie")}
     >
       <BrowseChartList
@@ -1126,6 +1151,7 @@ app.get("/browse/top-rated/:type", async (c) => {
       canonical={page === 1 ? base : `${base}?page=${page}`}
       prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
       next={page < last ? `${base}?page=${page + 1}` : undefined}
+      ogImage={`${c.env.SITE_URL}/og/chart/top-rated-${type}.png`}
       jsonLd={browseCrumbs(c.env.SITE_URL, `Top rated ${type === "tv" ? "TV shows" : "movies"}`, base, res.results, type)}
     >
       <BrowseTopRated type={type} results={res.results} page={page} totalPages={res.total_pages} />

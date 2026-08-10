@@ -618,6 +618,19 @@
 
 ---
 
+## Round 231 — 2026-08-10（六榜单页品牌 OG 分享卡）
+
+**发现（③视觉分析 + ⑤pSEO/分发，P3）**
+- 六个榜单页（trending/top-rated ×2、on-the-air、coming-soon）分享到社媒时仍用通用 og-default——指南页已有专属品牌 OG 卡，榜单页是分发素材缺口。
+
+**修复**
+- guideOgImage 增可选 kicker 参数；新增 /og/chart/{slug}.png 路由（六榜单 slug 白名单，KV 缓存 30 天），榜单页 og:image 指向对应卡（WATCHDECK CHARTS 眉题）。
+
+**证据**
+- 部署 Version 618ce721。线上 6 张卡均 200 image/png、无效 slug 404，榜单页 og:image 已切换。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
