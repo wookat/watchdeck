@@ -1398,7 +1398,19 @@ export const ShowPage: FC<{
                     S{String(ep.season_number).padStart(2, "0")}E{String(ep.episode_number).padStart(2, "0")}
                   </span>
                   <div class="min-w-0 flex-1 basis-40">
-                    <p class="line-clamp-1 font-medium">{ep.name}</p>
+                    <div class="flex items-center gap-2">
+                      <p class="line-clamp-1 font-medium">{ep.name}</p>
+                      {ep.episode_type === "finale" && (
+                        <span class="shrink-0 rounded-full border border-amber-800 bg-amber-950/50 px-2 py-0.5 text-xs font-medium text-amber-300">
+                          Season finale
+                        </span>
+                      )}
+                      {ep.episode_type === "mid_season" && (
+                        <span class="shrink-0 rounded-full border border-violet-800 bg-violet-950/50 px-2 py-0.5 text-xs font-medium text-violet-300">
+                          Mid-season finale
+                        </span>
+                      )}
+                    </div>
                     <p class="whitespace-nowrap text-xs text-slate-400">{ep.air_date ?? "TBA"}</p>
                   </div>
                   {user && (

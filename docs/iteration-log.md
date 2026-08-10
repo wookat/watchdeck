@@ -395,6 +395,26 @@
 
 ---
 
+## Round 211 — 2026-08-10（视觉/健康巡检轮：0 缺陷）
+
+**扫描（①线上测试 + ③视觉走查）**
+- 落地页 375px/1440px 截图走查：R209 新内链视觉融入正常、无溢出；落地页与新指南 axe 0 violations；核心页 TTFB 66-212ms；6 张指南 OG 卡全部渲染（159-174KB）；sitemap 含六榜单页。无新缺陷、无改动。
+
+---
+
+## Round 212 — 2026-08-10（集列表 Finale 徽章：清 R171 backlog P3）
+
+**发现（④复刻 backlog）**
+- R171 对照表遗留 P3「Finale 徽章需逐集请求」——实际上 TMDB /tv/{id}/season/{n} 响应已含每集 episode_type，零额外请求即可实现（此前只有日历/首页的 next-episode 徽章用到该字段）。
+
+**修复**
+- SeasonDetails.episodes 增 episode_type 可选字段；详情页集行标题旁渲染「Season finale」（琥珀）/「Mid-season finale」（紫）chip，与日历徽章视觉同语言。
+
+**证据**
+- 部署 Version c5036df4。线上 Severance S1E9 显示 Season finale chip、375px 无溢出（scrollWidth 375 内）；老剧（TMDB 未标注 episode_type 的季）自然无 chip，数据驱动降级正确。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
