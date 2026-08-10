@@ -2039,21 +2039,34 @@ export const BrowseTopRated: FC<{
 export const BrowseTrending: FC<{
   type: "tv" | "movie";
   results: SearchResult[];
-}> = ({ type, results }) => (
-  <div>
-    <h1 class="mb-2 text-2xl font-bold">Trending {type === "tv" ? "TV shows" : "movies"} this week</h1>
-    <p class="mb-6 text-slate-400">
-      What everyone is watching right now, refreshed weekly — track them on WatchDeck.{" "}
-      <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
-    </p>
-    <ChartNav current={`/browse/trending/${type}`} />
-    <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-      {results.map((r) => (
-        <MediaCard item={r} type={type} />
-      ))}
+  page: number;
+  totalPages: number;
+}> = ({ type, results, page, totalPages }) => {
+  const base = `/browse/trending/${type}`;
+  const last = Math.min(totalPages, 20);
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">Trending {type === "tv" ? "TV shows" : "movies"} this week</h1>
+      <p class="mb-6 text-slate-400">
+        What everyone is watching right now, refreshed weekly — track them on WatchDeck.{" "}
+        <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
+      </p>
+      <ChartNav current={base} />
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
+        {results.map((r) => (
+          <MediaCard item={r} type={type} />
+        ))}
+      </div>
+      {last > 1 && (
+        <div class="mt-8 flex items-center gap-3 text-sm">
+          {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+          <span class="text-slate-400">Page {page} of {last}</span>
+          {page < last && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 export const BrowseChartList: FC<{
   heading: string;

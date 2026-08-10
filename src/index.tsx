@@ -1006,17 +1006,21 @@ app.get("/browse/network/:idslug", async (c) => {
 app.get("/browse/trending/:type", async (c) => {
   const type = c.req.param("type") === "movie" ? "movie" : c.req.param("type") === "tv" ? "tv" : null;
   if (!type) return c.notFound();
-  const res = type === "tv" ? await trendingTv(c.env) : await trendingMovies(c.env);
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const res = type === "tv" ? await trendingTv(c.env, page) : await trendingMovies(c.env, page);
   const base = `${c.env.SITE_URL}/browse/trending/${type}`;
+  const last = Math.min(res.total_pages, 20);
   return c.html(
     <Layout
       user={c.get("user")}
       title={`Trending ${type === "tv" ? "TV shows" : "movies"} this week`}
       description={`The ${type === "tv" ? "TV shows" : "movies"} everyone is watching this week — discover and track them on WatchDeck.`}
-      canonical={base}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
       jsonLd={browseCrumbs(c.env.SITE_URL, `Trending ${type === "tv" ? "TV shows" : "movies"}`, base, res.results, type)}
     >
-      <BrowseTrending type={type} results={res.results} />
+      <BrowseTrending type={type} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
   );
 });

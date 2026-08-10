@@ -270,6 +270,19 @@
 
 ---
 
+## Round 201 — 2026-08-10（trending 分页对齐，六榜单口径统一）
+
+**发现（③视觉/一致性，P3 顺延 R200）**
+- R200 补齐 on-the-air/coming-soon 分页后，六榜单里只剩 /browse/trending/* 无分页——不一致残留。
+
+**修复**
+- trendingTv/trendingMovies 增 page 参数（1-20 夹取，返回 total_pages）；trending 路由解析 ?page + canonical/prev/next；BrowseTrending 渲染统一分页条。其他调用点（落地页/搜索空态/sitemap）默认 page=1 不受影响。
+
+**证据**
+- 部署 Version 26b46d3f。线上 trending tv/movie page=2/3 渲染「Page N of 20」+ canonical ?page=N；首页/搜索空态 trending 区无回归。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
