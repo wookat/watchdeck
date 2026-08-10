@@ -222,9 +222,12 @@ export function popularPeople(env: Env, page = 1) {
   );
 }
 
-export async function watchProviders(env: Env, type: "tv" | "movie", id: number, region = "US"): Promise<WatchProviders | null> {
+export async function watchProviders(env: Env, type: "tv" | "movie", id: number, region = "US"): Promise<{ region: string; providers: WatchProviders } | null> {
   const res = await tmdb<{ results: Record<string, WatchProviders | undefined> }>(env, `/${type}/${id}/watch/providers`, 24 * 3600);
-  return res.results[region] ?? null;
+  const local = res.results[region];
+  if (local?.flatrate?.length) return { region, providers: local };
+  const us = res.results.US;
+  return us ? { region: "US", providers: us } : null;
 }
 
 export async function trailerUrl(env: Env, type: "tv" | "movie", id: number): Promise<string | null> {
