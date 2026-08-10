@@ -154,7 +154,7 @@ app.use("*", async (c, next) => {
 
 app.use("*", async (c, next) => {
   const url = new URL(c.req.url);
-  if (c.req.method === "GET" && url.pathname.length > 1 && url.pathname.endsWith("/") && !url.pathname.startsWith("//")) {
+  if ((c.req.method === "GET" || c.req.method === "HEAD") && url.pathname.length > 1 && url.pathname.endsWith("/") && !url.pathname.startsWith("//")) {
     return c.redirect(url.pathname.replace(/\/+$/, "") + url.search, 301);
   }
   return next();
