@@ -152,6 +152,14 @@ app.use("*", async (c, next) => {
   }
 });
 
+app.use("*", async (c, next) => {
+  const url = new URL(c.req.url);
+  if (c.req.method === "GET" && url.pathname.length > 1 && url.pathname.endsWith("/") && !url.pathname.startsWith("//")) {
+    return c.redirect(url.pathname.replace(/\/+$/, "") + url.search, 301);
+  }
+  return next();
+});
+
 const RATE_WINDOW_MS = 600_000;
 
 function rateLimitKey(c: { req: { header: (n: string) => string | undefined } }, bucket: string): string {
@@ -560,6 +568,8 @@ app.get("/api/suggest", async (c) => {
   return c.json({ results });
 });
 
+app.get("/shows", (c) => c.redirect("/browse/trending/tv", 301));
+app.get("/movies", (c) => c.redirect("/browse/trending/movie", 301));
 app.get("/show/:idslug", (c) => c.redirect(`/shows/${c.req.param("idslug")}${new URL(c.req.url).search}`, 301));
 app.get("/movie/:idslug", (c) => c.redirect(`/movies/${c.req.param("idslug")}${new URL(c.req.url).search}`, 301));
 app.get("/tv/:idslug", (c) => c.redirect(`/shows/${c.req.param("idslug")}${new URL(c.req.url).search}`, 301));
