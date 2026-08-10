@@ -128,8 +128,12 @@ app.use("*", async (c, next) => {
   h.set("x-frame-options", "DENY");
   h.set("referrer-policy", "strict-origin-when-cross-origin");
   h.set("permissions-policy", "camera=(), microphone=(), geolocation=()");
-  const path = new URL(c.req.url).pathname;
-  if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|more|forgot|reset|unsubscribe|confirm-email|u|wrapped)(\/|$)/.test(path)) {
+  const url = new URL(c.req.url);
+  const path = url.pathname;
+  if (
+    /^\/(home|library|lists|roulette|calendar|import|stats|history|settings|more|forgot|reset|unsubscribe|confirm-email|u|wrapped)(\/|$)/.test(path) ||
+    (path === "/search" && url.searchParams.has("q"))
+  ) {
     h.set("x-robots-tag", "noindex");
   }
   if (/^\/(home|library|lists|roulette|calendar|import|stats|history|settings|more|wrapped)(\/|$)/.test(path) && c.res.headers.get("content-type")?.includes("text/html")) {
@@ -589,7 +593,7 @@ app.get("/shows/:idslug", async (c) => {
           .first<{ status: string; rating: number | null; notes: string | null }>()
       : Promise.resolve(null),
     recommendations(c.env, "tv", id).catch(() => ({ results: [] as SearchResult[] })),
-    watchProviders(c.env, "tv", id).catch(() => null),
+    watchProviders(c.env, "tv", id, (c.req.raw as { cf?: { country?: string } }).cf?.country ?? "US").catch(() => null),
     topCast(c.env, "tv", id).catch(() => [] as CastMember[]),
     trailerUrl(c.env, "tv", id).catch(() => null),
     user ? userServices(c.env, user.id) : Promise.resolve(new Set<number>()),
@@ -660,7 +664,7 @@ app.get("/movies/:idslug", async (c) => {
           .first<{ status: string; rating: number | null; notes: string | null }>()
       : Promise.resolve(null),
     recommendations(c.env, "movie", id).catch(() => ({ results: [] as SearchResult[] })),
-    watchProviders(c.env, "movie", id).catch(() => null),
+    watchProviders(c.env, "movie", id, (c.req.raw as { cf?: { country?: string } }).cf?.country ?? "US").catch(() => null),
     topCast(c.env, "movie", id).catch(() => [] as CastMember[]),
     trailerUrl(c.env, "movie", id).catch(() => null),
     movieDirectors(c.env, id).catch(() => [] as { id: number; name: string }[]),
@@ -820,7 +824,7 @@ app.get("/library", async (c) => {
     const capped = shown.slice(0, 30);
     availCapped = shown.length > 30;
     const provs = await Promise.all(capped.map((r) => watchProviders(c.env, r.media_type, r.tmdb_id).catch(() => null)));
-    shown = capped.filter((_, i) => provs[i]?.flatrate?.some((p) => services.has(p.provider_id)));
+    shown = capped.filter((_, i) => provs[i]?.providers.flatrate?.some((p) => services.has(p.provider_id)));
   }
   return c.html(
     <Layout user={user} title="Library">
@@ -2606,7 +2610,7 @@ app.post("/api/import/batch", async (c) => {
 // ---------- seo ----------
 app.get("/robots.txt", (c) =>
   c.text(
-    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /lists\nDisallow: /roulette\nDisallow: /calendar\nDisallow: /import\nDisallow: /stats\nDisallow: /history\nDisallow: /settings\nDisallow: /forgot\nDisallow: /reset\nDisallow: /unsubscribe/\nDisallow: /confirm-email/\nDisallow: /u/\nDisallow: /wrapped\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`
+    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /lists\nDisallow: /roulette\nDisallow: /calendar\nDisallow: /import\nDisallow: /stats\nDisallow: /history\nDisallow: /settings\nDisallow: /forgot\nDisallow: /reset\nDisallow: /unsubscribe/\nDisallow: /confirm-email/\nDisallow: /u/\nDisallow: /wrapped\nDisallow: /more\nDisallow: /search?*\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`
   )
 );
 
@@ -2809,7 +2813,7 @@ async function newlyStreamable(env: Env, userId: number): Promise<{ title: strin
     const key = `avnote:${userId}:${r.media_type}:${r.tmdb_id}`;
     if (await env.CACHE.get(key)) continue;
     const prov = await watchProviders(env, r.media_type, r.tmdb_id).catch(() => null);
-    const mine = prov?.flatrate?.filter((p) => services.has(p.provider_id)) ?? [];
+    const mine = prov?.providers.flatrate?.filter((p) => services.has(p.provider_id)) ?? [];
     if (mine.length === 0) continue;
     await env.CACHE.put(key, "1", { expirationTtl: 90 * 24 * 3600 });
     out.push({ title: r.title, tmdbId: r.tmdb_id, mediaType: r.media_type, services: mine.map((p) => p.provider_name) });

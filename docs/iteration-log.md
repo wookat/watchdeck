@@ -501,6 +501,39 @@
 
 ---
 
+## Round 220 — 2026-08-10（Where to stream 按访客国家显示）
+
+**发现（②UX 走查 + ④复刻对照，P2）**
+- 详情页「Where to stream」硬编码 US——TV Time 难民是全球用户，非美用户看到的流媒体平台可能与本地可用完全不符（Trakt/JustWatch 均按地区显示）。
+
+**修复**
+- watchProviders 接受 region（来自 Cloudflare cf.country，请求即带、零额外开销），本地区无 flatrate 时回退 US；返回 {region, providers}，标题动态显示「Where to stream (XX)」。TMDB /watch/providers 响应本身含全地区，KV 缓存键不变。
+
+**证据**
+- 部署 Version 162506ac。线上美国出口 IP 显示 (US) 正常、tsc 通过；非 US 地区路径为同一 TMDB 响应的键选择（cf.country 由 Cloudflare 按真实 IP 设置，无法在本机伪造实测，逻辑代码级核对）。
+
+---
+
+## Round 221 — 2026-08-10（搜索结果页 noindex + robots 补缺）
+
+**发现（⑤SEO 巡检，P2）**
+- /search?q=* 无限查询空间可被索引（无 canonical/noindex）——thin/dupe 页面风险与爬取预算浪费（Trakt 等均屏蔽站内搜索）；/more 已 noindex 但 robots 未 Disallow。
+
+**修复**
+- /search 带 q 参数时输出 x-robots-tag: noindex（/search 落地页保持可索引）；robots.txt 增 Disallow: /more 与 /search?*。
+
+**证据**
+- 部署 Version fe399393。线上 /search?q=dune 响应头 noindex、/search 无 noindex、robots 新增两行生效。
+
+---
+
+## Round 222 — 2026-08-10（健康巡检轮：0 缺陷）
+
+**扫描（①线上测试）**
+- 无效路由 7 类（shows/movies/person/network/OG/genre 不存在 id）全部 404 正常；page=999 钳制到 20 且 canonical 正确；sitemap 473 URL、person 60 条；og-default.png 200。无新缺陷、无改动。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

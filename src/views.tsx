@@ -1149,11 +1149,12 @@ export const NotesBox: FC<{ tmdbId: number; mediaType: "tv" | "movie"; notes: st
   </details>
 );
 
-export const WhereToWatch: FC<{ providers: WatchProviders | null; mine?: Set<number> }> = ({ providers, mine }) =>
-  !providers?.flatrate?.length ? null : (
+export const WhereToWatch: FC<{ providers: { region: string; providers: WatchProviders } | null; mine?: Set<number> }> = ({ providers: regional, mine }) => {
+  const providers = regional?.providers;
+  return !providers?.flatrate?.length ? null : (
     <div class="mt-4">
       <p class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
-        Where to stream (US)
+        Where to stream ({regional!.region})
         {mine?.size && providers.flatrate.some((p) => mine.has(p.provider_id)) ? <span class="ml-2 normal-case tracking-normal text-emerald-400">✓ On your services</span> : null}
       </p>
       <div class="flex flex-wrap items-center gap-2">
@@ -1175,6 +1176,7 @@ export const WhereToWatch: FC<{ providers: WatchProviders | null; mine?: Set<num
       </div>
     </div>
   );
+};
 
 export const AddToList: FC<{ lists: ListRef[]; tmdbId: number; mediaType: "tv" | "movie"; title: string; posterPath: string | null; redirect: string }> = ({ lists, tmdbId, mediaType, title, posterPath, redirect }) => (
   <details class="relative">
@@ -1225,7 +1227,7 @@ export const ShowPage: FC<{
   tracked: { status: string; rating: number | null; notes: string | null } | null;
   user: User | null;
   recs: SearchResult[];
-  providers?: WatchProviders | null;
+  providers?: { region: string; providers: WatchProviders } | null;
   cast?: CastMember[];
   trailer?: string | null;
   myServices?: Set<number>;
@@ -1526,7 +1528,7 @@ export const MoviePage: FC<{
   tracked: { status: string; rating: number | null; notes: string | null } | null;
   user: User | null;
   recs: SearchResult[];
-  providers?: WatchProviders | null;
+  providers?: { region: string; providers: WatchProviders } | null;
   cast?: CastMember[];
   trailer?: string | null;
   myServices?: Set<number>;
