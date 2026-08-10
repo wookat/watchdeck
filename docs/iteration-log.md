@@ -231,6 +231,19 @@
 
 ---
 
+## Round 198 — 2026-08-09（charts 页互链 pill 导航）
+
+**发现（②UX + ③精致度）**
+- 6 个 charts 页（trending/top-rated/on-the-air/coming-soon）彼此孤立，切换榜单需回 /browse——大厂榜单页惯例是同层 tab/pill 互链。
+
+**修复**
+- 新增 ChartNav 组件（6 pill，当前页高亮 aria-current="page"，nav[aria-label=Charts]），挂到全部 6 个 charts 页；CSS v173。
+
+**证据**
+- 部署 Version 67ad8539。三页抽查：当前 pill 高亮正确、其余 5 链接可点；375px 无溢出、axe 0。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

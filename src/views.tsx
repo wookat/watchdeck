@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 172;
+export const CSS_VERSION = 173;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -1986,6 +1986,27 @@ export const BrowseNetwork: FC<{
   );
 };
 
+const CHART_LINKS: [string, string][] = [
+  ["/browse/trending/tv", "\ud83d\udd25 Trending TV"],
+  ["/browse/trending/movie", "\ud83d\udd25 Trending movies"],
+  ["/browse/top-rated/tv", "\ud83c\udfc6 Top rated TV"],
+  ["/browse/top-rated/movie", "\ud83c\udfc6 Top rated movies"],
+  ["/browse/on-the-air/tv", "\ud83d\udce1 On the air"],
+  ["/browse/coming-soon/movie", "\ud83c\udfac Coming soon"],
+];
+
+export const ChartNav: FC<{ current: string }> = ({ current }) => (
+  <nav aria-label="Charts" class="mb-6 flex flex-wrap gap-2">
+    {CHART_LINKS.map(([href, label]) =>
+      href === current ? (
+        <span aria-current="page" class="rounded-lg border border-violet-500 bg-violet-600/20 px-3 py-1.5 text-sm text-violet-300">{label}</span>
+      ) : (
+        <a href={href} class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300">{label}</a>
+      )
+    )}
+  </nav>
+);
+
 export const BrowseTopRated: FC<{
   type: "tv" | "movie";
   results: SearchResult[];
@@ -2000,6 +2021,7 @@ export const BrowseTopRated: FC<{
         The highest-rated {type === "tv" ? "series" : "films"} ever, ranked by viewer ratings — track the ones you've seen on WatchDeck.{" "}
         <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
       </p>
+      <ChartNav current={base} />
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
         {results.map((r) => (
           <MediaCard item={r} type={type} />
@@ -2024,6 +2046,7 @@ export const BrowseTrending: FC<{
       What everyone is watching right now, refreshed weekly — track them on WatchDeck.{" "}
       <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
     </p>
+    <ChartNav current={`/browse/trending/${type}`} />
     <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
       {results.map((r) => (
         <MediaCard item={r} type={type} />
@@ -2044,6 +2067,7 @@ export const BrowseChartList: FC<{
       {intro}{" "}
       <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
     </p>
+    <ChartNav current={type === "tv" ? "/browse/on-the-air/tv" : "/browse/coming-soon/movie"} />
     <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
       {results.map((r) => (
         <MediaCard item={r} type={type} />
