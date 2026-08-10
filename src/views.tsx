@@ -518,6 +518,10 @@ export const GuidesIndexPage: FC = () => (
         <li class="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
           <a href={`/guides/${g.slug}`} class="font-semibold text-violet-400 underline underline-offset-2">{g.title}</a>
           <p class="mt-1 text-sm text-slate-400">{g.description}</p>
+          <p class="mt-2 text-xs text-slate-500">
+            Updated{" "}
+            {new Date(g.updated).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" })}
+          </p>
         </li>
       ))}
     </ul>
