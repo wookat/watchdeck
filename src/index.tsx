@@ -1007,7 +1007,13 @@ app.get("/browse/trending/:type", async (c) => {
   const type = c.req.param("type") === "movie" ? "movie" : c.req.param("type") === "tv" ? "tv" : null;
   if (!type) return c.notFound();
   const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
-  const res = type === "tv" ? await trendingTv(c.env, page) : await trendingMovies(c.env, page);
+  const fetcher = type === "tv" ? trendingTv : trendingMovies;
+  const [res, prevRes] = await Promise.all([fetcher(c.env, page), page > 1 ? fetcher(c.env, page - 1) : Promise.resolve(null)]);
+  if (prevRes) {
+    // TMDB's trending endpoint repeats items across page boundaries
+    const prevIds = new Set(prevRes.results.map((r) => r.id));
+    res.results = res.results.filter((r) => !prevIds.has(r.id));
+  }
   const base = `${c.env.SITE_URL}/browse/trending/${type}`;
   const last = Math.min(res.total_pages, 20);
   return c.html(
