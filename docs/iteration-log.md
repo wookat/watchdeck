@@ -322,6 +322,30 @@
 
 ---
 
+## Round 205 — 2026-08-10（竞品深访：TV Time 全面关停确认）
+
+**发现（④竞品调研，每 10 轮深访）**
+- **重大市场事件**：TV Time 已完全关停——www/app/en 全部端点均为「Thank You — TV Time」告别页；gdpr.tvtime.com（GDPR 自助导出门户）DNS 已不解析。新导出永久不可申请。
+- Serializd/Simkl 有 Cloudflare 盾（403），按红线跳过；Trakt 主站需 JS；mustapp.com 可访问（移动优先，无 Web 追剧深度）。
+- 影响：我们 /import 页仍链接死掉的 gdpr.tvtime.com（P1 死链），FAQ 仍写「Request your GDPR data export」（不可能完成的指引）。
+
+**修复**：见 R206。
+
+---
+
+## Round 206 — 2026-08-10（TV Time 关停后 import 口径修正）
+
+**发现（②UX + ④竞品，P1）**
+- /import 页死链 gdpr.tvtime.com；落地页 FAQ 指引用户去申请已不存在的导出。
+
+**修复**
+- /import 文案改「Upload the GDPR export ZIP you downloaded from TV Time before it shut down」，移除死链；FAQ 改为：ZIP 仍可用 + 明示新导出已不可申请 + 无 ZIP 时用 Trakt/Serializd CSV 或 Netflix 历史或手动搜索重建。导出指南（guides/export-tv-time-data）本就以过去式描述，无需改。
+
+**证据**
+- 部署 Version ade4395b。线上落地页 0 处 gdpr.tvtime.com 死链、新 FAQ 文案已生效。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
