@@ -259,7 +259,7 @@ export const Landing: FC<{ subscribed?: boolean }> = ({ subscribed }) => (
 export const landingFaqs: [string, string][] = [
   [
     "How do I import my TV Time data?",
-    "Request your GDPR data export from TV Time (or use the ZIP you already downloaded before the shutdown), then upload it as-is on the Import page. WatchDeck matches your shows, watched episodes and movies automatically — no unpacking or reformatting needed.",
+    "Upload the GDPR export ZIP you downloaded before TV Time shut down as-is on the Import page — WatchDeck matches your shows, watched episodes and movies automatically, no unpacking or reformatting needed. New exports can no longer be requested; if you don't have one, a Trakt/Serializd CSV or Netflix viewing history works too, or just search and re-add your shows.",
   ],
   [
     "How much does WatchDeck cost?",
@@ -2917,11 +2917,8 @@ export const ImportPage: FC<{ welcome?: boolean }> = ({ welcome }) => (
     )}
     <h1 class="text-2xl font-bold">Import from TV Time</h1>
     <p class="mt-2 text-slate-400">
-      Upload the ZIP you got from{" "}
-      <a href="https://gdpr.tvtime.com/gdpr/self-service" rel="noopener" class="text-violet-400 hover:underline">
-        gdpr.tvtime.com
-      </a>
-      . We import your tracked episodes, followed shows <strong>and movies</strong> — then take you straight to your next episode. Coming
+      Upload the GDPR export ZIP you downloaded from TV Time before it shut down — it works here as-is.
+      We import your tracked episodes, followed shows <strong>and movies</strong> — then take you straight to your next episode. Coming
       from Trakt or Serializd? A CSV export with a title column works too — a rating column (1–5 or 1–10) becomes your star ratings. Netflix's ViewingActivity.csv also works — shows are added to
       your library and movies marked watched (Netflix doesn't export episode numbers).
     </p>
