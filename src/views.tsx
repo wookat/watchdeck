@@ -590,7 +590,7 @@ export const ResetForm: FC<{ token: string; error?: string }> = ({ token, error 
   </div>
 );
 
-export const MediaCard: FC<{ item: SearchResult; type: "tv" | "movie"; inLibrary?: boolean }> = ({ item, type, inLibrary }) => {
+export const MediaCard: FC<{ item: SearchResult; type: "tv" | "movie"; inLibrary?: boolean; eager?: boolean }> = ({ item, type, inLibrary, eager }) => {
   const title = item.name ?? item.title ?? "Untitled";
   const year = (item.first_air_date ?? item.release_date ?? "").slice(0, 4);
   const href = type === "tv" ? `/shows/${item.id}-${slugify(title)}` : `/movies/${item.id}-${slugify(title)}`;
@@ -604,7 +604,8 @@ export const MediaCard: FC<{ item: SearchResult; type: "tv" | "movie"; inLibrary
       <img
         src={poster(item.poster_path)}
         alt={title}
-        loading="lazy"
+        loading={eager ? "eager" : "lazy"}
+        fetchpriority={eager ? "high" : undefined}
         class="aspect-[2/3] w-full rounded-xl border object-cover poster-fx"
       />
       <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{title}</p>
@@ -1945,8 +1946,8 @@ export const BrowseGenre: FC<{
         <a href="/browse" class="text-violet-400 underline">All genres</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-        {results.map((r) => (
-          <MediaCard item={r} type={type} />
+        {results.map((r, i) => (
+          <MediaCard item={r} type={type} eager={i < 4} />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">
@@ -1973,8 +1974,8 @@ export const BrowseNetwork: FC<{
         <a href="/browse" class="text-violet-400 underline">All genres &amp; networks</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-        {results.map((r) => (
-          <MediaCard item={r} type="tv" />
+        {results.map((r, i) => (
+          <MediaCard item={r} type="tv" eager={i < 4} />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">
@@ -2023,8 +2024,8 @@ export const BrowseTopRated: FC<{
       </p>
       <ChartNav current={base} />
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-        {results.map((r) => (
-          <MediaCard item={r} type={type} />
+        {results.map((r, i) => (
+          <MediaCard item={r} type={type} eager={i < 4} />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">
@@ -2053,8 +2054,8 @@ export const BrowseTrending: FC<{
       </p>
       <ChartNav current={base} />
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-        {results.map((r) => (
-          <MediaCard item={r} type={type} />
+        {results.map((r, i) => (
+          <MediaCard item={r} type={type} eager={i < 4} />
         ))}
       </div>
       {last > 1 && (
@@ -2087,8 +2088,8 @@ export const BrowseChartList: FC<{
       </p>
       <ChartNav current={base} />
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-        {results.map((r) => (
-          <MediaCard item={r} type={type} />
+        {results.map((r, i) => (
+          <MediaCard item={r} type={type} eager={i < 4} />
         ))}
       </div>
       {last > 1 && (
@@ -2120,8 +2121,8 @@ export const BrowseYear: FC<{
         <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-        {results.map((r) => (
-          <MediaCard item={r} type={type} />
+        {results.map((r, i) => (
+          <MediaCard item={r} type={type} eager={i < 4} />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">

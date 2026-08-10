@@ -283,6 +283,19 @@
 
 ---
 
+## Round 202 — 2026-08-10（browse 网格首行海报 LCP 优化）
+
+**发现（③视觉/CWV，P2）**
+- 全部 browse/榜单网格页海报统一 loading=lazy——首屏首行海报（页面 LCP 元素）被浏览器降级排队，冷缓存 LCP 无谓变慢；R134 只优化过详情页。
+
+**修复**
+- MediaCard 增 eager prop（loading=eager + fetchpriority=high）；六类 browse 网格（trending/on-the-air/coming-soon/top-rated/genre/year/network）首 4 张海报 eager（覆盖 375px 3 列首行），其余保持 lazy。
+
+**证据**
+- 部署 Version d9bffc82。线上 trending 页实测 4× fetchpriority=high/eager + 16× lazy；搜索/library 等未动。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
