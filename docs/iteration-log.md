@@ -382,6 +382,19 @@
 
 ---
 
+## Round 210 — 2026-08-10（指南专属 OG 分享卡）
+
+**发现（③视觉/传播 + ④营销窗口，P2）**
+- 6 篇指南分享到社媒/Reddit 全部显示同一张 og-default.png——TV Time 关停获客窗口下，指南是主要分发素材，通用卡片降低点击率且缺专业感（profile/list/wrapped 均已有专属 OG 卡，指南是缺口）。
+
+**修复**
+- og.ts 新增 guideOgImage（WATCHDECK GUIDES 眉题+标题+描述，1200×630 渐变卡）；新路由 /og/guide/:slug.png（KV 按 slug+updated 缓存 30 天，响应 max-age=86400）；guides 路由 ogImage 指向专属卡。
+
+**证据**
+- 部署 Version 98fc7229。线上 6 篇指南 og:image 均指向专属卡、PNG 渲染正常（实测 174KB）、非指南 slug 404。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

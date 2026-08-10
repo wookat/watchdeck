@@ -125,3 +125,24 @@ export async function listOgImage(
     ],
   });
 }
+
+export async function guideOgImage(env: Env, title: string, description: string): Promise<Response> {
+  const [regular, bold] = await Promise.all([interFont(env, 400), interFont(env, 700)]);
+  const html = `
+  <div style="display:flex;flex-direction:column;width:1200px;height:630px;background:linear-gradient(135deg,#020617 0%,#1e1b4b 100%);color:#f1f5f9;font-family:Inter;padding:72px;justify-content:space-between;">
+    <span style="font-size:26px;color:#a78bfa;font-weight:700;letter-spacing:4px;">WATCHDECK GUIDES</span>
+    <div style="display:flex;flex-direction:column;">
+      <span style="font-size:58px;font-weight:700;line-height:1.15;">${ogText(title)}</span>
+      <span style="font-size:28px;color:#94a3b8;margin-top:20px;line-height:1.4;">${ogText(description)}</span>
+    </div>
+    <span style="font-size:24px;color:#64748b;">watchdeck.zalize.com — track your TV shows and movies on the web</span>
+  </div>`;
+  return new ImageResponse(html, {
+    width: 1200,
+    height: 630,
+    fonts: [
+      { name: "Inter", data: regular, weight: 400, style: "normal" },
+      { name: "Inter", data: bold, weight: 700, style: "normal" },
+    ],
+  });
+}
