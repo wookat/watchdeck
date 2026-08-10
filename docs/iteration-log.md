@@ -257,6 +257,71 @@
 
 ---
 
+## Round 200 — 2026-08-10（charts 分页补齐：on-the-air / coming-soon）
+
+**发现（②UX 走查 + ③视觉一致性，P2）**
+- R193 新增的 /browse/on-the-air/tv 与 /browse/coming-soon/movie 仅展示第 1 页 20 条且无翻页，而 genre/year/network/top-rated 均有 Previous/Next 分页——同一 browse 体系内不一致，长尾内容不可达也不可索引。
+
+**修复**
+- 两路由解析 ?page（1-20 夹取），BrowseChartList 增 page/totalPages 渲染统一样式分页条；Layout 补 canonical（page>1 带 ?page=）与 rel=prev/next，与其余 browse 页 SEO 口径一致。
+
+**证据**
+- 部署 Version 34fcf347。线上 page=2 渲染「Page 2 of 20」+ prev/next 头、canonical 带 ?page=2；page=999 夹取为 20；page=1 canonical 不带参数。
+
+---
+
+## Round 201 — 2026-08-10（trending 分页对齐，六榜单口径统一）
+
+**发现（③视觉/一致性，P3 顺延 R200）**
+- R200 补齐 on-the-air/coming-soon 分页后，六榜单里只剩 /browse/trending/* 无分页——不一致残留。
+
+**修复**
+- trendingTv/trendingMovies 增 page 参数（1-20 夹取，返回 total_pages）；trending 路由解析 ?page + canonical/prev/next；BrowseTrending 渲染统一分页条。其他调用点（落地页/搜索空态/sitemap）默认 page=1 不受影响。
+
+**证据**
+- 部署 Version 26b46d3f。线上 trending tv/movie page=2/3 渲染「Page N of 20」+ canonical ?page=N；首页/搜索空态 trending 区无回归。
+
+---
+
+## Round 202 — 2026-08-10（browse 网格首行海报 LCP 优化）
+
+**发现（③视觉/CWV，P2）**
+- 全部 browse/榜单网格页海报统一 loading=lazy——首屏首行海报（页面 LCP 元素）被浏览器降级排队，冷缓存 LCP 无谓变慢；R134 只优化过详情页。
+
+**修复**
+- MediaCard 增 eager prop（loading=eager + fetchpriority=high）；六类 browse 网格（trending/on-the-air/coming-soon/top-rated/genre/year/network）首 4 张海报 eager（覆盖 375px 3 列首行），其余保持 lazy。
+
+**证据**
+- 部署 Version d9bffc82。线上 trending 页实测 4× fetchpriority=high/eager + 16× lazy；搜索/library 等未动。
+
+---
+
+## Round 203 — 2026-08-10（auth 429 分支补 next 保留）
+
+**发现（①线上测试，P3 顺延 R199）**
+- /login 与 /signup 的 429 速率限制分支重渲染表单时丢失 hidden next——用户触发限流后重试成功会丢深链目的地（R199 只覆盖了 401 分支）。
+
+**修复**
+- 两路由先 parseBody 再限流判断，429 分支同样传 next={safeNext(form.next)}；安全口径不变（safeNext 拒 evil.com）。
+
+**证据**
+- 部署 Version 2301fdf3。线上错密码 POST 带 next=/calendar?x=1 → 重渲染保留 hidden next；next=https://evil.com → 0 命中。
+
+---
+
+## Round 204 — 2026-08-10（trending 跨页去重：修测试代理 P3）
+
+**发现（①回归测试，P3）**
+- 测试代理 R200-203 回归发现：TMDB trending API 自身跨页重复条目（p1 末两条与 p2 前两条相同），用户翻页看到重复剧集；top-rated/on-the-air/coming-soon 无此问题。
+
+**修复**
+- trending 路由 page>1 时并行取前一页，按 id 过滤当前页与前页重复项（12h SWR 缓存内前页几乎必命中，无额外延迟）。
+
+**证据**
+- 部署 Version df20ad11。线上 tv/movie p1↔p2 重叠均为 0（comm -12 校验）。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

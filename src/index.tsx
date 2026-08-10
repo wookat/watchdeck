@@ -254,10 +254,10 @@ app.get("/signup", (c) => c.html(<Layout user={c.get("user")} title="Sign up"><A
 app.get("/login", (c) => c.html(<Layout user={c.get("user")} title="Log in"><AuthForm mode="login" next={safeNext(c.req.query("next"))} /></Layout>));
 
 app.post("/signup", async (c) => {
-  if (!(await rateLimit(c, "signup", 10))) {
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Too many attempts. Please try again in a few minutes." /></Layout>, 429);
-  }
   const form = await c.req.parseBody();
+  if (!(await rateLimit(c, "signup", 10))) {
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} /></Layout>, 429);
+  }
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || password.length < 8) {
@@ -289,10 +289,10 @@ app.post("/signup", async (c) => {
 });
 
 app.post("/login", async (c) => {
-  if (!(await rateLimit(c, "login", 15))) {
-    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Too many attempts. Please try again in a few minutes." /></Layout>, 429);
-  }
   const form = await c.req.parseBody();
+  if (!(await rateLimit(c, "login", 15))) {
+    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} /></Layout>, 429);
+  }
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
   const row = await c.env.DB.prepare("SELECT id, password_hash, salt FROM users WHERE email = ?")
@@ -1006,30 +1006,44 @@ app.get("/browse/network/:idslug", async (c) => {
 app.get("/browse/trending/:type", async (c) => {
   const type = c.req.param("type") === "movie" ? "movie" : c.req.param("type") === "tv" ? "tv" : null;
   if (!type) return c.notFound();
-  const res = type === "tv" ? await trendingTv(c.env) : await trendingMovies(c.env);
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const fetcher = type === "tv" ? trendingTv : trendingMovies;
+  const [res, prevRes] = await Promise.all([fetcher(c.env, page), page > 1 ? fetcher(c.env, page - 1) : Promise.resolve(null)]);
+  if (prevRes) {
+    // TMDB's trending endpoint repeats items across page boundaries
+    const prevIds = new Set(prevRes.results.map((r) => r.id));
+    res.results = res.results.filter((r) => !prevIds.has(r.id));
+  }
   const base = `${c.env.SITE_URL}/browse/trending/${type}`;
+  const last = Math.min(res.total_pages, 20);
   return c.html(
     <Layout
       user={c.get("user")}
       title={`Trending ${type === "tv" ? "TV shows" : "movies"} this week`}
       description={`The ${type === "tv" ? "TV shows" : "movies"} everyone is watching this week — discover and track them on WatchDeck.`}
-      canonical={base}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
       jsonLd={browseCrumbs(c.env.SITE_URL, `Trending ${type === "tv" ? "TV shows" : "movies"}`, base, res.results, type)}
     >
-      <BrowseTrending type={type} results={res.results} />
+      <BrowseTrending type={type} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
   );
 });
 
 app.get("/browse/on-the-air/tv", async (c) => {
-  const res = await onTheAirTv(c.env);
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const res = await onTheAirTv(c.env, page);
   const base = `${c.env.SITE_URL}/browse/on-the-air/tv`;
+  const last = Math.min(res.total_pages, 20);
   return c.html(
     <Layout
       user={c.get("user")}
       title="TV shows on the air right now"
       description="Series with new episodes airing in the next 7 days — catch them while they're fresh and track them on WatchDeck."
-      canonical={base}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
       jsonLd={browseCrumbs(c.env.SITE_URL, "TV shows on the air", base, res.results, "tv")}
     >
       <BrowseChartList
@@ -1037,20 +1051,26 @@ app.get("/browse/on-the-air/tv", async (c) => {
         intro="Series with new episodes airing in the next 7 days — catch them while they're fresh."
         type="tv"
         results={res.results}
+        page={page}
+        totalPages={res.total_pages}
       />
     </Layout>
   );
 });
 
 app.get("/browse/coming-soon/movie", async (c) => {
-  const res = await upcomingMovies(c.env);
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const res = await upcomingMovies(c.env, page);
   const base = `${c.env.SITE_URL}/browse/coming-soon/movie`;
+  const last = Math.min(res.total_pages, 20);
   return c.html(
     <Layout
       user={c.get("user")}
       title="Movies coming soon to theaters"
       description="Upcoming theatrical releases — add them to your watchlist on WatchDeck before they hit the big screen."
-      canonical={base}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
       jsonLd={browseCrumbs(c.env.SITE_URL, "Movies coming soon", base, res.results, "movie")}
     >
       <BrowseChartList
@@ -1058,6 +1078,8 @@ app.get("/browse/coming-soon/movie", async (c) => {
         intro="Upcoming theatrical releases — add them to your watchlist before they hit the big screen."
         type="movie"
         results={res.results}
+        page={page}
+        totalPages={res.total_pages}
       />
     </Layout>
   );

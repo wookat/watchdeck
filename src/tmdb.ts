@@ -117,12 +117,12 @@ export function movieDetails(env: Env, id: number) {
   return tmdb<MovieDetails>(env, `/movie/${id}`, 24 * 3600);
 }
 
-export function trendingTv(env: Env) {
-  return tmdb<{ results: SearchResult[] }>(env, `/trending/tv/week`, 12 * 3600);
+export function trendingTv(env: Env, page = 1) {
+  return tmdb<{ results: SearchResult[]; total_pages: number }>(env, `/trending/tv/week?page=${Math.min(Math.max(page, 1), 20)}`, 12 * 3600);
 }
 
-export function trendingMovies(env: Env) {
-  return tmdb<{ results: SearchResult[] }>(env, `/trending/movie/week`, 12 * 3600);
+export function trendingMovies(env: Env, page = 1) {
+  return tmdb<{ results: SearchResult[]; total_pages: number }>(env, `/trending/movie/week?page=${Math.min(Math.max(page, 1), 20)}`, 12 * 3600);
 }
 
 export function genreList(env: Env, type: "tv" | "movie") {

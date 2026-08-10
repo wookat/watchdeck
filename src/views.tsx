@@ -590,7 +590,7 @@ export const ResetForm: FC<{ token: string; error?: string }> = ({ token, error 
   </div>
 );
 
-export const MediaCard: FC<{ item: SearchResult; type: "tv" | "movie"; inLibrary?: boolean }> = ({ item, type, inLibrary }) => {
+export const MediaCard: FC<{ item: SearchResult; type: "tv" | "movie"; inLibrary?: boolean; eager?: boolean }> = ({ item, type, inLibrary, eager }) => {
   const title = item.name ?? item.title ?? "Untitled";
   const year = (item.first_air_date ?? item.release_date ?? "").slice(0, 4);
   const href = type === "tv" ? `/shows/${item.id}-${slugify(title)}` : `/movies/${item.id}-${slugify(title)}`;
@@ -604,7 +604,8 @@ export const MediaCard: FC<{ item: SearchResult; type: "tv" | "movie"; inLibrary
       <img
         src={poster(item.poster_path)}
         alt={title}
-        loading="lazy"
+        loading={eager ? "eager" : "lazy"}
+        fetchpriority={eager ? "high" : undefined}
         class="aspect-[2/3] w-full rounded-xl border object-cover poster-fx"
       />
       <p class="mt-2 line-clamp-1 text-sm font-medium group-hover:text-violet-400">{title}</p>
@@ -1945,8 +1946,8 @@ export const BrowseGenre: FC<{
         <a href="/browse" class="text-violet-400 underline">All genres</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-        {results.map((r) => (
-          <MediaCard item={r} type={type} />
+        {results.map((r, i) => (
+          <MediaCard item={r} type={type} eager={i < 4} />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">
@@ -1973,8 +1974,8 @@ export const BrowseNetwork: FC<{
         <a href="/browse" class="text-violet-400 underline">All genres &amp; networks</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-        {results.map((r) => (
-          <MediaCard item={r} type="tv" />
+        {results.map((r, i) => (
+          <MediaCard item={r} type="tv" eager={i < 4} />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">
@@ -2023,8 +2024,8 @@ export const BrowseTopRated: FC<{
       </p>
       <ChartNav current={base} />
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-        {results.map((r) => (
-          <MediaCard item={r} type={type} />
+        {results.map((r, i) => (
+          <MediaCard item={r} type={type} eager={i < 4} />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">
@@ -2039,42 +2040,68 @@ export const BrowseTopRated: FC<{
 export const BrowseTrending: FC<{
   type: "tv" | "movie";
   results: SearchResult[];
-}> = ({ type, results }) => (
-  <div>
-    <h1 class="mb-2 text-2xl font-bold">Trending {type === "tv" ? "TV shows" : "movies"} this week</h1>
-    <p class="mb-6 text-slate-400">
-      What everyone is watching right now, refreshed weekly — track them on WatchDeck.{" "}
-      <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
-    </p>
-    <ChartNav current={`/browse/trending/${type}`} />
-    <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-      {results.map((r) => (
-        <MediaCard item={r} type={type} />
-      ))}
+  page: number;
+  totalPages: number;
+}> = ({ type, results, page, totalPages }) => {
+  const base = `/browse/trending/${type}`;
+  const last = Math.min(totalPages, 20);
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">Trending {type === "tv" ? "TV shows" : "movies"} this week</h1>
+      <p class="mb-6 text-slate-400">
+        What everyone is watching right now, refreshed weekly — track them on WatchDeck.{" "}
+        <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
+      </p>
+      <ChartNav current={base} />
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
+        {results.map((r, i) => (
+          <MediaCard item={r} type={type} eager={i < 4} />
+        ))}
+      </div>
+      {last > 1 && (
+        <div class="mt-8 flex items-center gap-3 text-sm">
+          {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+          <span class="text-slate-400">Page {page} of {last}</span>
+          {page < last && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 export const BrowseChartList: FC<{
   heading: string;
   intro: string;
   type: "tv" | "movie";
   results: SearchResult[];
-}> = ({ heading, intro, type, results }) => (
-  <div>
-    <h1 class="mb-2 text-2xl font-bold">{heading}</h1>
-    <p class="mb-6 text-slate-400">
-      {intro}{" "}
-      <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
-    </p>
-    <ChartNav current={type === "tv" ? "/browse/on-the-air/tv" : "/browse/coming-soon/movie"} />
-    <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-      {results.map((r) => (
-        <MediaCard item={r} type={type} />
-      ))}
+  page: number;
+  totalPages: number;
+}> = ({ heading, intro, type, results, page, totalPages }) => {
+  const base = type === "tv" ? "/browse/on-the-air/tv" : "/browse/coming-soon/movie";
+  const last = Math.min(totalPages, 20);
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">{heading}</h1>
+      <p class="mb-6 text-slate-400">
+        {intro}{" "}
+        <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
+      </p>
+      <ChartNav current={base} />
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
+        {results.map((r, i) => (
+          <MediaCard item={r} type={type} eager={i < 4} />
+        ))}
+      </div>
+      {last > 1 && (
+        <div class="mt-8 flex items-center gap-3 text-sm">
+          {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+          <span class="text-slate-400">Page {page} of {last}</span>
+          {page < last && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 export const BrowseYear: FC<{
   type: "tv" | "movie";
@@ -2094,8 +2121,8 @@ export const BrowseYear: FC<{
         <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
       </p>
       <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-        {results.map((r) => (
-          <MediaCard item={r} type={type} />
+        {results.map((r, i) => (
+          <MediaCard item={r} type={type} eager={i < 4} />
         ))}
       </div>
       <div class="mt-8 flex items-center gap-3 text-sm">
