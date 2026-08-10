@@ -527,6 +527,13 @@
 
 ---
 
+## Round 222 — 2026-08-10（健康巡检轮：0 缺陷）
+
+**扫描（①线上测试）**
+- 无效路由 7 类（shows/movies/person/network/OG/genre 不存在 id）全部 404 正常；page=999 钳制到 20 且 canonical 正确；sitemap 473 URL、person 60 条；og-default.png 200。无新缺陷、无改动。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
