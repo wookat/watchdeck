@@ -346,6 +346,19 @@
 
 ---
 
+## Round 207 — 2026-08-10（新指南：没有 TV Time 导出如何重建历史）
+
+**发现（④竞品/市场 + ⑤pSEO，P2 机会）**
+- TV Time 关停后大量难民没来得及申请导出——「tv time shut down / get data back」是当下最高意图搜索词，我们无针对性内容承接。
+
+**修复**
+- 新增指南 /guides/rebuild-watch-history-without-tv-time-export：四步重建路径（翻邮箱找 ZIP → Trakt/Serializd CSV 或 Netflix 历史 → 搜索+「⇤ up to here」快速重建在追剧 → 随想随补）；GUIDES 数组驱动自动进 /guides hub、sitemap 与 Article JSON-LD。
+
+**证据**
+- 部署 Version 4e5dcc48。线上 200、guides hub 与 sitemap 均含新页、内链 4 条互通。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
