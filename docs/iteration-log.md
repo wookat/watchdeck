@@ -257,6 +257,19 @@
 
 ---
 
+## Round 200 — 2026-08-10（charts 分页补齐：on-the-air / coming-soon）
+
+**发现（②UX 走查 + ③视觉一致性，P2）**
+- R193 新增的 /browse/on-the-air/tv 与 /browse/coming-soon/movie 仅展示第 1 页 20 条且无翻页，而 genre/year/network/top-rated 均有 Previous/Next 分页——同一 browse 体系内不一致，长尾内容不可达也不可索引。
+
+**修复**
+- 两路由解析 ?page（1-20 夹取），BrowseChartList 增 page/totalPages 渲染统一样式分页条；Layout 补 canonical（page>1 带 ?page=）与 rel=prev/next，与其余 browse 页 SEO 口径一致。
+
+**证据**
+- 部署 Version 34fcf347。线上 page=2 渲染「Page 2 of 20」+ prev/next 头、canonical 带 ?page=2；page=999 夹取为 20；page=1 canonical 不带参数。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

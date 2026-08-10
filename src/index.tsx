@@ -1022,14 +1022,18 @@ app.get("/browse/trending/:type", async (c) => {
 });
 
 app.get("/browse/on-the-air/tv", async (c) => {
-  const res = await onTheAirTv(c.env);
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const res = await onTheAirTv(c.env, page);
   const base = `${c.env.SITE_URL}/browse/on-the-air/tv`;
+  const last = Math.min(res.total_pages, 20);
   return c.html(
     <Layout
       user={c.get("user")}
       title="TV shows on the air right now"
       description="Series with new episodes airing in the next 7 days — catch them while they're fresh and track them on WatchDeck."
-      canonical={base}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
       jsonLd={browseCrumbs(c.env.SITE_URL, "TV shows on the air", base, res.results, "tv")}
     >
       <BrowseChartList
@@ -1037,20 +1041,26 @@ app.get("/browse/on-the-air/tv", async (c) => {
         intro="Series with new episodes airing in the next 7 days — catch them while they're fresh."
         type="tv"
         results={res.results}
+        page={page}
+        totalPages={res.total_pages}
       />
     </Layout>
   );
 });
 
 app.get("/browse/coming-soon/movie", async (c) => {
-  const res = await upcomingMovies(c.env);
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const res = await upcomingMovies(c.env, page);
   const base = `${c.env.SITE_URL}/browse/coming-soon/movie`;
+  const last = Math.min(res.total_pages, 20);
   return c.html(
     <Layout
       user={c.get("user")}
       title="Movies coming soon to theaters"
       description="Upcoming theatrical releases — add them to your watchlist on WatchDeck before they hit the big screen."
-      canonical={base}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
       jsonLd={browseCrumbs(c.env.SITE_URL, "Movies coming soon", base, res.results, "movie")}
     >
       <BrowseChartList
@@ -1058,6 +1068,8 @@ app.get("/browse/coming-soon/movie", async (c) => {
         intro="Upcoming theatrical releases — add them to your watchlist before they hit the big screen."
         type="movie"
         results={res.results}
+        page={page}
+        totalPages={res.total_pages}
       />
     </Layout>
   );

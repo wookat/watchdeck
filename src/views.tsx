@@ -2060,21 +2060,34 @@ export const BrowseChartList: FC<{
   intro: string;
   type: "tv" | "movie";
   results: SearchResult[];
-}> = ({ heading, intro, type, results }) => (
-  <div>
-    <h1 class="mb-2 text-2xl font-bold">{heading}</h1>
-    <p class="mb-6 text-slate-400">
-      {intro}{" "}
-      <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
-    </p>
-    <ChartNav current={type === "tv" ? "/browse/on-the-air/tv" : "/browse/coming-soon/movie"} />
-    <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
-      {results.map((r) => (
-        <MediaCard item={r} type={type} />
-      ))}
+  page: number;
+  totalPages: number;
+}> = ({ heading, intro, type, results, page, totalPages }) => {
+  const base = type === "tv" ? "/browse/on-the-air/tv" : "/browse/coming-soon/movie";
+  const last = Math.min(totalPages, 20);
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">{heading}</h1>
+      <p class="mb-6 text-slate-400">
+        {intro}{" "}
+        <a href="/browse" class="text-violet-400 underline">All genres &amp; years</a>
+      </p>
+      <ChartNav current={base} />
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
+        {results.map((r) => (
+          <MediaCard item={r} type={type} />
+        ))}
+      </div>
+      {last > 1 && (
+        <div class="mt-8 flex items-center gap-3 text-sm">
+          {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+          <span class="text-slate-400">Page {page} of {last}</span>
+          {page < last && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+        </div>
+      )}
     </div>
-  </div>
-);
+  );
+};
 
 export const BrowseYear: FC<{
   type: "tv" | "movie";
