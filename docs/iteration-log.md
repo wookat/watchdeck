@@ -514,6 +514,19 @@
 
 ---
 
+## Round 221 — 2026-08-10（搜索结果页 noindex + robots 补缺）
+
+**发现（⑤SEO 巡检，P2）**
+- /search?q=* 无限查询空间可被索引（无 canonical/noindex）——thin/dupe 页面风险与爬取预算浪费（Trakt 等均屏蔽站内搜索）；/more 已 noindex 但 robots 未 Disallow。
+
+**修复**
+- /search 带 q 参数时输出 x-robots-tag: noindex（/search 落地页保持可索引）；robots.txt 增 Disallow: /more 与 /search?*。
+
+**证据**
+- 部署 Version fe399393。线上 /search?q=dune 响应头 noindex、/search 无 noindex、robots 新增两行生效。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
