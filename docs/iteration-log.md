@@ -706,6 +706,21 @@
 
 ---
 
+## Round 240 — 2026-08-13（审改分离第 1 轮整改：计数单源化 + PBKDF2 自描述格式）
+
+**问题（验收官第 1 轮清单）**
+- P2 取消勾选后季 tab 徽章与进度行同屏不一致（客户端只补丁式更新了进度条两处，季 tab 徽章是第三处独立计数，漏更新）——归因到设计层：同一状态被三处各自渲染、mutation 后逐处手工同步。
+- P2 PBKDF2 100k 迭代低于 OWASP 现行建议。
+
+**系统性修复（如无必要勿增实体）**
+- 计数单源化：所有季计数元素统一声明 `data-season-count`（badge/bar/text）+ 自带 seen/total；app.js 删除按 id 逐个补丁的代码，改为单一渲染器对 `[data-season-count]` 全量重派生（含完成态配色切换）。今后新增计数位只需挂同一属性，无需改 JS。
+- PBKDF2：首次实现按建议升到 210k 并部署（df700146），但 Cloudflare Workers 运行时硬上限为 100k（`NotSupportedError: iteration counts above 100000 are not supported`），导致注册/legacy 登录 500——属实现失误，测试代理发现 P0 后即回滚成本至 100k 热修（7ff0cef1）。保留 `<iterations>$<hex>` 自描述格式：验证按存储成本执行，裸 hex 视为 legacy 100k，登录成功且格式不同时透明重哈希（无 schema 变更、无需用户操作）；未来 Workers 放宽上限时可直接提升成本。
+
+**证据**
+- 热修部署 Version 7ff0cef1，生产实测 9/9 项全过：取消/重勾后季 tab 徽章（含 emerald/violet 完成态切换）/进度条/文本三处同步且无刷新；注册恢复正常（新 hash `100000$` 前缀）；legacy 账号（id 5）登录后透明迁移为 `100000$` 格式且二次登录成功；375px 无溢出、axe 0；throwaway 已自删，D1 基线 users=8 完好。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
