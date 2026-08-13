@@ -2,28 +2,41 @@ import type { Context } from "hono";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import type { AppContext, User } from "./types";
 
+// Cloudflare Workers caps PBKDF2 at 100k iterations (NotSupportedError above);
+// keep the self-describing "<iterations>$<hex>" format so the cost can rise if the cap does.
 const ITERATIONS = 100_000;
+const LEGACY_ITERATIONS = 100_000;
 
 function toHex(buf: ArrayBuffer): string {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
+async function deriveHex(password: string, salt: Uint8Array, iterations: number): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations }, key, 256);
+  return toHex(bits);
+}
+
+// Stored hash format: "<iterations>$<hex>"; bare hex is a legacy 100k-iteration hash.
 export async function hashPassword(password: string, saltHex?: string) {
   const salt = saltHex
     ? Uint8Array.from(saltHex.match(/.{2}/g)!.map((h) => parseInt(h, 16)))
     : crypto.getRandomValues(new Uint8Array(16));
-  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
-  const bits = await crypto.subtle.deriveBits(
-    { name: "PBKDF2", hash: "SHA-256", salt, iterations: ITERATIONS },
-    key,
-    256
-  );
-  return { hash: toHex(bits), salt: toHex(salt.buffer as ArrayBuffer) };
+  const hex = await deriveHex(password, salt, ITERATIONS);
+  return { hash: `${ITERATIONS}$${hex}`, salt: toHex(salt.buffer as ArrayBuffer) };
 }
 
-export async function verifyPassword(password: string, saltHex: string, expectedHash: string) {
-  const { hash } = await hashPassword(password, saltHex);
-  return hash === expectedHash;
+export function needsRehash(storedHash: string): boolean {
+  return !storedHash.startsWith(`${ITERATIONS}$`);
+}
+
+export async function verifyPassword(password: string, saltHex: string, storedHash: string) {
+  const sep = storedHash.indexOf("$");
+  const iterations = sep > 0 ? parseInt(storedHash.slice(0, sep), 10) : LEGACY_ITERATIONS;
+  const expected = sep > 0 ? storedHash.slice(sep + 1) : storedHash;
+  const salt = Uint8Array.from(saltHex.match(/.{2}/g)!.map((h) => parseInt(h, 16)));
+  const hex = await deriveHex(password, salt, iterations);
+  return hex === expected;
 }
 
 export function newToken(): string {

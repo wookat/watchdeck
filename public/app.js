@@ -113,15 +113,21 @@ document.addEventListener("submit", (e) => {
         void row.offsetWidth;
         row.classList.add("ep-flash");
       }
-      const bar = document.getElementById("season-progress-bar");
-      if (bar) {
-        const total = parseInt(bar.dataset.total, 10) || 1;
-        const seen = Math.max(0, Math.min(total, (parseInt(bar.dataset.seen, 10) || 0) + (marking ? 1 : -1)));
-        bar.dataset.seen = String(seen);
-        bar.style.width = Math.round((100 * seen) / total) + "%";
-        const txt = document.getElementById("season-progress-text");
-        if (txt) txt.textContent = seen + "/" + total + " aired watched";
-      }
+      // single source of truth: every season counter declares data-season-count and re-derives itself
+      document.querySelectorAll("[data-season-count]").forEach((el) => {
+        const total = parseInt(el.dataset.total, 10) || 0;
+        const seen = Math.max(0, Math.min(total, (parseInt(el.dataset.seen, 10) || 0) + (marking ? 1 : -1)));
+        el.dataset.seen = String(seen);
+        if (el.dataset.seasonCount === "bar") {
+          el.style.width = Math.round((100 * seen) / Math.max(1, total)) + "%";
+        } else {
+          el.textContent = seen + "/" + total + (el.dataset.suffix || "");
+        }
+        if (el.dataset.doneClass && el.dataset.todoClass) {
+          el.classList.remove(el.dataset.doneClass, el.dataset.todoClass);
+          el.classList.add(total > 0 && seen >= total ? el.dataset.doneClass : el.dataset.todoClass);
+        }
+      });
       showToast(marking ? "\u2713 " + form.dataset.epLabel + " marked as watched" : form.dataset.epLabel + " unmarked");
     })
     .catch(() => form.submit())

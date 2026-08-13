@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 173;
+export const CSS_VERSION = 174;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -1412,6 +1412,11 @@ export const ShowPage: FC<{
                 >
                   Season {s.season_number}
                   <span
+                    data-season-count={season?.season_number === s.season_number ? "badge" : undefined}
+                    data-seen={season?.season_number === s.season_number ? String(seen) : undefined}
+                    data-total={season?.season_number === s.season_number ? String(s.episode_count) : undefined}
+                    data-done-class={season?.season_number === s.season_number ? "text-emerald-100" : undefined}
+                    data-todo-class={season?.season_number === s.season_number ? "text-violet-100" : undefined}
                     class={`ml-1.5 text-xs ${
                       s.episode_count > 0 && seen >= s.episode_count
                         ? season?.season_number === s.season_number
@@ -1439,14 +1444,14 @@ export const ShowPage: FC<{
               <div class="mb-3 flex items-center gap-3">
                 <div class="h-1.5 w-full max-w-xs overflow-hidden rounded-full bg-slate-800">
                   <div
-                    id="season-progress-bar"
+                    data-season-count="bar"
                     class="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-500"
                     style={`width:${Math.round((100 * seen) / aired.length)}%`}
                     data-seen={String(seen)}
                     data-total={String(aired.length)}
                   />
                 </div>
-                <span id="season-progress-text" class="stat-num shrink-0 text-xs text-slate-400">{seen}/{aired.length} aired watched</span>
+                <span data-season-count="text" data-seen={String(seen)} data-total={String(aired.length)} data-suffix=" aired watched" class="stat-num shrink-0 text-xs text-slate-400">{seen}/{aired.length} aired watched</span>
               </div>
             )}
             <form action="/api/watch-season" method="post" class="mb-4">

@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { csrf } from "hono/csrf";
 import { HTTPException } from "hono/http-exception";
 import type { AppContext, Env } from "./types";
-import { hashPassword, verifyPassword, createSession, destroySession, loadUser } from "./auth";
+import { hashPassword, verifyPassword, needsRehash, createSession, destroySession, loadUser } from "./auth";
 import {
   searchMulti,
   searchPerson,
@@ -315,6 +315,12 @@ app.post("/login", async (c) => {
     return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Wrong email or password." next={safeNext(form.next)} /></Layout>, 401);
   }
   await createSession(c, row.id);
+  if (needsRehash(row.password_hash)) {
+    const { hash, salt } = await hashPassword(password);
+    c.executionCtx.waitUntil(
+      c.env.DB.prepare("UPDATE users SET password_hash = ?, salt = ? WHERE id = ?").bind(hash, salt, row.id).run()
+    );
+  }
   c.executionCtx.waitUntil(c.env.CACHE.delete(rateLimitKey(c, "login")).catch(() => {}));
   return c.redirect(safeNext(form.next) ?? "/home");
 });
