@@ -326,6 +326,17 @@ textarea:focus {
 .toast-show {
   opacity: 1;
   transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+.toast-undo {
+  margin-left: 0.75rem;
+  color: #a78bfa;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.toast-undo:hover {
+  color: #c4b5fd;
 }
 /* clear the mobile bottom tab bar */
 @media (max-width: 640px) {
