@@ -23,26 +23,68 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-document.addEventListener("input", (e) => {
-  const el = e.target;
-  if (!(el instanceof HTMLInputElement)) return;
-  const hint = document.getElementById("pw-hint");
-  if (!hint || !el.form || !el.form.contains(hint)) return;
-  if (el.id === "auth-password") {
-    const left = 8 - el.value.length;
-    hint.classList.remove("hidden");
-    if (left > 0) {
-      hint.textContent = left + " more character" + (left === 1 ? "" : "s") + " needed";
-      hint.className = "mt-1.5 text-xs text-amber-400";
-    } else {
-      hint.textContent = "✓ Password looks good";
-      hint.className = "mt-1.5 text-xs text-emerald-400";
-    }
-  } else if (el.id === "auth-email" && el.value.length > 3) {
-    const invalid = !el.checkValidity();
-    el.classList.toggle("border-amber-500", invalid);
-    el.classList.toggle("border-slate-700", !invalid);
+// Inline validation + pending submit state for every form[data-validate] (login/signup/forgot/reset)
+function fieldMessage(el) {
+  if (el.validity.valueMissing) return el.type === "email" ? "Enter your email address" : "Enter your password";
+  if (el.validity.tooShort) {
+    const left = el.minLength - el.value.length;
+    return left + " more character" + (left === 1 ? "" : "s") + " needed";
   }
+  if (!el.checkValidity()) return "Enter a valid email address";
+  return "";
+}
+function renderFieldHint(el) {
+  let hint = el.parentElement.querySelector("[data-field-hint]");
+  if (!hint) {
+    hint = document.createElement("p");
+    hint.setAttribute("data-field-hint", "");
+    hint.setAttribute("aria-live", "polite");
+    el.parentElement.appendChild(hint);
+  }
+  const msg = fieldMessage(el);
+  el.classList.toggle("border-amber-500", !!msg);
+  el.classList.toggle("border-slate-700", !msg);
+  if (msg) {
+    hint.textContent = msg;
+    hint.className = "mt-1.5 text-xs text-amber-400";
+  } else if (el.autocomplete === "new-password" && el.value) {
+    hint.textContent = "✓ Password looks good";
+    hint.className = "mt-1.5 text-xs text-emerald-400";
+  } else {
+    hint.textContent = "";
+    hint.className = "hidden";
+  }
+  return !msg;
+}
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("form[data-validate]").forEach((form) => {
+    form.setAttribute("novalidate", "");
+    form.addEventListener("input", (e) => {
+      const el = e.target;
+      if (el instanceof HTMLInputElement && (el.dataset.touched || el.autocomplete === "new-password")) renderFieldHint(el);
+    });
+    form.addEventListener("submit", (e) => {
+      let firstBad = null;
+      form.querySelectorAll("input[required]").forEach((el) => {
+        el.dataset.touched = "1";
+        if (!renderFieldHint(el) && !firstBad) firstBad = el;
+      });
+      if (firstBad) {
+        e.preventDefault();
+        firstBad.focus();
+        return;
+      }
+      const btn = form.querySelector("button[data-pending]");
+      if (btn) {
+        btn.textContent = btn.dataset.pending;
+        btn.setAttribute("aria-busy", "true");
+        btn.classList.add("opacity-70", "cursor-wait");
+        setTimeout(() => {
+          btn.disabled = true;
+        }, 0);
+      }
+    });
+  });
 });
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-dismiss-key]").forEach((el) => {
@@ -68,7 +110,7 @@ document.addEventListener("submit", (e) => {
   const form = e.target;
   if (form instanceof HTMLFormElement && form.dataset.confirm && !window.confirm(form.dataset.confirm)) e.preventDefault();
 });
-function showToast(msg) {
+function showToast(msg, undoFn) {
   let t = document.getElementById("app-toast");
   if (!t) {
     t = document.createElement("div");
@@ -79,11 +121,22 @@ function showToast(msg) {
     document.body.appendChild(t);
   }
   t.textContent = msg;
+  if (undoFn) {
+    const u = document.createElement("button");
+    u.type = "button";
+    u.textContent = "Undo";
+    u.className = "toast-undo";
+    u.addEventListener("click", () => {
+      t.classList.remove("toast-show");
+      undoFn();
+    });
+    t.appendChild(u);
+  }
   t.classList.remove("toast-show");
   void t.offsetWidth;
   t.classList.add("toast-show");
   clearTimeout(t.dataset.timer);
-  t.dataset.timer = setTimeout(() => t.classList.remove("toast-show"), 2400);
+  t.dataset.timer = setTimeout(() => t.classList.remove("toast-show"), undoFn ? 5000 : 2400);
 }
 // episode mark-watched: instant inline feedback (row flash + progress bar + toast) without a reload
 document.addEventListener("submit", (e) => {
@@ -128,7 +181,7 @@ document.addEventListener("submit", (e) => {
           el.classList.add(total > 0 && seen >= total ? el.dataset.doneClass : el.dataset.todoClass);
         }
       });
-      showToast(marking ? "\u2713 " + form.dataset.epLabel + " marked as watched" : form.dataset.epLabel + " unmarked");
+      showToast(marking ? "\u2713 " + form.dataset.epLabel + " marked as watched" : form.dataset.epLabel + " unmarked", () => form.requestSubmit());
     })
     .catch(() => form.submit())
     .finally(() => {

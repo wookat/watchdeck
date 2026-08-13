@@ -721,6 +721,23 @@
 
 ---
 
+## Round 241 — 2026-08-14（审改分离第 2 轮整改：auth 表单行内反馈 + toast Undo + 未登录 track 深链闭环）
+
+**问题（验收官第 2 轮清单）**
+- P2 登录提交少输字符时页面看似无响应（依赖原生校验气泡，无行内即时反馈、无 pending 态）——归因到设计层：signup 有硬编码 #pw-hint 补丁，login/forgot/reset 完全裸奔，同类表单校验逻辑没有单一实现。
+- 更优方案建议①：集勾选 toast 加 Undo（误点高频）。
+- 更优方案建议②：未登录详情页 Track CTA 登录后自动加入 watchlist（deep-link 转化闭环）。
+
+**系统性修复（如无必要勿增实体）**
+- 表单校验单源化：删除硬编码 #pw-hint/#auth-email 监听，app.js 新增通用 `form[data-validate]` 增强器——JS 可用时接管原生校验（novalidate），行内 amber 提示（缺失/过短/邮箱无效，含"还差 N 位"），提交时聚焦首个无效项；通过后按钮进 `data-pending` 态（aria-busy + 禁用防重复提交）。login/signup/forgot/reset 四表单统一挂载，无 JS 时回退原生校验。
+- showToast 增可选 undo 回调：集勾选/取消 toast 带 Undo 按钮（requestSubmit 走同一 ep-watch 处理器反向切换，计数单源渲染器自动同步），toast 展示延长至 5s。
+- 未登录 Track CTA 的 next 带 `?track=1`：登录/注册回跳详情页时若未在库则落 watchlist（INSERT … DO NOTHING 幂等、不覆盖已有状态）并 redirect 清参数。
+
+**证据**
+- 见 PR 与生产回归记录（部署 Version 见 PR 评论）。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**

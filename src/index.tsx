@@ -595,6 +595,16 @@ app.get("/shows/:idslug", async (c) => {
     const qs = new URL(c.req.url).search;
     return c.redirect(`/shows/${showSlug}${qs}`, 301);
   }
+  if (user && c.req.query("track") === "1") {
+    await c.env.DB.prepare(
+      `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status)
+       VALUES (?, ?, 'tv', ?, ?, 'watchlist')
+       ON CONFLICT(user_id, tmdb_id, media_type) DO NOTHING`
+    )
+      .bind(user.id, id, show.name, show.poster_path)
+      .run();
+    return c.redirect(`/shows/${showSlug}`);
+  }
   const seasonNum = parseInt(c.req.query("season") ?? "1", 10) || 1;
   const [season, watchedRows, tracked, recsRes, providers, cast, trailer, services, listsRes] = await Promise.all([
     seasonDetails(c.env, id, seasonNum).catch(() => null),
@@ -672,6 +682,16 @@ app.get("/movies/:idslug", async (c) => {
   }
   const movieSlug = `${movie.id}-${slugify(movie.title)}`;
   if (c.req.param("idslug") !== movieSlug) return c.redirect(`/movies/${movieSlug}`, 301);
+  if (user && c.req.query("track") === "1") {
+    await c.env.DB.prepare(
+      `INSERT INTO tracked (user_id, tmdb_id, media_type, title, poster_path, status)
+       VALUES (?, ?, 'movie', ?, ?, 'watchlist')
+       ON CONFLICT(user_id, tmdb_id, media_type) DO NOTHING`
+    )
+      .bind(user.id, id, movie.title, movie.poster_path)
+      .run();
+    return c.redirect(`/movies/${movieSlug}`);
+  }
   const [watchedRow, tracked, recsRes, providers, cast, trailer, directors, services, listsRes, collectionRes] = await Promise.all([
     user ? c.env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first<{ n: number }>() : Promise.resolve(null),
     user

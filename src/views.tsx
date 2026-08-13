@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 174;
+export const CSS_VERSION = 175;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -599,7 +599,7 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
   <div class="mx-auto max-w-sm py-10">
     <h1 class="mb-6 text-2xl font-bold">{mode === "login" ? "Log in" : "Create your account"}</h1>
     {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
-    <form action={`/${mode}`} method="post" class="space-y-4">
+    <form action={`/${mode}`} method="post" class="space-y-4" data-validate>
       {next && <input type="hidden" name="next" value={next} />}
       <div>
         <label for="auth-email" class="mb-1 block text-sm text-slate-400">Email</label>
@@ -624,11 +624,8 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
           autocomplete={mode === "signup" ? "new-password" : "current-password"}
           class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
         />
-        {mode === "signup" && (
-          <p id="pw-hint" class="mt-1.5 hidden text-xs" aria-live="polite"></p>
-        )}
       </div>
-      <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">
+      <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500" data-pending={mode === "login" ? "Logging in…" : "Creating account…"}>
         {mode === "login" ? "Log in" : "Sign up"}
       </button>
       {mode === "signup" && (
@@ -657,7 +654,7 @@ export const ForgotForm: FC<{ sent?: boolean; error?: string }> = ({ sent, error
     ) : (
       <>
         {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
-        <form action="/forgot" method="post" class="space-y-4">
+        <form action="/forgot" method="post" class="space-y-4" data-validate>
           <div>
             <label for="forgot-email" class="mb-1 block text-sm text-slate-400">Email</label>
             <input
@@ -670,7 +667,7 @@ export const ForgotForm: FC<{ sent?: boolean; error?: string }> = ({ sent, error
               class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
             />
           </div>
-          <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">Send reset link</button>
+          <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500" data-pending="Sending…">Send reset link</button>
         </form>
       </>
     )}
@@ -684,7 +681,7 @@ export const ResetForm: FC<{ token: string; error?: string }> = ({ token, error 
   <div class="mx-auto max-w-sm py-10">
     <h1 class="mb-6 text-2xl font-bold">Choose a new password</h1>
     {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
-    <form action={`/reset/${token}`} method="post" class="space-y-4">
+    <form action={`/reset/${token}`} method="post" class="space-y-4" data-validate>
       <div>
         <label for="reset-password" class="mb-1 block text-sm text-slate-400">New password (8+ characters)</label>
         <input
@@ -697,7 +694,7 @@ export const ResetForm: FC<{ token: string; error?: string }> = ({ token, error 
           class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
         />
       </div>
-      <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500">Set new password</button>
+      <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500" data-pending="Saving…">Set new password</button>
     </form>
   </div>
 );
@@ -1384,7 +1381,7 @@ export const ShowPage: FC<{
             </div>
           ) : (
             <div class="mt-5 flex flex-wrap items-center gap-3">
-              <a href={`/signup?next=${encodeURIComponent(showUrl)}`} class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this show — free in beta</a>
+              <a href={`/signup?next=${encodeURIComponent(`${showUrl}?track=1`)}`} class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this show — free in beta</a>
               <a href="/signup" class="text-sm text-violet-400 hover:underline">Coming from TV Time? Import your export →</a>
             </div>
           )}
@@ -1694,7 +1691,7 @@ export const MoviePage: FC<{
           </div>
         ) : (
           <div class="mt-5 flex flex-wrap items-center gap-3">
-            <a href={`/signup?next=${encodeURIComponent(movieUrl)}`} class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this movie — free in beta</a>
+            <a href={`/signup?next=${encodeURIComponent(`${movieUrl}?track=1`)}`} class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this movie — free in beta</a>
             <a href="/signup" class="text-sm text-violet-400 hover:underline">Coming from TV Time? Import your export →</a>
           </div>
         )}
