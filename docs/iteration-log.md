@@ -738,6 +738,21 @@
 
 ---
 
+## Round 249 — 2026-08-14（审改分离第 11 轮整改：trial 口径统一 + HonestCV 命名 + Undo toast Tab 可达）
+
+**问题（验收官第 11 轮文案/IA 轮扫）**
+- P2（全集团统一口径）：去掉 "trial" 字样，统一 "free during beta"。全站 grep：WatchDeck 仅 Terms 页 1 处 "free beta trial"。
+- P2（跨线命名）：footer 兄弟产品互链把 HonestCV 叫 "CV"，统一为 "HonestCV"。
+- P3（键盘可达性）：Undo toast 位于 DOM 末尾，键盘用户 8s 内 Tab 不可达（需 50+ 次按键）。
+
+**修复（勿增实体）**
+- Terms 页 "offered as a free beta trial" → "currently free during beta"；footer "CV" → "HonestCV"。
+- showToast 增可选 anchor 参数：触发表单传入自身，toast 插入表单之后（insertAdjacentElement("afterend")）——Undo 按钮成为集数按钮的下一个 Tab 停靠点，1 次 Tab 即达（toast 为 fixed 定位，DOM 位置只影响 Tab 序不影响视觉）；到达即触发既有 focusin 暂停。无 anchor 调用（watchlist toast，无 Undo）保持 body 末尾。
+- CSS_VERSION 180→181。
+- 回归发现 P1 并当轮修复：R248 的暂停逻辑用 `t.onfocusin/onfocusout` 属性赋值——Chrome 元素上无此 IDL 属性（赋值为惰性 expando），键盘焦点进入 toast 不暂停自动隐藏（R249 让 Undo 键盘可达后才暴露）。改为创建时一次性 `addEventListener("focusin"/"focusout")`（连同 pointerenter/leave 统一），监听器随 DOM 移动与复用存续。CSS_VERSION 181→182。
+
+---
+
 ## Round 248 — 2026-08-14（审改分离第 10 轮整改：Undo toast 点击竞态排查与修复）
 
 **问题（验收官第 10 轮无障碍复扫）**
