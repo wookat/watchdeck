@@ -2208,7 +2208,7 @@ export const BrowseStreaming: FC<{
         <span class="text-slate-400">Page {page} of {Math.min(totalPages, 20)}</span>
         {page < Math.min(totalPages, 20) && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
       </div>
-      <p class="mt-6 text-xs text-slate-500">
+      <p class="mt-6 text-xs text-slate-400">
         Streaming availability (US) via TMDB, data by <a href="https://www.justwatch.com/" rel="noopener" class="hover:underline">JustWatch</a>.
       </p>
     </div>
