@@ -738,6 +738,18 @@
 
 ---
 
+## Round 250 — 2026-08-14（竞品对比验收立项：按流媒体平台浏览「What to watch on X」）
+
+**背景（验收官竞品对照矩阵 batch2-3 §7）**
+- 矩阵判定「流媒体去向 ✗ 落后」。生产实查纠偏：详情页已有 geo-aware Where to stream（R220）+ on-my-services 过滤（R109-111）；真实缺口是 Trakt Discover 级的**按平台发现/浏览**（Trakt 该功能收 VIP）。
+
+**实现（勿增实体：1 路由 + 复用既有组件/API 族）**
+- tmdb.ts 新增 discoverByProvider：/discover/{tv,movie}?with_watch_providers=<id>&watch_region=US，SWR 24h，同 genre/network 模式。
+- 新路由 /browse/streaming/{tv|movie}/{id-slug}，复用 STREAMING_SERVICES 10 平台白名单 + 分页 1-20 + canonical/prev/next + browseCrumbs JSON-LD；页脚标注 US 口径与 JustWatch attribution。
+- /browse hub 新增 By streaming service pill 区（TV/Movies 两组）；详情页 Where to stream 平台 chip 命中白名单时内链对应浏览页（未命中保持 JustWatch 外链）。
+- sitemap +20 URL（10 平台 × 2 类型）。pSEO 页固定 US（canonical 稳定、边缘缓存友好）；详情页 geo-aware 不变。
+- 纯 SSR 变更，无 CSS/JS 改动，CSS_VERSION 不变。
+
 ## Round 249 — 2026-08-14（审改分离第 11 轮整改：trial 口径统一 + HonestCV 命名 + Undo toast Tab 可达）
 
 **问题（验收官第 11 轮文案/IA 轮扫）**

@@ -1201,8 +1201,9 @@ export const NotesBox: FC<{ tmdbId: number; mediaType: "tv" | "movie"; notes: st
   </details>
 );
 
-export const WhereToWatch: FC<{ providers: { region: string; providers: WatchProviders } | null; mine?: Set<number> }> = ({ providers: regional, mine }) => {
+export const WhereToWatch: FC<{ providers: { region: string; providers: WatchProviders } | null; mine?: Set<number>; type?: "tv" | "movie" }> = ({ providers: regional, mine, type }) => {
   const providers = regional?.providers;
+  const curated = new Map(STREAMING_SERVICES);
   return !providers?.flatrate?.length ? null : (
     <div class="mt-4">
       <p class="mb-2 text-xs font-medium uppercase tracking-wide text-slate-400">
@@ -1211,7 +1212,12 @@ export const WhereToWatch: FC<{ providers: { region: string; providers: WatchPro
       </p>
       <div class="flex flex-wrap items-center gap-2">
         {providers.flatrate.slice(0, 6).map((p) => (
-          <a href={providers.link} rel="noopener" title={mine?.has(p.provider_id) ? `On your service: ${p.provider_name}` : `Stream on ${p.provider_name}`} class="block">
+          <a
+            href={type && curated.has(p.provider_id) ? `/browse/streaming/${type}/${p.provider_id}-${slugify(curated.get(p.provider_id)!)}` : providers.link}
+            rel={type && curated.has(p.provider_id) ? undefined : "noopener"}
+            title={mine?.has(p.provider_id) ? `On your service: ${p.provider_name}` : `Stream on ${p.provider_name}`}
+            class="block"
+          >
             <img
               src={`https://image.tmdb.org/t/p/w45${p.logo_path}`}
               alt={p.provider_name}
@@ -1347,7 +1353,7 @@ export const ShowPage: FC<{
             </p>
           )}
           <p class="mt-4 max-w-2xl text-slate-300">{show.overview}</p>
-          <WhereToWatch providers={providers ?? null} mine={myServices} />
+          <WhereToWatch providers={providers ?? null} mine={myServices} type="tv" />
           {user ? (
             <div class="mt-5 flex flex-wrap gap-2">
               {(["watching", "watchlist", "completed", "dropped"] as const).map((s) => (
@@ -1638,7 +1644,7 @@ export const MoviePage: FC<{
           )}
         </p>
         <p class="mt-4 max-w-2xl text-slate-300">{movie.overview}</p>
-        <WhereToWatch providers={providers ?? null} mine={myServices} />
+        <WhereToWatch providers={providers ?? null} mine={myServices} type="movie" />
         {user ? (
           <div class="mt-5 flex flex-wrap gap-2">
             <form action="/api/watch-movie" method="post">
@@ -2055,6 +2061,29 @@ export const BrowseIndex: FC<{
       ))}
     </section>
     <section class="mb-10">
+      <h2 class="mb-4 text-xl font-semibold">By streaming service</h2>
+      {(
+        [
+          ["TV shows", "tv"],
+          ["Movies", "movie"],
+        ] as const
+      ).map(([label, type]) => (
+        <div class="mb-4">
+          <h3 class="mb-2 text-sm font-medium text-slate-400">{label}</h3>
+          <div class="flex flex-wrap gap-2">
+            {STREAMING_SERVICES.map(([id, name]) => (
+              <a
+                href={`/browse/streaming/${type}/${id}-${slugify(name)}`}
+                class="rounded-lg border border-slate-700 px-3 py-1.5 text-sm hover:border-violet-500 hover:text-violet-300"
+              >
+                {name}
+              </a>
+            ))}
+          </div>
+        </div>
+      ))}
+    </section>
+    <section class="mb-10">
       <h2 class="mb-4 text-xl font-semibold">By network</h2>
       <div class="flex flex-wrap gap-2">
         {networks.map((n) => (
@@ -2145,6 +2174,43 @@ export const BrowseNetwork: FC<{
         <span class="text-slate-400">Page {page} of {Math.min(totalPages, 20)}</span>
         {page < Math.min(totalPages, 20) && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
       </div>
+    </div>
+  );
+};
+
+export const BrowseStreaming: FC<{
+  type: "tv" | "movie";
+  service: { id: number; name: string };
+  results: SearchResult[];
+  page: number;
+  totalPages: number;
+}> = ({ type, service, results, page, totalPages }) => {
+  const base = `/browse/streaming/${type}/${service.id}-${slugify(service.name)}`;
+  return (
+    <div>
+      <h1 class="mb-2 text-2xl font-bold">
+        {type === "tv" ? "TV shows" : "Movies"} to watch on {service.name}
+      </h1>
+      <p class="mb-6 text-slate-400">
+        Popular {type === "tv" ? "series" : "films"} streaming on {service.name} (US) to track on WatchDeck.{" "}
+        <a href={`/browse/streaming/${type === "tv" ? "movie" : "tv"}/${service.id}-${slugify(service.name)}`} class="text-violet-400 underline">
+          {type === "tv" ? "Movies" : "TV shows"} on {service.name}
+        </a>{" · "}
+        <a href="/browse" class="text-violet-400 underline">All services</a>
+      </p>
+      <div class="grid grid-cols-3 gap-4 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 xl:grid-cols-7 stagger-in">
+        {results.map((r, i) => (
+          <MediaCard item={r} type={type} eager={i < 4} />
+        ))}
+      </div>
+      <div class="mt-8 flex items-center gap-3 text-sm">
+        {page > 1 && <a href={`${base}?page=${page - 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">← Previous</a>}
+        <span class="text-slate-400">Page {page} of {Math.min(totalPages, 20)}</span>
+        {page < Math.min(totalPages, 20) && <a href={`${base}?page=${page + 1}`} class="rounded-lg border border-slate-700 px-3 py-1.5 hover:border-violet-500">Next →</a>}
+      </div>
+      <p class="mt-6 text-xs text-slate-500">
+        Streaming availability (US) via TMDB, data by <a href="https://www.justwatch.com/" rel="noopener" class="hover:underline">JustWatch</a>.
+      </p>
     </div>
   );
 };
