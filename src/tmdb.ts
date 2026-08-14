@@ -167,6 +167,14 @@ export function discoverByNetwork(env: Env, networkId: number, page = 1) {
   );
 }
 
+export function discoverByProvider(env: Env, type: "tv" | "movie", providerId: number, page = 1) {
+  return tmdb<{ results: SearchResult[]; total_pages: number }>(
+    env,
+    `/discover/${type}?with_watch_providers=${providerId}&watch_region=US&sort_by=popularity.desc&page=${Math.min(Math.max(page, 1), 20)}`,
+    24 * 3600
+  );
+}
+
 export function discoverByGenre(env: Env, type: "tv" | "movie", genreId: number, page = 1) {
   return tmdb<{ results: SearchResult[]; total_pages: number }>(
     env,
