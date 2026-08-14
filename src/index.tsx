@@ -162,12 +162,12 @@ app.use("*", async (c, next) => {
 
 const RATE_WINDOW_MS = 600_000;
 
-function rateLimitKey(c: { req: { header: (n: string) => string | undefined } }, bucket: string): string {
-  return `rl:${bucket}:${c.req.header("cf-connecting-ip") ?? "unknown"}`;
+function rateLimitKey(c: { req: { header: (n: string) => string | undefined } }, bucket: string, ident?: string): string {
+  return `rl:${bucket}:${ident ?? c.req.header("cf-connecting-ip") ?? "unknown"}`;
 }
 
-async function rateLimit(c: { env: { CACHE: KVNamespace }; req: { header: (n: string) => string | undefined } }, bucket: string, limit: number): Promise<boolean> {
-  const key = rateLimitKey(c, bucket);
+async function rateLimit(c: { env: { CACHE: KVNamespace }; req: { header: (n: string) => string | undefined } }, bucket: string, limit: number, ident?: string): Promise<boolean> {
+  const key = rateLimitKey(c, bucket, ident);
   const now = Date.now();
   const raw = await c.env.CACHE.get(key);
   let n = 0;
@@ -196,7 +196,7 @@ app.use("*", async (c, next) => {
   ) {
     const ua = c.req.header("user-agent") ?? "";
     const uaClass =
-      c.req.header("x-qa") === "1" || ua.includes("ZalizeQA") ? "qa" : /bot|crawl|spider/i.test(ua) ? "bot" : /mobile/i.test(ua) ? "mobile" : "desktop";
+      c.req.header("x-qa") === "1" || ua.includes("ZalizeQA") ? "qa" : !ua || /bot|crawl|spider|curl|wget|python|httpie|go-http/i.test(ua) ? "bot" : /mobile/i.test(ua) ? "mobile" : "desktop";
     const country = (c.req.raw as { cf?: { country?: string } }).cf?.country ?? null;
     const referrer = c.req.header("referer") ?? null;
     c.executionCtx.waitUntil(
@@ -304,10 +304,10 @@ app.post("/signup", async (c) => {
 
 app.post("/login", async (c) => {
   const form = await c.req.parseBody();
-  if (!(await rateLimit(c, "login", 15))) {
-    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} email={String(form.email ?? "")} /></Layout>, 429);
-  }
   const email = String(form.email ?? "").trim().toLowerCase();
+  if (!(await rateLimit(c, "login", 15)) || (email && !(await rateLimit(c, "login-acct", 10, email)))) {
+    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} email={email} /></Layout>, 429);
+  }
   const password = String(form.password ?? "");
   const row = await c.env.DB.prepare("SELECT id, password_hash, salt FROM users WHERE email = ?")
     .bind(email)
@@ -322,7 +322,7 @@ app.post("/login", async (c) => {
       c.env.DB.prepare("UPDATE users SET password_hash = ?, salt = ? WHERE id = ?").bind(hash, salt, row.id).run()
     );
   }
-  c.executionCtx.waitUntil(c.env.CACHE.delete(rateLimitKey(c, "login")).catch(() => {}));
+  c.executionCtx.waitUntil(c.env.CACHE.delete(rateLimitKey(c, "login-acct", email)).catch(() => {}));
   return c.redirect(safeNext(form.next) ?? "/home");
 });
 
@@ -2746,7 +2746,7 @@ app.get("/:key{[a-f0-9]{32}\\.txt}", (c) => {
 
 app.post("/api/indexnow", async (c) => {
   const user = c.get("user");
-  if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
+  if (!user || !c.env.ADMIN_EMAIL || user.email !== c.env.ADMIN_EMAIL.toLowerCase()) return c.json({ error: "forbidden" }, 403);
   if (!c.env.INDEXNOW_KEY) return c.json({ error: "no key configured" }, 400);
   const form = await c.req.parseBody();
   const paths = String(form.paths ?? "")
@@ -2770,7 +2770,7 @@ app.post("/api/indexnow", async (c) => {
 
 app.post("/api/admin/cron", async (c) => {
   const user = c.get("user");
-  if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
+  if (!user || !c.env.ADMIN_EMAIL || user.email !== c.env.ADMIN_EMAIL.toLowerCase()) return c.json({ error: "forbidden" }, 403);
   const form = await c.req.parseBody();
   const job = String(form.job ?? "");
   if (job === "prune") {
@@ -2790,7 +2790,7 @@ app.post("/api/admin/cron", async (c) => {
 
 app.get("/api/stats", async (c) => {
   const user = c.get("user");
-  if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
+  if (!user || !c.env.ADMIN_EMAIL || user.email !== c.env.ADMIN_EMAIL.toLowerCase()) return c.json({ error: "forbidden" }, 403);
   const [daily, countries, topPaths, searches, signups, waitlist, funnel] = await Promise.all([
     c.env.DB.prepare(
       "SELECT date(ts) AS day, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel','qa') GROUP BY day ORDER BY day DESC LIMIT 30"

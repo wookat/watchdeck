@@ -738,6 +738,24 @@
 
 ---
 
+## Round 246 — 2026-08-14（审改分离第 7 轮整改：登录限流 IP+账号双维 + 管理端点 fail-closed + 横向安全矩阵自查）
+
+**问题（验收官第 7 轮安全复扫）**
+- P2 登录限流仅 IP 维：登录成功即删 `rl:login:<ip>` 整个 IP 计数器——持有任一有效账号即可重置暴力破解计数。
+- P2 管理端点 fail-open：`(c.env.ADMIN_EMAIL && …)` 结构在 ADMIN_EMAIL 配置漂移（未配置）时任何登录用户可跑 cron/indexnow/stats。
+- 全线统一：横向矩阵 {AI 端点/发信端点/管理端点/CSP/限流键维度/beacon 防伪} 自查；beacon 可伪造加最小防护（报告建议：不加签名，导出侧过滤+QA 标记）。
+
+**修复（勿增实体）**
+- `rateLimitKey`/`rateLimit` 增可选 `ident` 参数（默认仍为 IP，零新实体）：登录改双闸——IP 15/10min（不变）+ 账号（email）10/10min；登录成功只清账号键 `rl:login-acct:<email>`，不再清 IP 键。
+- 三处管理端点（/api/indexnow、/api/admin/cron、/api/stats）鉴权改 fail-closed：`!user || !c.env.ADMIN_EMAIL || email 不匹配` → 403，ADMIN_EMAIL 未配置时一律拒绝。
+- beacon 最小防护（按报告建议走导出侧过滤路线）：ua_class 分类器把空 UA 与 curl/wget/python/httpie/go-http 等非浏览器 UA 归入 `bot`（导出已剔除），叠加 R245 QA 标记口径；不加签名（收益低于复杂度，与验收官建议一致）。
+- 横向矩阵自查结论：AI 端点——本线无（不适用）；发信端点——signup 10、forgot 5、waitlist 5 全部已限流，cron digest 仅 scheduled/admin 触发；管理端点——本轮改 fail-closed；CSP——已完整（default-src 'self'; script-src 'self' 无 unsafe-inline）；限流键维度——login 本轮改双维，signup/forgot/waitlist 保持 IP 维（无「成功清计数」路径，IP 维足够）；beacon——本线无 POST beacon 端点（PV 由服务端中间件采集），伪造面即「带浏览器 UA 请求页面」，按上项过滤+QA 标记处置。
+
+**证据**
+- 见 PR 与生产回归记录。
+
+---
+
 ## Round 245 — 2026-08-14（审改分离第 6 轮整改：QA 流量标记 + /reset 鼠标提交焦点 + IndexNow 对齐）
 
 **问题（验收官第 6 轮清单）**
