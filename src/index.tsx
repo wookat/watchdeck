@@ -2672,7 +2672,7 @@ app.post("/api/import/batch", async (c) => {
 // ---------- seo ----------
 app.get("/robots.txt", (c) =>
   c.text(
-    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /lists\nDisallow: /roulette\nDisallow: /calendar\nDisallow: /import\nDisallow: /stats\nDisallow: /history\nDisallow: /settings\nDisallow: /forgot\nDisallow: /reset\nDisallow: /unsubscribe/\nDisallow: /confirm-email/\nDisallow: /u/\nDisallow: /wrapped\nDisallow: /more\nDisallow: /search?*\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`
+    `User-agent: *\nAllow: /\nDisallow: /api/\nDisallow: /home\nDisallow: /library\nDisallow: /lists\nDisallow: /roulette\nDisallow: /calendar\nDisallow: /import\nDisallow: /stats\nDisallow: /history\nDisallow: /settings\nDisallow: /forgot\nDisallow: /reset\nDisallow: /unsubscribe/\nDisallow: /confirm-email/\nDisallow: /u/\nDisallow: /wrapped\nDisallow: /more\nDisallow: /search?\n\nSitemap: ${c.env.SITE_URL}/sitemap.xml\n`
   )
 );
 
