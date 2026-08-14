@@ -749,6 +749,7 @@
 - Terms 页 "offered as a free beta trial" → "currently free during beta"；footer "CV" → "HonestCV"。
 - showToast 增可选 anchor 参数：触发表单传入自身，toast 插入表单之后（insertAdjacentElement("afterend")）——Undo 按钮成为集数按钮的下一个 Tab 停靠点，1 次 Tab 即达（toast 为 fixed 定位，DOM 位置只影响 Tab 序不影响视觉）；到达即触发既有 focusin 暂停。无 anchor 调用（watchlist toast，无 Undo）保持 body 末尾。
 - CSS_VERSION 180→181。
+- 回归发现 P1 并当轮修复：R248 的暂停逻辑用 `t.onfocusin/onfocusout` 属性赋值——Chrome 元素上无此 IDL 属性（赋值为惰性 expando），键盘焦点进入 toast 不暂停自动隐藏（R249 让 Undo 键盘可达后才暴露）。改为创建时一次性 `addEventListener("focusin"/"focusout")`（连同 pointerenter/leave 统一），监听器随 DOM 移动与复用存续。CSS_VERSION 181→182。
 
 ---
 

@@ -130,6 +130,24 @@ function showToast(msg, undoFn, anchor) {
     t.className = "toast";
     t.setAttribute("role", "status");
     t.setAttribute("aria-live", "polite");
+    // pause auto-hide while the pointer or focus is on the toast so the Undo
+    // click/keypress can never race the dismissal timer (WCAG 2.2.1);
+    // registered once at creation — listeners survive DOM moves and reuse
+    const el = t;
+    const pause = () => {
+      clearTimeout(el.dataset.timer);
+      el.classList.add("toast-paused");
+    };
+    const resume = () => {
+      el.classList.remove("toast-paused");
+      clearTimeout(el.dataset.timer);
+      if (el.classList.contains("toast-show"))
+        el.dataset.timer = setTimeout(() => el.classList.remove("toast-show"), 2000);
+    };
+    el.addEventListener("pointerenter", pause);
+    el.addEventListener("focusin", pause);
+    el.addEventListener("pointerleave", resume);
+    el.addEventListener("focusout", resume);
   }
   // insert next to the triggering element so the Undo button is the very
   // next Tab stop (the toast is position:fixed, so DOM placement only
@@ -158,20 +176,8 @@ function showToast(msg, undoFn, anchor) {
   t.classList.remove("toast-show", "toast-paused");
   void t.offsetWidth;
   t.classList.add("toast-show");
-  const hide = () => t.classList.remove("toast-show");
   clearTimeout(t.dataset.timer);
-  t.dataset.timer = setTimeout(hide, duration);
-  // pause auto-hide while the pointer or focus is on the toast so the Undo
-  // click can never race the dismissal timer (WCAG 2.2.1 timing adjustable)
-  t.onpointerenter = t.onfocusin = () => {
-    clearTimeout(t.dataset.timer);
-    t.classList.add("toast-paused");
-  };
-  t.onpointerleave = t.onfocusout = () => {
-    t.classList.remove("toast-paused");
-    clearTimeout(t.dataset.timer);
-    if (t.classList.contains("toast-show")) t.dataset.timer = setTimeout(hide, 2000);
-  };
+  t.dataset.timer = setTimeout(() => t.classList.remove("toast-show"), duration);
 }
 // episode mark-watched: instant inline feedback (row flash + progress bar + toast) without a reload
 document.addEventListener("submit", (e) => {

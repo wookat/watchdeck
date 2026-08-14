@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every styles.css OR app.js change: both ship under ?v= and are edge-cached for up to 1h + SWR 24h
-export const CSS_VERSION = 181;
+export const CSS_VERSION = 182;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
