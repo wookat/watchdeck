@@ -2,8 +2,8 @@ import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
-// bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 176;
+// bump on every styles.css OR app.js change: both ship under ?v= and are edge-cached for up to 1h + SWR 24h
+export const CSS_VERSION = 177;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
