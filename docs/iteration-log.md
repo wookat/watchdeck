@@ -738,6 +738,20 @@
 
 ---
 
+## Round 244 — 2026-08-14（审改分离第 5 轮整改：robots.txt 通配兼容 + 留存漏斗导出）
+
+**问题（验收官第 5 轮 SEO 深度审计，P2）**
+- robots.txt `Disallow: /search?*` 用了非标准通配（Google 支持，Bing 等部分兼容）。
+
+**修复**
+- 改 `Disallow: /search?`——标准前缀匹配，无通配符，所有爬虫兼容：匹配全部 `/search?q=…` 但不挡 sitemap 内的裸 `/search`（`x-robots-tag: noindex` 对带 q 的搜索页双保险不变）。
+- 第 6 轮预备：docs/analytics-export.md 导出近 30 天首访→注册→添加剧集→回访聚合漏斗（无 PII），如实标注 8 账号全为 QA/老板、真实外部用户漏斗为 0。
+
+**证据**
+- 见 PR 与生产 robots.txt。
+
+---
+
 ## Round 243 — 2026-08-14（审改分离第 4 轮整改：auth 错误就地可达——role=alert+焦点管理+保留输入）
 
 **问题（验收官第 4 轮清单，P2）**
