@@ -603,7 +603,7 @@ app.get("/shows/:idslug", async (c) => {
     )
       .bind(user.id, id, show.name, show.poster_path)
       .run();
-    return c.redirect(`/shows/${showSlug}`);
+    return c.redirect(`/shows/${showSlug}?tracked=1`);
   }
   const seasonNum = parseInt(c.req.query("season") ?? "1", 10) || 1;
   const [season, watchedRows, tracked, recsRes, providers, cast, trailer, services, listsRes] = await Promise.all([
@@ -690,7 +690,7 @@ app.get("/movies/:idslug", async (c) => {
     )
       .bind(user.id, id, movie.title, movie.poster_path)
       .run();
-    return c.redirect(`/movies/${movieSlug}`);
+    return c.redirect(`/movies/${movieSlug}?tracked=1`);
   }
   const [watchedRow, tracked, recsRes, providers, cast, trailer, directors, services, listsRes, collectionRes] = await Promise.all([
     user ? c.env.DB.prepare("SELECT COUNT(*) AS n FROM movie_watches WHERE user_id = ? AND tmdb_id = ?").bind(user.id, id).first<{ n: number }>() : Promise.resolve(null),

@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 175;
+export const CSS_VERSION = 176;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -1382,6 +1382,7 @@ export const ShowPage: FC<{
           ) : (
             <div class="mt-5 flex flex-wrap items-center gap-3">
               <a href={`/signup?next=${encodeURIComponent(`${showUrl}?track=1`)}`} class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this show — free in beta</a>
+              <a href={`/login?next=${encodeURIComponent(`${showUrl}?track=1`)}`} class="text-sm text-violet-400 hover:underline">Already a member? Log in</a>
               <a href="/signup" class="text-sm text-violet-400 hover:underline">Coming from TV Time? Import your export →</a>
             </div>
           )}
@@ -1692,6 +1693,7 @@ export const MoviePage: FC<{
         ) : (
           <div class="mt-5 flex flex-wrap items-center gap-3">
             <a href={`/signup?next=${encodeURIComponent(`${movieUrl}?track=1`)}`} class="rounded-lg bg-violet-600 px-4 py-2 text-sm font-semibold text-white hover:bg-violet-500">Track this movie — free in beta</a>
+            <a href={`/login?next=${encodeURIComponent(`${movieUrl}?track=1`)}`} class="text-sm text-violet-400 hover:underline">Already a member? Log in</a>
             <a href="/signup" class="text-sm text-violet-400 hover:underline">Coming from TV Time? Import your export →</a>
           </div>
         )}

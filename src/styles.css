@@ -338,6 +338,31 @@ textarea:focus {
 .toast-undo:hover {
   color: #c4b5fd;
 }
+/* undo countdown: shrinking bar along the toast's bottom edge */
+.toast-timer {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  width: 100%;
+  background: #8b5cf6;
+  border-radius: 0 0 0.75rem 0.75rem;
+  transform-origin: left;
+  animation: toast-timer linear forwards;
+}
+@keyframes toast-timer {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-timer {
+    display: none;
+  }
+}
 /* clear the mobile bottom tab bar */
 @media (max-width: 640px) {
   .toast {

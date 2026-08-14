@@ -738,6 +738,24 @@
 
 ---
 
+## Round 242 — 2026-08-14（审改分离第 3 轮整改：Undo 8s+倒计时 + 未登录 CTA Log in 快捷 + 入库确认 toast）
+
+**问题（验收官第 3 轮清单）**
+- P2 Undo 窗口 5s 偏短，主控拍板 8s；更优方案①：加倒计时视觉 + 读屏可达。
+- P2 未登录详情页 Track CTA 只进 /signup，已有账号用户多一跳。
+- 更优方案②：track 深链自动入库后无一次性确认反馈。
+
+**修复（沿用既有实体）**
+- showToast undo 时长 5000→8000ms，toast 底边加 `.toast-timer` 倒计时收缩条（animation-duration 随时长注入，prefers-reduced-motion 隐藏）；Undo 按钮加 `aria-label="Undo: <消息>"`（按钮本就在 role=status live region 内，读屏可达）。
+- 未登录详情页 CTA 区并排 "Already a member? Log in" 链接，next 同带 `?track=1`（show/movie 两处）。
+- track=1 入库后 redirect 改带 `?tracked=1`，app.js 读到即 showToast("Added to your watchlist ✓") 并 history.replaceState 清参数（复用 toast 实体，URL 保持干净）。
+- CSS_VERSION 175→176。
+
+**证据**
+- 见 PR 与生产回归记录（含 forgot/reset 行内校验、慢网/多标签自查——验收官预告下轮覆盖）。
+
+---
+
 ## Round 130 — 2026-08-08（发信链路验证与邮件合规）
 
 **发现（合规审计 + 老板指令）**
