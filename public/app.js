@@ -86,6 +86,15 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+// one-time confirmation after a track=1 deep link auto-added to the watchlist
+document.addEventListener("DOMContentLoaded", () => {
+  if (new URLSearchParams(location.search).get("tracked") === "1") {
+    showToast("Added to your watchlist \u2713");
+    const clean = new URLSearchParams(location.search);
+    clean.delete("tracked");
+    history.replaceState(null, "", location.pathname + (clean.toString() ? "?" + clean.toString() : ""));
+  }
+});
 document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll("[data-dismiss-key]").forEach((el) => {
     try {
@@ -120,23 +129,30 @@ function showToast(msg, undoFn) {
     t.setAttribute("aria-live", "polite");
     document.body.appendChild(t);
   }
+  const duration = undoFn ? 8000 : 2400;
   t.textContent = msg;
   if (undoFn) {
     const u = document.createElement("button");
     u.type = "button";
     u.textContent = "Undo";
     u.className = "toast-undo";
+    u.setAttribute("aria-label", "Undo: " + msg);
     u.addEventListener("click", () => {
       t.classList.remove("toast-show");
       undoFn();
     });
     t.appendChild(u);
+    const timer = document.createElement("span");
+    timer.className = "toast-timer";
+    timer.setAttribute("aria-hidden", "true");
+    timer.style.animationDuration = duration + "ms";
+    t.appendChild(timer);
   }
   t.classList.remove("toast-show");
   void t.offsetWidth;
   t.classList.add("toast-show");
   clearTimeout(t.dataset.timer);
-  t.dataset.timer = setTimeout(() => t.classList.remove("toast-show"), undoFn ? 5000 : 2400);
+  t.dataset.timer = setTimeout(() => t.classList.remove("toast-show"), duration);
 }
 // episode mark-watched: instant inline feedback (row flash + progress bar + toast) without a reload
 document.addEventListener("submit", (e) => {
