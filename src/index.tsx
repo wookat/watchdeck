@@ -269,12 +269,12 @@ app.get("/login", (c) => c.html(<Layout user={c.get("user")} title="Log in"><Aut
 app.post("/signup", async (c) => {
   const form = await c.req.parseBody();
   if (!(await rateLimit(c, "signup", 10))) {
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} /></Layout>, 429);
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} email={String(form.email ?? "")} /></Layout>, 429);
   }
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || password.length < 8) {
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Enter a valid email and a password of 8+ characters." next={safeNext(form.next)} /></Layout>, 400);
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Enter a valid email and a password of 8+ characters." next={safeNext(form.next)} email={email} /></Layout>, 400);
   }
   const { hash, salt } = await hashPassword(password);
   const insert = () =>
@@ -291,10 +291,10 @@ app.post("/signup", async (c) => {
     }
   } catch (err) {
     if (String(err).includes("UNIQUE")) {
-      return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." next={safeNext(form.next)} /></Layout>, 400);
+      return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." next={safeNext(form.next)} email={email} /></Layout>, 400);
     }
     console.error(err);
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Something went wrong on our side — please try again." next={safeNext(form.next)} /></Layout>, 500);
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Something went wrong on our side — please try again." next={safeNext(form.next)} email={email} /></Layout>, 500);
   }
   await createSession(c, res!.id);
   c.executionCtx.waitUntil(sendEmail(c.env, email, ...welcomeEmail(c.env.SITE_URL)));
@@ -304,7 +304,7 @@ app.post("/signup", async (c) => {
 app.post("/login", async (c) => {
   const form = await c.req.parseBody();
   if (!(await rateLimit(c, "login", 15))) {
-    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} /></Layout>, 429);
+    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} email={String(form.email ?? "")} /></Layout>, 429);
   }
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
@@ -312,7 +312,7 @@ app.post("/login", async (c) => {
     .bind(email)
     .first<{ id: number; password_hash: string; salt: string }>();
   if (!row || !(await verifyPassword(password, row.salt, row.password_hash))) {
-    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Wrong email or password." next={safeNext(form.next)} /></Layout>, 401);
+    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Wrong email or password." next={safeNext(form.next)} email={email} /></Layout>, 401);
   }
   await createSession(c, row.id);
   if (needsRehash(row.password_hash)) {

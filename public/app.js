@@ -57,6 +57,8 @@ function renderFieldHint(el) {
   return !msg;
 }
 document.addEventListener("DOMContentLoaded", () => {
+  const serverError = document.querySelector("[data-server-error]");
+  if (serverError) serverError.focus();
   document.querySelectorAll("form[data-validate]").forEach((form) => {
     form.setAttribute("novalidate", "");
     form.addEventListener("input", (e) => {
