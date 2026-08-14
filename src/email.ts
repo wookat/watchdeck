@@ -1,7 +1,16 @@
 import type { Env } from "./types";
 
+// Global daily send breaker: caps total outbound email across all endpoints so no
+// abuse pattern (or bug) can burn the Resend quota. Fail-closed past the cap.
+const DAILY_EMAIL_CAP = 200;
+
 export async function sendEmail(env: Env, to: string, subject: string, html: string, headers?: Record<string, string>): Promise<void> {
   if (!env.RESEND_API_KEY) return;
+  const day = new Date().toISOString().slice(0, 10);
+  const capKey = `rl:email-day:${day}`;
+  const n = parseInt((await env.CACHE.get(capKey)) ?? "0", 10) + 1;
+  if (n > DAILY_EMAIL_CAP) return;
+  await env.CACHE.put(capKey, String(n), { expirationTtl: 172800 });
   await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${env.RESEND_API_KEY}`, "Content-Type": "application/json" },

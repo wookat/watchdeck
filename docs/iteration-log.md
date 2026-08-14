@@ -738,6 +738,23 @@
 
 ---
 
+## Round 247 — 2026-08-14（审改分离第 8 轮整改：边缘缓存接入 + 限流三层化 + 海报占位）
+
+**问题（验收官第 8 轮性能深挖）**
+- P1（体系性，7/8 线共性）：s-maxage/SWR 头对 Worker 响应不产生边缘缓存，每次访问都跑 Worker+D1/TMDB；仅 NameChart 用了 caches.default。
+- P2 剧集页 3G LCP 9.0s：LCP 元素为 TMDB 外域海报，无 LQIP/占位（文本 1.9s 可读、CLS=0）。
+- P2 统一：per-IP 配额在 CGNAT/共享出口下误伤真实用户，改「宽 IP 兜底 + 窄客户端配额 + 全局熔断」三层。
+
+**修复（参照 NameChart 模式，勿造轮子）**
+- 边缘缓存中间件（~25 行）：匿名（无 wd_session cookie）公开 HTML GET 命中 caches.default——key = `/__edge/v<CSS_VERSION>/<country><path><query>`（含国家维度：Where to stream 按 cf.country 渲染；含完整 query：分页/参数变体）；私有/auth/search/api 路由一律跳过；存储时附 s-maxage=300 + SHA-1 ETag（304 协商）；注册在 analytics 中间件之后，缓存命中仍记 PV。TTL 5 分钟 + 版本键，部署后自愈无需手动失效。
+- 限流三层化（复用 R246 的 ident 参数，勿增实体）：① 全局熔断——sendEmail 加全天 200 封上限（KV 日计数，超限 fail-closed 静默丢弃），覆盖 signup/forgot/waitlist/digest 全部发信；② 窄维度——forgot 加 per-email 3/10min、waitlist 加 per-email 2/10min；③ 宽 IP 兜底——forgot/waitlist IP 限由 5 放宽至 20/10min（login 已是 IP15+账号10 双维，signup 保持 IP 10——注册本身是账号创建，IP 维即主闸）。
+- 剧集/电影页 hero 海报加 `bg-gradient-to-b from-slate-800 to-slate-900` 占位（容器已有固定宽高比，CLS 仍为 0，3G 下空框变深色渐变占位）。CSS_VERSION 178→179（兼作边缘缓存版本键 bump）。
+
+**证据**
+- 见 PR 与生产回归记录。
+
+---
+
 ## Round 246 — 2026-08-14（审改分离第 7 轮整改：登录限流 IP+账号双维 + 管理端点 fail-closed + 横向安全矩阵自查）
 
 **问题（验收官第 7 轮安全复扫）**

@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every styles.css OR app.js change: both ship under ?v= and are edge-cached for up to 1h + SWR 24h
-export const CSS_VERSION = 178;
+export const CSS_VERSION = 179;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -1294,7 +1294,7 @@ export const ShowPage: FC<{
             <img src={`https://image.tmdb.org/t/p/w1280${show.backdrop_path}`} alt="" loading="eager" fetchpriority="low" />
           </div>
         )}
-        <img src={poster(show.poster_path)} alt={show.name} fetchpriority="high" class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
+        <img src={poster(show.poster_path)} alt={show.name} fetchpriority="high" class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 bg-gradient-to-b from-slate-800 to-slate-900 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
         <div class="min-w-0 flex-1">
           <h1 class="text-3xl font-bold">{show.name}</h1>
           <p class="mt-1 text-sm text-slate-400">
@@ -1604,7 +1604,7 @@ export const MoviePage: FC<{
           <img src={`https://image.tmdb.org/t/p/w1280${movie.backdrop_path}`} alt="" loading="eager" fetchpriority="low" />
         </div>
       )}
-      <img src={poster(movie.poster_path)} alt={movie.title} fetchpriority="high" class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
+      <img src={poster(movie.poster_path)} alt={movie.title} fetchpriority="high" class="rise-in aspect-[2/3] w-40 self-start rounded-xl border border-slate-800 bg-gradient-to-b from-slate-800 to-slate-900 object-cover shadow-2xl shadow-slate-950/60 sm:w-52" />
       <div class="min-w-0 flex-1">
         <h1 class="text-3xl font-bold">{movie.title}</h1>
         <p class="mt-1 text-sm text-slate-400">

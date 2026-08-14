@@ -208,6 +208,35 @@ app.use("*", async (c, next) => {
   }
 });
 
+// Edge-cache anonymous public HTML GETs (NameChart pattern): serve repeat traffic from
+// caches.default without re-running D1/TMDB. Key = asset version + country + path + query;
+// logged-in (wd_session cookie) and private/auth/search routes are never cached.
+// Registered after the analytics middleware so cache hits still record page views.
+const EDGE_SKIP = /^\/(api|home|library|lists|roulette|calendar|import|stats|history|settings|more|wrapped|search|login|signup|forgot|reset|unsubscribe|confirm-email|u)(\/|$)/;
+
+app.use("*", async (c, next) => {
+  const url = new URL(c.req.url);
+  if (c.req.method !== "GET" || EDGE_SKIP.test(url.pathname) || (c.req.header("cookie") ?? "").includes("wd_session=")) return next();
+  const country = (c.req.raw as { cf?: { country?: string } }).cf?.country ?? "XX";
+  const key = new Request(`${url.origin}/__edge/v${CSS_VERSION}/${country}${url.pathname}${url.search}`);
+  const inm = c.req.header("if-none-match");
+  const hit = await caches.default.match(key);
+  if (hit) {
+    if (inm && inm === hit.headers.get("etag")) return new Response(null, { status: 304, headers: hit.headers });
+    return new Response(hit.body, hit);
+  }
+  await next();
+  if (c.res.status === 200 && c.res.headers.get("content-type")?.includes("text/html")) {
+    const buf = await c.res.arrayBuffer();
+    const res = new Response(buf, c.res);
+    res.headers.set("cache-control", "public, max-age=0, s-maxage=300");
+    const digest = await crypto.subtle.digest("SHA-1", buf);
+    res.headers.set("etag", '"' + [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("") + '"');
+    c.executionCtx.waitUntil(caches.default.put(key, res.clone()));
+    c.res = inm && inm === res.headers.get("etag") ? new Response(null, { status: 304, headers: res.headers }) : res;
+  }
+});
+
 app.get("/", async (c) => {
   const user = c.get("user");
   if (user) return c.redirect("/home");
@@ -329,11 +358,11 @@ app.post("/login", async (c) => {
 app.get("/forgot", (c) => c.html(<Layout user={c.get("user")} title="Reset password"><ForgotForm /></Layout>));
 
 app.post("/forgot", async (c) => {
-  if (!(await rateLimit(c, "forgot", 5))) {
-    return c.html(<Layout user={null} title="Reset password"><ForgotForm error="Too many attempts. Please try again in a few minutes." /></Layout>, 429);
-  }
   const form = await c.req.parseBody();
   const email = String(form.email ?? "").trim().toLowerCase();
+  if (!(await rateLimit(c, "forgot", 20)) || (email && !(await rateLimit(c, "forgot-acct", 3, email)))) {
+    return c.html(<Layout user={null} title="Reset password"><ForgotForm error="Too many attempts. Please try again in a few minutes." email={email} /></Layout>, 429);
+  }
   const row = await c.env.DB.prepare("SELECT id FROM users WHERE email = ?").bind(email).first<{ id: number }>();
   if (row) {
     const bytes = new Uint8Array(16);
@@ -2227,9 +2256,9 @@ app.get("/import", (c) => {
 
 // ---------- api ----------
 app.post("/api/waitlist", async (c) => {
-  if (!(await rateLimit(c, "waitlist", 5))) return c.redirect("/?subscribed=1");
   const form = await c.req.parseBody();
   const email = String(form.email ?? "").trim().toLowerCase();
+  if (!(await rateLimit(c, "waitlist", 20)) || (email && !(await rateLimit(c, "waitlist-acct", 2, email)))) return c.redirect("/?subscribed=1");
   if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
     const token = crypto.randomUUID();
     const res = await c.env.DB.prepare("INSERT OR IGNORE INTO email_signups (email, source, confirm_token) VALUES (?, 'landing', ?)")
