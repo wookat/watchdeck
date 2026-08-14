@@ -151,11 +151,23 @@ function showToast(msg, undoFn) {
     timer.style.animationDuration = duration + "ms";
     t.appendChild(timer);
   }
-  t.classList.remove("toast-show");
+  t.classList.remove("toast-show", "toast-paused");
   void t.offsetWidth;
   t.classList.add("toast-show");
+  const hide = () => t.classList.remove("toast-show");
   clearTimeout(t.dataset.timer);
-  t.dataset.timer = setTimeout(() => t.classList.remove("toast-show"), duration);
+  t.dataset.timer = setTimeout(hide, duration);
+  // pause auto-hide while the pointer or focus is on the toast so the Undo
+  // click can never race the dismissal timer (WCAG 2.2.1 timing adjustable)
+  t.onpointerenter = t.onfocusin = () => {
+    clearTimeout(t.dataset.timer);
+    t.classList.add("toast-paused");
+  };
+  t.onpointerleave = t.onfocusout = () => {
+    t.classList.remove("toast-paused");
+    clearTimeout(t.dataset.timer);
+    if (t.classList.contains("toast-show")) t.dataset.timer = setTimeout(hide, 2000);
+  };
 }
 // episode mark-watched: instant inline feedback (row flash + progress bar + toast) without a reload
 document.addEventListener("submit", (e) => {

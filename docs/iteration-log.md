@@ -738,6 +738,22 @@
 
 ---
 
+## Round 248 — 2026-08-14（审改分离第 10 轮整改：Undo toast 点击竞态排查与修复）
+
+**问题（验收官第 10 轮无障碍复扫）**
+- axe/键盘全过；但观察到一次 Undo toast 单次点击未回滚（未复现）。要求自查点击处理竞态。
+
+**排查结论（代码级归因，两个可复现竞态窗口）**
+1. 主因：8s 自动隐藏 setTimeout 与用户点击竞态——若定时器在 mousedown 与 mouseup 之间触发，`.toast` 失去 `.toast-show` 后 `pointer-events:none` 立即生效，mouseup 落在不可交互元素上，**click 事件根本不派发**，undoFn 不执行。临近倒计时结束的点击有真实丢失窗口。
+2. 次因：`.toast-timer` 倒计时条为绝对定位 span 且在 DOM 中晚于 Undo 按钮，底部 2px 覆盖按钮下边缘——点击落在该 2px 命中 span 而非按钮，click target 不是按钮，同样被吞。
+
+**修复（勿增实体，全走既有 showToast/CSS）**
+- 竞态①：toast 悬停/焦点进入时暂停自动隐藏（clearTimeout + `.toast-paused` 暂停倒计时条动画），离开后 2s 收尾隐藏——点击期间指针必然在 toast 上，隐藏定时器不可能在点击中途触发（同时满足 WCAG 2.2.1 可调节时限）。用 on* 属性赋值避免复用 toast 时监听器叠加。
+- 竞态②：`.toast-timer` 加 `pointer-events:none`，倒计时条不再拦截点击。
+- CSS_VERSION 179→180（app.js+styles.css 均变更）。
+
+---
+
 ## Round 247 — 2026-08-14（审改分离第 8 轮整改：边缘缓存接入 + 限流三层化 + 海报占位）
 
 **问题（验收官第 8 轮性能深挖）**
