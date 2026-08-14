@@ -2,8 +2,8 @@ import type { FC, PropsWithChildren } from "hono/jsx";
 import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
-// bump on every CSS-affecting change: cached styles.css is served for up to 1h + SWR 24h
-export const CSS_VERSION = 176;
+// bump on every styles.css OR app.js change: both ship under ?v= and are edge-cached for up to 1h + SWR 24h
+export const CSS_VERSION = 177;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -595,10 +595,10 @@ export const GuidePage: FC<{ guide: (typeof GUIDES)[number] }> = ({ guide }) => 
   </GuideLayout>
 );
 
-export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: string }> = ({ mode, error, next }) => (
+export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: string; email?: string }> = ({ mode, error, next, email }) => (
   <div class="mx-auto max-w-sm py-10">
     <h1 class="mb-6 text-2xl font-bold">{mode === "login" ? "Log in" : "Create your account"}</h1>
-    {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
+    {error && <p role="alert" tabindex={-1} data-server-error class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300 focus:outline-none">{error}</p>}
     <form action={`/${mode}`} method="post" class="space-y-4" data-validate>
       {next && <input type="hidden" name="next" value={next} />}
       <div>
@@ -610,6 +610,7 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
           required
           autocomplete="email"
           placeholder="you@example.com"
+          value={email}
           class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
         />
       </div>
@@ -644,7 +645,7 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
   </div>
 );
 
-export const ForgotForm: FC<{ sent?: boolean; error?: string }> = ({ sent, error }) => (
+export const ForgotForm: FC<{ sent?: boolean; error?: string; email?: string }> = ({ sent, error, email }) => (
   <div class="mx-auto max-w-sm py-10">
     <h1 class="mb-6 text-2xl font-bold">Reset your password</h1>
     {sent ? (
@@ -653,7 +654,7 @@ export const ForgotForm: FC<{ sent?: boolean; error?: string }> = ({ sent, error
       </p>
     ) : (
       <>
-        {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
+        {error && <p role="alert" tabindex={-1} data-server-error class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300 focus:outline-none">{error}</p>}
         <form action="/forgot" method="post" class="space-y-4" data-validate>
           <div>
             <label for="forgot-email" class="mb-1 block text-sm text-slate-400">Email</label>
@@ -664,6 +665,7 @@ export const ForgotForm: FC<{ sent?: boolean; error?: string }> = ({ sent, error
               required
               autocomplete="email"
               placeholder="you@example.com"
+              value={email}
               class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
             />
           </div>
@@ -680,7 +682,7 @@ export const ForgotForm: FC<{ sent?: boolean; error?: string }> = ({ sent, error
 export const ResetForm: FC<{ token: string; error?: string }> = ({ token, error }) => (
   <div class="mx-auto max-w-sm py-10">
     <h1 class="mb-6 text-2xl font-bold">Choose a new password</h1>
-    {error && <p class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300">{error}</p>}
+    {error && <p role="alert" tabindex={-1} data-server-error class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300 focus:outline-none">{error}</p>}
     <form action={`/reset/${token}`} method="post" class="space-y-4" data-validate>
       <div>
         <label for="reset-password" class="mb-1 block text-sm text-slate-400">New password (8+ characters)</label>

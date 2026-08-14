@@ -738,6 +738,21 @@
 
 ---
 
+## Round 243 — 2026-08-14（审改分离第 4 轮整改：auth 错误就地可达——role=alert+焦点管理+保留输入）
+
+**问题（验收官第 4 轮清单，P2）**
+- /login 错误后整页重渲染：焦点落 body、错误无 role=alert（读屏不播报）、表单值全清空（用户需重输邮箱）。
+
+**修复（沿用既有实体，统一 form[data-validate] 体系）**
+- AuthForm/ForgotForm/ResetForm 三处服务端错误 `<p>` 统一加 `role="alert" tabindex="-1" data-server-error`；app.js 既有 DOMContentLoaded 增强器开头统一 `querySelector("[data-server-error]")?.focus()`（无 JS 时 role=alert 仍由读屏播报）。
+- AuthForm/ForgotForm 增 `email` prop，login/signup 全部错误分支（401/400/429/500）回填提交的邮箱值；密码按安全惯例不回填。
+- 验收官另点名清理 delivered+qa1786668800@resend.dev：D1 实查该邮箱无账号（users=8 基线原样），无需清理——该地址仅在 /forgot 匿名提交中使用过，不落库。
+
+**证据**
+- 见 PR 与生产回归记录。
+
+---
+
 ## Round 242 — 2026-08-14（审改分离第 3 轮整改：Undo 8s+倒计时 + 未登录 CTA Log in 快捷 + 入库确认 toast）
 
 **问题（验收官第 3 轮清单）**
