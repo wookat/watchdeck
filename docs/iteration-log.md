@@ -738,6 +738,23 @@
 
 ---
 
+## Round 245 — 2026-08-14（审改分离第 6 轮整改：QA 流量标记 + /reset 鼠标提交焦点 + IndexNow 对齐）
+
+**问题（验收官第 6 轮清单）**
+- P2 QA 流量标记不统一：PV 层无法剔除 QA，每轮验收持续污染基线。
+- P3 /reset 短密码鼠标提交时焦点落 body（键盘提交正常）——click 的默认焦点处理晚于 submit 里的 focus() 执行。
+- 全线统一要求：参照 Shelfmark 接入 IndexNow（cron 全量推送）。
+
+**修复（勿增实体）**
+- analytics 中间件 ua_class 增 `qa` 分类：`x-qa: 1` 请求头或 UA 含 `ZalizeQA` 即标记；admin /api/stats 三处聚合改 `NOT IN ('bot','funnel','qa')`；口径写入 docs/analytics-export.md 与测试 SKILL。
+- form[data-validate] 提交校验失败的 focus 改 `setTimeout(focus, 0)`，排在 click 默认焦点处理之后，鼠标/键盘一致；CSS_VERSION 177→178（app.js 变更纪律）。
+- IndexNow 现状核对：WatchDeck 自 R48-50 已有周一 cron 全量 sitemap 推送 + admin 手动增量端点（/api/indexnow），与 Shelfmark 模式同构，无需新建；仅把批量从 100/批对齐至 8000/批（sitemap 481 URL 由 5 次请求并为 1 次）。
+
+**证据**
+- 见 PR 与生产回归记录。
+
+---
+
 ## Round 244 — 2026-08-14（审改分离第 5 轮整改：robots.txt 通配兼容 + 留存漏斗导出）
 
 **问题（验收官第 5 轮 SEO 深度审计，P2）**

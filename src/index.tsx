@@ -195,7 +195,8 @@ app.use("*", async (c, next) => {
     !c.req.path.startsWith("/api")
   ) {
     const ua = c.req.header("user-agent") ?? "";
-    const uaClass = /bot|crawl|spider/i.test(ua) ? "bot" : /mobile/i.test(ua) ? "mobile" : "desktop";
+    const uaClass =
+      c.req.header("x-qa") === "1" || ua.includes("ZalizeQA") ? "qa" : /bot|crawl|spider/i.test(ua) ? "bot" : /mobile/i.test(ua) ? "mobile" : "desktop";
     const country = (c.req.raw as { cf?: { country?: string } }).cf?.country ?? null;
     const referrer = c.req.header("referer") ?? null;
     c.executionCtx.waitUntil(
@@ -2792,13 +2793,13 @@ app.get("/api/stats", async (c) => {
   if (!user || (c.env.ADMIN_EMAIL && user.email !== c.env.ADMIN_EMAIL.toLowerCase())) return c.json({ error: "forbidden" }, 403);
   const [daily, countries, topPaths, searches, signups, waitlist, funnel] = await Promise.all([
     c.env.DB.prepare(
-      "SELECT date(ts) AS day, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel') GROUP BY day ORDER BY day DESC LIMIT 30"
+      "SELECT date(ts) AS day, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel','qa') GROUP BY day ORDER BY day DESC LIMIT 30"
     ).all(),
     c.env.DB.prepare(
-      "SELECT country, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel') AND ts >= datetime('now', '-30 days') GROUP BY country ORDER BY views DESC LIMIT 15"
+      "SELECT country, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel','qa') AND ts >= datetime('now', '-30 days') GROUP BY country ORDER BY views DESC LIMIT 15"
     ).all(),
     c.env.DB.prepare(
-      "SELECT path, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel') AND ts >= datetime('now', '-30 days') GROUP BY path ORDER BY views DESC LIMIT 20"
+      "SELECT path, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel','qa') AND ts >= datetime('now', '-30 days') GROUP BY path ORDER BY views DESC LIMIT 20"
     ).all(),
     c.env.DB.prepare(
       "SELECT q, COUNT(*) AS n, MAX(results) AS results FROM search_queries WHERE ts >= datetime('now', '-30 days') GROUP BY q ORDER BY n DESC LIMIT 20"
@@ -2935,7 +2936,7 @@ async function submitSitemapToIndexNow(env: Env): Promise<void> {
   const xml = await res.text();
   const urls = [...xml.matchAll(/<loc>([^<]+)<\/loc>/g)].map((m) => m[1]);
   const host = new URL(env.SITE_URL).host;
-  for (let i = 0; i < urls.length; i += 100) {
+  for (let i = 0; i < urls.length; i += 8000) {
     await fetch("https://api.indexnow.org/indexnow", {
       method: "POST",
       headers: { "content-type": "application/json; charset=utf-8" },
@@ -2943,7 +2944,7 @@ async function submitSitemapToIndexNow(env: Env): Promise<void> {
         host,
         key: env.INDEXNOW_KEY,
         keyLocation: `${env.SITE_URL}/${env.INDEXNOW_KEY}.txt`,
-        urlList: urls.slice(i, i + 100),
+        urlList: urls.slice(i, i + 8000),
       }),
     });
   }

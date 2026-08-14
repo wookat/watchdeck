@@ -73,7 +73,8 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       if (firstBad) {
         e.preventDefault();
-        firstBad.focus();
+        const el = firstBad;
+        setTimeout(() => el.focus(), 0);
         return;
       }
       const btn = form.querySelector("button[data-pending]");
