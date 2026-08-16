@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every styles.css OR app.js change: both ship under ?v= and are edge-cached for up to 1h + SWR 24h
-export const CSS_VERSION = 183;
+export const CSS_VERSION = 184;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -595,8 +595,44 @@ export const GuidePage: FC<{ guide: (typeof GUIDES)[number] }> = ({ guide }) => 
   </GuideLayout>
 );
 
+const AuthValuePanel: FC = () => (
+  <aside class="hidden lg:block" aria-hidden="true">
+    <h2 class="text-3xl font-extrabold tracking-tight">
+      Every episode, every movie,{" "}
+      <span class="bg-gradient-to-r from-violet-400 to-fuchsia-400 bg-clip-text text-transparent">every rating — remembered.</span>
+    </h2>
+    <ul class="mt-6 space-y-3 text-sm text-slate-400">
+      <li>📦 One-click TV Time ZIP import — nothing left behind</li>
+      <li>▶️ Next Up: your home screen is simply what to watch next</li>
+      <li>🗓️ Airing calendar with iCal feeds and email reminders</li>
+      <li>🔓 Free during beta · export or delete your data any time</li>
+    </ul>
+    <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-2xl shadow-violet-950/40">
+      <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Next Up</p>
+      <ul class="space-y-2">
+        {[
+          ["from-violet-800 to-slate-800", "Severance", "S02E04 · 6 episodes left"],
+          ["from-fuchsia-900 to-slate-800", "The Bear", "S03E01 · new season"],
+          ["from-indigo-900 to-slate-800", "Dark", "S01E07 · 19 episodes left"],
+        ].map(([g, title, sub]) => (
+          <li class="flex items-center gap-3 rounded-xl bg-slate-950/60 p-2">
+            <span class={`h-14 w-10 shrink-0 rounded-md bg-gradient-to-br ${g}`} />
+            <span class="min-w-0 flex-1">
+              <span class="block truncate text-sm font-medium text-slate-200">{title}</span>
+              <span class="block text-xs text-slate-500">{sub}</span>
+            </span>
+            <span class="rounded-lg bg-violet-600/90 px-2.5 py-1 text-xs font-semibold text-white">✓ Watched</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </aside>
+);
+
 export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: string; email?: string }> = ({ mode, error, next, email }) => (
-  <div class="mx-auto max-w-sm py-10">
+  <div class={mode === "signup" ? "mx-auto max-w-sm py-10 lg:grid lg:max-w-4xl lg:grid-cols-2 lg:items-center lg:gap-16" : "mx-auto max-w-sm py-10"}>
+    {mode === "signup" && <AuthValuePanel />}
+    <div>
     <h1 class="mb-6 text-2xl font-bold">{mode === "login" ? "Log in" : "Create your account"}</h1>
     {error && <p role="alert" tabindex={-1} data-server-error class="mb-4 rounded-lg border border-red-800 bg-red-950/50 px-3 py-2 text-sm text-red-300 focus:outline-none">{error}</p>}
     <form action={`/${mode}`} method="post" class="space-y-4" data-validate>
@@ -642,6 +678,7 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
         <>Already a member? <a href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} class="text-violet-400 underline">Log in</a></>
       )}
     </p>
+    </div>
   </div>
 );
 

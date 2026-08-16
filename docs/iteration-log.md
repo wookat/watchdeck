@@ -738,6 +738,15 @@
 
 ---
 
+## Round 254 — 2026-08-17（UI 盲评第 3 轮整改：signup 页 1440px 左栏价值面板）
+
+**问题（验收官核心流程盲评，P2）**
+- signup 页 1440px 左半屏全空（对照 Trakt join 页有产品展示）。
+
+**修复（勿增实体：纯 SSR JSX + 既有 Tailwind 类，无新素材/请求）**
+- AuthForm signup 模式改 lg 双栏（lg:grid-cols-2）：左侧 AuthValuePanel = 品牌标语 + 4 条价值 bullets（复用落地页文案）+ 「Next Up」产品卡样机（渐变海报占位 + S/E 进度 + ✓ Watched 按钮，全 CSS 无图片）；aria-hidden 装饰性，<lg 隐藏，375px/登录页布局不变。
+- CSS_VERSION 183→184（新增 Tailwind 类需重编译）。
+
 ## Round 253 — 2026-08-16（users 8→9 核查 + QA 邮箱前缀剔除口径，docs only）
 
 **背景**
