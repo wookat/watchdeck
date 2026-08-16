@@ -340,6 +340,7 @@ textarea:focus {
 }
 /* undo countdown: shrinking bar along the toast's bottom edge */
 .toast-timer {
+  pointer-events: none;
   position: absolute;
   left: 0;
   bottom: 0;
@@ -349,6 +350,9 @@ textarea:focus {
   border-radius: 0 0 0.75rem 0.75rem;
   transform-origin: left;
   animation: toast-timer linear forwards;
+}
+.toast-paused .toast-timer {
+  animation-play-state: paused;
 }
 @keyframes toast-timer {
   from {
