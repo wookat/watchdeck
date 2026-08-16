@@ -738,6 +738,39 @@
 
 ---
 
+## Round 253 — 2026-08-16（users 8→9 核查 + QA 邮箱前缀剔除口径，docs only）
+
+**背景**
+- R252 测试代理发现 D1 users 8→9。只读核查：新账号 id 55 `devinqa46a@emalupe.com`（08-16 22:31:57 注册），轨迹为落地→搜 Severance→signup（track=1 深链）→入库→标 S01E01，全程 ~1 分钟、无外部 referrer、ua_class=desktop（未带 x-qa 头被误计）。验收官与本线均否认所为，按 devinqa 前缀归类 QA 残留，非真实外部用户。
+
+**处理（不删数据）**
+- docs/analytics-export.md 重导（30 天窗口刷新）并新增「QA 邮箱前缀剔除口径」：`qa*`/`devinqa*`/`smoke-test*`/`round5*`/`r10-qa*` 前缀或 `@example.com` 域一律按 QA 剔除；剔除后近 30 天真实外部注册仍为 0。
+- 旁证：该轨迹完整走通 R241 track=1 深链闭环（signup?next=…track=1 → 自动入 watchlist）。
+
+## Round 252 — 2026-08-14（UI 双维盲评第 1 轮整改：详情页信息密度 P1 + hero 可见度 + 集行紧凑化）
+
+**问题（验收官 UI 盲评 vs Trakt，视觉 6:8 / 功能 6:9）**
+- P1 信息密度：集数行仅标题+日期；hero 背景剧照透明度过低几乎不可见。
+- P2 间距：季 chips 与集列表间距大、62 集页行高冗余。
+
+**修复（复用现有数据源勿增实体：TMDB season 响应已含 still_path/vote_average，零额外请求）**
+- 集数行加单集静帧缩略（w185，80×45，sm+ 显示，无静帧用渐变占位保持对齐）+ TMDB 单集评分（★ x.x，amber）。
+- hero 背景 opacity 0.28→0.5，渐变改左强右弱（左侧文字区维持可读，右侧剧照显现质感）。
+- 行 py-3→py-2、chips 区 mt-10→mt-6 / mb-4→mb-3。
+- CSS_VERSION 182→183。
+
+## Round 250 — 2026-08-14（竞品对比验收立项：按流媒体平台浏览「What to watch on X」）
+
+**背景（验收官竞品对照矩阵 batch2-3 §7）**
+- 矩阵判定「流媒体去向 ✗ 落后」。生产实查纠偏：详情页已有 geo-aware Where to stream（R220）+ on-my-services 过滤（R109-111）；真实缺口是 Trakt Discover 级的**按平台发现/浏览**（Trakt 该功能收 VIP）。
+
+**实现（勿增实体：1 路由 + 复用既有组件/API 族）**
+- tmdb.ts 新增 discoverByProvider：/discover/{tv,movie}?with_watch_providers=<id>&watch_region=US，SWR 24h，同 genre/network 模式。
+- 新路由 /browse/streaming/{tv|movie}/{id-slug}，复用 STREAMING_SERVICES 10 平台白名单 + 分页 1-20 + canonical/prev/next + browseCrumbs JSON-LD；页脚标注 US 口径与 JustWatch attribution。
+- /browse hub 新增 By streaming service pill 区（TV/Movies 两组）；详情页 Where to stream 平台 chip 命中白名单时内链对应浏览页（未命中保持 JustWatch 外链）。
+- sitemap +20 URL（10 平台 × 2 类型）。pSEO 页固定 US（canonical 稳定、边缘缓存友好）；详情页 geo-aware 不变。
+- 纯 SSR 变更，无 CSS/JS 改动，CSS_VERSION 不变。
+
 ## Round 249 — 2026-08-14（审改分离第 11 轮整改：trial 口径统一 + HonestCV 命名 + Undo toast Tab 可达）
 
 **问题（验收官第 11 轮文案/IA 轮扫）**
