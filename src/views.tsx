@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every styles.css OR app.js change: both ship under ?v= and are edge-cached for up to 1h + SWR 24h
-export const CSS_VERSION = 182;
+export const CSS_VERSION = 183;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -1401,8 +1401,8 @@ export const ShowPage: FC<{
         </div>
       </div>
 
-      <div class="mt-10">
-        <div class="mb-4 flex flex-wrap gap-2">
+      <div class="mt-6">
+        <div class="mb-3 flex flex-wrap gap-2">
           {show.seasons
             .filter((s) => s.season_number > 0)
             .map((s) => {
@@ -1485,7 +1485,19 @@ export const ShowPage: FC<{
               const playCount = plays?.get(`${ep.season_number}x${ep.episode_number}`) ?? 1;
               const epRating = epRatings?.get(`${ep.season_number}x${ep.episode_number}`);
               return (
-                <li class="flex flex-wrap items-center gap-x-4 gap-y-2 bg-slate-900/40 px-4 py-3">
+                <li class="flex flex-wrap items-center gap-x-3 gap-y-2 bg-slate-900/40 px-3 py-2 sm:px-4">
+                  {ep.still_path ? (
+                    <img
+                      src={`https://image.tmdb.org/t/p/w185${ep.still_path}`}
+                      alt=""
+                      width={80}
+                      height={45}
+                      loading="lazy"
+                      class="hidden h-[45px] w-20 shrink-0 rounded-md border border-slate-800 object-cover sm:block"
+                    />
+                  ) : (
+                    <span aria-hidden="true" class="hidden h-[45px] w-20 shrink-0 rounded-md border border-slate-800 bg-gradient-to-br from-slate-900 to-slate-800 sm:block" />
+                  )}
                   <span class="w-14 shrink-0 text-sm text-slate-400">
                     S{String(ep.season_number).padStart(2, "0")}E{String(ep.episode_number).padStart(2, "0")}
                   </span>
@@ -1503,7 +1515,10 @@ export const ShowPage: FC<{
                         </span>
                       )}
                     </div>
-                    <p class="whitespace-nowrap text-xs text-slate-400">{ep.air_date ?? "TBA"}</p>
+                    <p class="whitespace-nowrap text-xs text-slate-400">
+                      {ep.air_date ?? "TBA"}
+                      {ep.vote_average ? <span class="ml-2 text-amber-300/90">★ {ep.vote_average.toFixed(1)}</span> : null}
+                    </p>
                   </div>
                   {user && (
                     <div class="ml-auto flex shrink-0 items-center gap-2">

@@ -93,7 +93,7 @@ export function tvDetails(env: Env, id: number) {
 
 export interface SeasonDetails {
   season_number: number;
-  episodes: { episode_number: number; season_number: number; name: string; air_date: string | null; overview: string; episode_type?: string }[];
+  episodes: { episode_number: number; season_number: number; name: string; air_date: string | null; overview: string; episode_type?: string; still_path: string | null; vote_average?: number }[];
 }
 
 export function seasonDetails(env: Env, tvId: number, season: number) {
