@@ -93,7 +93,7 @@ export function tvDetails(env: Env, id: number) {
 
 export interface SeasonDetails {
   season_number: number;
-  episodes: { episode_number: number; season_number: number; name: string; air_date: string | null; overview: string; episode_type?: string }[];
+  episodes: { episode_number: number; season_number: number; name: string; air_date: string | null; overview: string; episode_type?: string; still_path: string | null; vote_average?: number }[];
 }
 
 export function seasonDetails(env: Env, tvId: number, season: number) {
@@ -163,6 +163,14 @@ export function discoverByNetwork(env: Env, networkId: number, page = 1) {
   return tmdb<{ results: SearchResult[]; total_pages: number }>(
     env,
     `/discover/tv?with_networks=${networkId}&sort_by=popularity.desc&page=${Math.min(Math.max(page, 1), 20)}`,
+    24 * 3600
+  );
+}
+
+export function discoverByProvider(env: Env, type: "tv" | "movie", providerId: number, page = 1) {
+  return tmdb<{ results: SearchResult[]; total_pages: number }>(
+    env,
+    `/discover/${type}?with_watch_providers=${providerId}&watch_region=US&sort_by=popularity.desc&page=${Math.min(Math.max(page, 1), 20)}`,
     24 * 3600
   );
 }
