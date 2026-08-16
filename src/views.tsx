@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every styles.css OR app.js change: both ship under ?v= and are edge-cached for up to 1h + SWR 24h
-export const CSS_VERSION = 179;
+export const CSS_VERSION = 182;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -155,7 +155,7 @@ export const Layout: FC<PropsWithChildren<{ user: User | null; title?: string; d
             More from us:{" "}
             <a href="https://astrosage.zalize.com" class="hover:underline">AstroSage</a> ·{" "}
             <a href="https://subsleuth.zalize.com" class="hover:underline">SubSleuth</a> ·{" "}
-            <a href="https://cv.zalize.com" class="hover:underline">CV</a>
+            <a href="https://cv.zalize.com" class="hover:underline">HonestCV</a>
           </p>
         </div>
       </footer>
@@ -2563,7 +2563,7 @@ export const TermsPage: FC = () => (
     <h1 class="text-2xl font-bold text-white">Terms of service</h1>
     <p class="text-sm text-slate-400">Last updated: August 5, 2026</p>
     <p>
-      WatchDeck is a service for tracking TV shows and movies, currently offered as a free beta trial. By using it you agree to these terms.
+      WatchDeck is a service for tracking TV shows and movies, currently free during beta. By using it you agree to these terms.
     </p>
     <h2 class="text-lg font-semibold text-white">Your account</h2>
     <p>

@@ -122,7 +122,7 @@ document.addEventListener("submit", (e) => {
   const form = e.target;
   if (form instanceof HTMLFormElement && form.dataset.confirm && !window.confirm(form.dataset.confirm)) e.preventDefault();
 });
-function showToast(msg, undoFn) {
+function showToast(msg, undoFn, anchor) {
   let t = document.getElementById("app-toast");
   if (!t) {
     t = document.createElement("div");
@@ -130,8 +130,30 @@ function showToast(msg, undoFn) {
     t.className = "toast";
     t.setAttribute("role", "status");
     t.setAttribute("aria-live", "polite");
-    document.body.appendChild(t);
+    // pause auto-hide while the pointer or focus is on the toast so the Undo
+    // click/keypress can never race the dismissal timer (WCAG 2.2.1);
+    // registered once at creation — listeners survive DOM moves and reuse
+    const el = t;
+    const pause = () => {
+      clearTimeout(el.dataset.timer);
+      el.classList.add("toast-paused");
+    };
+    const resume = () => {
+      el.classList.remove("toast-paused");
+      clearTimeout(el.dataset.timer);
+      if (el.classList.contains("toast-show"))
+        el.dataset.timer = setTimeout(() => el.classList.remove("toast-show"), 2000);
+    };
+    el.addEventListener("pointerenter", pause);
+    el.addEventListener("focusin", pause);
+    el.addEventListener("pointerleave", resume);
+    el.addEventListener("focusout", resume);
   }
+  // insert next to the triggering element so the Undo button is the very
+  // next Tab stop (the toast is position:fixed, so DOM placement only
+  // affects tab order, not visuals)
+  if (anchor && anchor.parentNode) anchor.insertAdjacentElement("afterend", t);
+  else if (!t.parentNode) document.body.appendChild(t);
   const duration = undoFn ? 8000 : 2400;
   t.textContent = msg;
   if (undoFn) {
@@ -151,7 +173,7 @@ function showToast(msg, undoFn) {
     timer.style.animationDuration = duration + "ms";
     t.appendChild(timer);
   }
-  t.classList.remove("toast-show");
+  t.classList.remove("toast-show", "toast-paused");
   void t.offsetWidth;
   t.classList.add("toast-show");
   clearTimeout(t.dataset.timer);
@@ -200,7 +222,7 @@ document.addEventListener("submit", (e) => {
           el.classList.add(total > 0 && seen >= total ? el.dataset.doneClass : el.dataset.todoClass);
         }
       });
-      showToast(marking ? "\u2713 " + form.dataset.epLabel + " marked as watched" : form.dataset.epLabel + " unmarked", () => form.requestSubmit());
+      showToast(marking ? "\u2713 " + form.dataset.epLabel + " marked as watched" : form.dataset.epLabel + " unmarked", () => form.requestSubmit(), form);
     })
     .catch(() => form.submit())
     .finally(() => {
