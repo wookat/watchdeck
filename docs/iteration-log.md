@@ -738,6 +738,105 @@
 
 ---
 
+## Round 253 — 2026-08-16（users 8→9 核查 + QA 邮箱前缀剔除口径，docs only）
+
+**背景**
+- R252 测试代理发现 D1 users 8→9。只读核查：新账号 id 55 `devinqa46a@emalupe.com`（08-16 22:31:57 注册），轨迹为落地→搜 Severance→signup（track=1 深链）→入库→标 S01E01，全程 ~1 分钟、无外部 referrer、ua_class=desktop（未带 x-qa 头被误计）。验收官与本线均否认所为，按 devinqa 前缀归类 QA 残留，非真实外部用户。
+
+**处理（不删数据）**
+- docs/analytics-export.md 重导（30 天窗口刷新）并新增「QA 邮箱前缀剔除口径」：`qa*`/`devinqa*`/`smoke-test*`/`round5*`/`r10-qa*` 前缀或 `@example.com` 域一律按 QA 剔除；剔除后近 30 天真实外部注册仍为 0。
+- 旁证：该轨迹完整走通 R241 track=1 深链闭环（signup?next=…track=1 → 自动入 watchlist）。
+
+## Round 252 — 2026-08-14（UI 双维盲评第 1 轮整改：详情页信息密度 P1 + hero 可见度 + 集行紧凑化）
+
+**问题（验收官 UI 盲评 vs Trakt，视觉 6:8 / 功能 6:9）**
+- P1 信息密度：集数行仅标题+日期；hero 背景剧照透明度过低几乎不可见。
+- P2 间距：季 chips 与集列表间距大、62 集页行高冗余。
+
+**修复（复用现有数据源勿增实体：TMDB season 响应已含 still_path/vote_average，零额外请求）**
+- 集数行加单集静帧缩略（w185，80×45，sm+ 显示，无静帧用渐变占位保持对齐）+ TMDB 单集评分（★ x.x，amber）。
+- hero 背景 opacity 0.28→0.5，渐变改左强右弱（左侧文字区维持可读，右侧剧照显现质感）。
+- 行 py-3→py-2、chips 区 mt-10→mt-6 / mb-4→mb-3。
+- CSS_VERSION 182→183。
+
+## Round 250 — 2026-08-14（竞品对比验收立项：按流媒体平台浏览「What to watch on X」）
+
+**背景（验收官竞品对照矩阵 batch2-3 §7）**
+- 矩阵判定「流媒体去向 ✗ 落后」。生产实查纠偏：详情页已有 geo-aware Where to stream（R220）+ on-my-services 过滤（R109-111）；真实缺口是 Trakt Discover 级的**按平台发现/浏览**（Trakt 该功能收 VIP）。
+
+**实现（勿增实体：1 路由 + 复用既有组件/API 族）**
+- tmdb.ts 新增 discoverByProvider：/discover/{tv,movie}?with_watch_providers=<id>&watch_region=US，SWR 24h，同 genre/network 模式。
+- 新路由 /browse/streaming/{tv|movie}/{id-slug}，复用 STREAMING_SERVICES 10 平台白名单 + 分页 1-20 + canonical/prev/next + browseCrumbs JSON-LD；页脚标注 US 口径与 JustWatch attribution。
+- /browse hub 新增 By streaming service pill 区（TV/Movies 两组）；详情页 Where to stream 平台 chip 命中白名单时内链对应浏览页（未命中保持 JustWatch 外链）。
+- sitemap +20 URL（10 平台 × 2 类型）。pSEO 页固定 US（canonical 稳定、边缘缓存友好）；详情页 geo-aware 不变。
+- 纯 SSR 变更，无 CSS/JS 改动，CSS_VERSION 不变。
+
+## Round 249 — 2026-08-14（审改分离第 11 轮整改：trial 口径统一 + HonestCV 命名 + Undo toast Tab 可达）
+
+**问题（验收官第 11 轮文案/IA 轮扫）**
+- P2（全集团统一口径）：去掉 "trial" 字样，统一 "free during beta"。全站 grep：WatchDeck 仅 Terms 页 1 处 "free beta trial"。
+- P2（跨线命名）：footer 兄弟产品互链把 HonestCV 叫 "CV"，统一为 "HonestCV"。
+- P3（键盘可达性）：Undo toast 位于 DOM 末尾，键盘用户 8s 内 Tab 不可达（需 50+ 次按键）。
+
+**修复（勿增实体）**
+- Terms 页 "offered as a free beta trial" → "currently free during beta"；footer "CV" → "HonestCV"。
+- showToast 增可选 anchor 参数：触发表单传入自身，toast 插入表单之后（insertAdjacentElement("afterend")）——Undo 按钮成为集数按钮的下一个 Tab 停靠点，1 次 Tab 即达（toast 为 fixed 定位，DOM 位置只影响 Tab 序不影响视觉）；到达即触发既有 focusin 暂停。无 anchor 调用（watchlist toast，无 Undo）保持 body 末尾。
+- CSS_VERSION 180→181。
+- 回归发现 P1 并当轮修复：R248 的暂停逻辑用 `t.onfocusin/onfocusout` 属性赋值——Chrome 元素上无此 IDL 属性（赋值为惰性 expando），键盘焦点进入 toast 不暂停自动隐藏（R249 让 Undo 键盘可达后才暴露）。改为创建时一次性 `addEventListener("focusin"/"focusout")`（连同 pointerenter/leave 统一），监听器随 DOM 移动与复用存续。CSS_VERSION 181→182。
+
+---
+
+## Round 248 — 2026-08-14（审改分离第 10 轮整改：Undo toast 点击竞态排查与修复）
+
+**问题（验收官第 10 轮无障碍复扫）**
+- axe/键盘全过；但观察到一次 Undo toast 单次点击未回滚（未复现）。要求自查点击处理竞态。
+
+**排查结论（代码级归因，两个可复现竞态窗口）**
+1. 主因：8s 自动隐藏 setTimeout 与用户点击竞态——若定时器在 mousedown 与 mouseup 之间触发，`.toast` 失去 `.toast-show` 后 `pointer-events:none` 立即生效，mouseup 落在不可交互元素上，**click 事件根本不派发**，undoFn 不执行。临近倒计时结束的点击有真实丢失窗口。
+2. 次因：`.toast-timer` 倒计时条为绝对定位 span 且在 DOM 中晚于 Undo 按钮，底部 2px 覆盖按钮下边缘——点击落在该 2px 命中 span 而非按钮，click target 不是按钮，同样被吞。
+
+**修复（勿增实体，全走既有 showToast/CSS）**
+- 竞态①：toast 悬停/焦点进入时暂停自动隐藏（clearTimeout + `.toast-paused` 暂停倒计时条动画），离开后 2s 收尾隐藏——点击期间指针必然在 toast 上，隐藏定时器不可能在点击中途触发（同时满足 WCAG 2.2.1 可调节时限）。用 on* 属性赋值避免复用 toast 时监听器叠加。
+- 竞态②：`.toast-timer` 加 `pointer-events:none`，倒计时条不再拦截点击。
+- CSS_VERSION 179→180（app.js+styles.css 均变更）。
+
+---
+
+## Round 247 — 2026-08-14（审改分离第 8 轮整改：边缘缓存接入 + 限流三层化 + 海报占位）
+
+**问题（验收官第 8 轮性能深挖）**
+- P1（体系性，7/8 线共性）：s-maxage/SWR 头对 Worker 响应不产生边缘缓存，每次访问都跑 Worker+D1/TMDB；仅 NameChart 用了 caches.default。
+- P2 剧集页 3G LCP 9.0s：LCP 元素为 TMDB 外域海报，无 LQIP/占位（文本 1.9s 可读、CLS=0）。
+- P2 统一：per-IP 配额在 CGNAT/共享出口下误伤真实用户，改「宽 IP 兜底 + 窄客户端配额 + 全局熔断」三层。
+
+**修复（参照 NameChart 模式，勿造轮子）**
+- 边缘缓存中间件（~25 行）：匿名（无 wd_session cookie）公开 HTML GET 命中 caches.default——key = `/__edge/v<CSS_VERSION>/<country><path><query>`（含国家维度：Where to stream 按 cf.country 渲染；含完整 query：分页/参数变体）；私有/auth/search/api 路由一律跳过；存储时附 s-maxage=300 + SHA-1 ETag（304 协商）；注册在 analytics 中间件之后，缓存命中仍记 PV。TTL 5 分钟 + 版本键，部署后自愈无需手动失效。
+- 限流三层化（复用 R246 的 ident 参数，勿增实体）：① 全局熔断——sendEmail 加全天 200 封上限（KV 日计数，超限 fail-closed 静默丢弃），覆盖 signup/forgot/waitlist/digest 全部发信；② 窄维度——forgot 加 per-email 3/10min、waitlist 加 per-email 2/10min；③ 宽 IP 兜底——forgot/waitlist IP 限由 5 放宽至 20/10min（login 已是 IP15+账号10 双维，signup 保持 IP 10——注册本身是账号创建，IP 维即主闸）。
+- 剧集/电影页 hero 海报加 `bg-gradient-to-b from-slate-800 to-slate-900` 占位（容器已有固定宽高比，CLS 仍为 0，3G 下空框变深色渐变占位）。CSS_VERSION 178→179（兼作边缘缓存版本键 bump）。
+
+**证据**
+- 见 PR 与生产回归记录。
+
+---
+
+## Round 246 — 2026-08-14（审改分离第 7 轮整改：登录限流 IP+账号双维 + 管理端点 fail-closed + 横向安全矩阵自查）
+
+**问题（验收官第 7 轮安全复扫）**
+- P2 登录限流仅 IP 维：登录成功即删 `rl:login:<ip>` 整个 IP 计数器——持有任一有效账号即可重置暴力破解计数。
+- P2 管理端点 fail-open：`(c.env.ADMIN_EMAIL && …)` 结构在 ADMIN_EMAIL 配置漂移（未配置）时任何登录用户可跑 cron/indexnow/stats。
+- 全线统一：横向矩阵 {AI 端点/发信端点/管理端点/CSP/限流键维度/beacon 防伪} 自查；beacon 可伪造加最小防护（报告建议：不加签名，导出侧过滤+QA 标记）。
+
+**修复（勿增实体）**
+- `rateLimitKey`/`rateLimit` 增可选 `ident` 参数（默认仍为 IP，零新实体）：登录改双闸——IP 15/10min（不变）+ 账号（email）10/10min；登录成功只清账号键 `rl:login-acct:<email>`，不再清 IP 键。
+- 三处管理端点（/api/indexnow、/api/admin/cron、/api/stats）鉴权改 fail-closed：`!user || !c.env.ADMIN_EMAIL || email 不匹配` → 403，ADMIN_EMAIL 未配置时一律拒绝。
+- beacon 最小防护（按报告建议走导出侧过滤路线）：ua_class 分类器把空 UA 与 curl/wget/python/httpie/go-http 等非浏览器 UA 归入 `bot`（导出已剔除），叠加 R245 QA 标记口径；不加签名（收益低于复杂度，与验收官建议一致）。
+- 横向矩阵自查结论：AI 端点——本线无（不适用）；发信端点——signup 10、forgot 5、waitlist 5 全部已限流，cron digest 仅 scheduled/admin 触发；管理端点——本轮改 fail-closed；CSP——已完整（default-src 'self'; script-src 'self' 无 unsafe-inline）；限流键维度——login 本轮改双维，signup/forgot/waitlist 保持 IP 维（无「成功清计数」路径，IP 维足够）；beacon——本线无 POST beacon 端点（PV 由服务端中间件采集），伪造面即「带浏览器 UA 请求页面」，按上项过滤+QA 标记处置。
+
+**证据**
+- 见 PR 与生产回归记录。
+
+---
+
 ## Round 245 — 2026-08-14（审改分离第 6 轮整改：QA 流量标记 + /reset 鼠标提交焦点 + IndexNow 对齐）
 
 **问题（验收官第 6 轮清单）**
