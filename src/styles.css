@@ -95,14 +95,14 @@ a:hover > .poster-fx {
   height: 100%;
   object-fit: cover;
   object-position: center 20%;
-  opacity: 0.28;
+  opacity: 0.5;
 }
 .backdrop-hero > .backdrop-img::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgb(2 6 23 / 0.35), rgb(2 6 23 / 0.92) 78%, #020617),
-    linear-gradient(to right, rgb(2 6 23 / 0.65), transparent 45%);
+  background: linear-gradient(to bottom, rgb(2 6 23 / 0.25), rgb(2 6 23 / 0.88) 82%, #020617),
+    linear-gradient(to right, rgb(2 6 23 / 0.8), rgb(2 6 23 / 0.35) 55%, transparent 80%);
 }
 
 /* modern form controls: custom chevron on selects, dark-scheme native pickers */
