@@ -19,6 +19,7 @@ import {
   genreList,
   discoverByGenre,
   discoverByNetwork,
+  discoverByProvider,
   discoverByYear,
   discoverPopular,
   topRated,
@@ -63,6 +64,7 @@ import {
   BrowseIndex,
   BrowseGenre,
   BrowseNetwork,
+  BrowseStreaming,
   BrowseYear,
   BrowseTopRated,
   BrowseTrending,
@@ -1081,6 +1083,33 @@ app.get("/browse/network/:idslug", async (c) => {
       jsonLd={browseCrumbs(c.env.SITE_URL, network.name, base, res.results, "tv")}
     >
       <BrowseNetwork network={network} results={res.results} page={page} totalPages={res.total_pages} />
+    </Layout>
+  );
+});
+
+app.get("/browse/streaming/:type/:idslug", async (c) => {
+  const type = c.req.param("type") === "movie" ? "movie" : c.req.param("type") === "tv" ? "tv" : null;
+  if (!type) return c.notFound();
+  const id = parseInt(c.req.param("idslug"), 10);
+  const entry = STREAMING_SERVICES.find(([sid]) => sid === id);
+  if (!entry) return c.notFound();
+  const service = { id: entry[0], name: entry[1] };
+  const page = Math.min(20, Math.max(1, parseInt(c.req.query("page") ?? "1", 10) || 1));
+  const res = await discoverByProvider(c.env, type, service.id, page);
+  const base = `${c.env.SITE_URL}/browse/streaming/${type}/${service.id}-${slugify(service.name)}`;
+  const last = Math.min(res.total_pages, 20);
+  const label = type === "tv" ? "TV shows" : "movies";
+  return c.html(
+    <Layout
+      user={c.get("user")}
+      title={`${type === "tv" ? "TV shows" : "Movies"} to watch on ${service.name}`}
+      description={`Popular ${label} streaming on ${service.name} (US) to discover and track on WatchDeck.`}
+      canonical={page === 1 ? base : `${base}?page=${page}`}
+      prev={page > 1 ? (page === 2 ? base : `${base}?page=${page - 1}`) : undefined}
+      next={page < last ? `${base}?page=${page + 1}` : undefined}
+      jsonLd={browseCrumbs(c.env.SITE_URL, `${service.name} ${label}`, base, res.results, type)}
+    >
+      <BrowseStreaming type={type} service={service} results={res.results} page={page} totalPages={res.total_pages} />
     </Layout>
   );
 });
@@ -2753,6 +2782,10 @@ app.get("/sitemap.xml", async (c) => {
     for (const g of tvGenres.genres) urls.push(`${c.env.SITE_URL}/browse/tv/${g.id}-${slugify(g.name)}`);
     for (const g of movieGenres.genres) urls.push(`${c.env.SITE_URL}/browse/movie/${g.id}-${slugify(g.name)}`);
     for (const n of NETWORKS) urls.push(`${c.env.SITE_URL}/browse/network/${n.id}-${slugify(n.name)}`);
+    for (const [sid, sname] of STREAMING_SERVICES) {
+      urls.push(`${c.env.SITE_URL}/browse/streaming/tv/${sid}-${slugify(sname)}`);
+      urls.push(`${c.env.SITE_URL}/browse/streaming/movie/${sid}-${slugify(sname)}`);
+    }
     urls.push(`${c.env.SITE_URL}/browse/top-rated/tv`, `${c.env.SITE_URL}/browse/top-rated/movie`);
     urls.push(`${c.env.SITE_URL}/browse/trending/tv`, `${c.env.SITE_URL}/browse/trending/movie`);
     urls.push(`${c.env.SITE_URL}/browse/on-the-air/tv`, `${c.env.SITE_URL}/browse/coming-soon/movie`);
