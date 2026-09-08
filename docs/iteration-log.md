@@ -738,6 +738,27 @@
 
 ---
 
+## Round 255 — 2026-09-08（CEO 流量核查整改：双口径统计 + Turnstile + 0 行为账号单列）
+
+**问题**
+- 30d 3.26M「desktop/mobile」PV 实为伪装浏览器 UA 的爬虫扫库（/person 1.43M、/signup 773k、/movies 702k），旧 UA 关键词分类器未识别；id 56/57/58 三个 0 行为 @web.de 账号疑似自动注册。
+
+**取证（一手）**
+- wrangler tail：78% 请求来自 AS32934（Meta），Chrome UA；半数完全无 Sec-Fetch-*/Accept-Language，半数 headless 全套齐；全部沿详情页 CTA 打 /login?next= /signup?next=（解释 /signup 773k）。
+- D1：7d desktop 141k 行中 87,787 行 referrer 恰为裸 origin `https://watchdeck.zalize.com`（无尾斜杠，浏览器不可能发出）；该批 100% 无 beacon。
+
+**做法（勿增实体，不删历史）**
+- `analytics_events` 加 `src`/`visitor`/`asn` 三列；服务端 hit（src NULL）只作旁证，`ua_class` 新增 `crawler` 桶（缺 Sec-Fetch-Mode ∨ 裸 origin referer ∨ 爬虫 ASN）。
+- app.js `sendBeacon('/api/pv')`；服务端校验 Sec-Fetch-Site same-origin + Dest empty 才落库，visitor = sha256(日|IP|UA) 截断，日轮换匿名去重。人访口径 = `src='beacon' AND ua_class NOT IN ('bot','crawler','qa')`。
+- signup/login 接 Cloudflare Turnstile（managed，服务端 siteverify fail-closed，CSP 仅 auth 页放行 challenges.cloudflare.com）；app.js 表单增强器在 token 未就绪时挂起提交、回调后 requestSubmit。
+- `/api/stats` 与 docs/analytics-export.md 切新口径，`users` 扣除 `zeroActivityUsers` 单列。
+
+**证据**
+- 上线后：裸 origin referer 流量全部落 `crawler`（不再有 desktop 行）；Meta 爬虫可执行 JS 发 beacon（UA 含 crawler → bot，仍被排除）；修复前 7d「去 bot/QA PV」141,130 → 修复后人访 PV 0 / 访客 0（真实量级与 referrer 分析一致）。SQL 见 docs/analytics-export.md。
+- 缺口：Turnstile 当前为官方测试密钥（零防护），待老板建 widget 后替换。
+
+---
+
 ## Round 254 — 2026-08-17（UI 盲评第 3 轮整改：signup 页 1440px 左栏价值面板）
 
 **问题（验收官核心流程盲评，P2）**

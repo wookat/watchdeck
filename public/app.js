@@ -12,6 +12,11 @@ document.addEventListener("keydown", (e) => {
     box.focus();
   }
 });
+// human-caliber page view: only a JS-executing same-origin browser context can send this
+document.addEventListener("DOMContentLoaded", () => {
+  if (location.pathname.startsWith("/api") || !navigator.sendBeacon) return;
+  navigator.sendBeacon("/api/pv", new Blob([JSON.stringify({ p: location.pathname, r: document.referrer })], { type: "application/json" }));
+});
 document.addEventListener("DOMContentLoaded", () => {
   const path = location.pathname;
   document.querySelectorAll("#site-nav a[href]:not([data-logo]), #bottom-nav a[href]").forEach((a) => {
@@ -33,7 +38,7 @@ function fieldMessage(el) {
   if (!el.checkValidity()) return "Enter a valid email address";
   return "";
 }
-function renderFieldHint(el) {
+function hintFor(el) {
   let hint = el.parentElement.querySelector("[data-field-hint]");
   if (!hint) {
     hint = document.createElement("p");
@@ -41,6 +46,10 @@ function renderFieldHint(el) {
     hint.setAttribute("aria-live", "polite");
     el.parentElement.appendChild(hint);
   }
+  return hint;
+}
+function renderFieldHint(el) {
+  const hint = hintFor(el);
   const msg = fieldMessage(el);
   el.classList.toggle("border-amber-500", !!msg);
   el.classList.toggle("border-slate-700", !msg);
@@ -77,6 +86,15 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => el.focus(), 0);
         return;
       }
+      // Turnstile still solving: hold the submit, wdTurnstileDone() resubmits once the token lands
+      const ts = form.querySelector('input[name="cf-turnstile-response"]');
+      if (ts && !ts.value) {
+        e.preventDefault();
+        form.dataset.turnstilePending = "1";
+        const widget = form.querySelector(".cf-turnstile");
+        if (widget) renderStatusHint(widget, "Checking you\u2019re human\u2026");
+        return;
+      }
       const btn = form.querySelector("button[data-pending]");
       if (btn) {
         btn.textContent = btn.dataset.pending;
@@ -89,6 +107,19 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 });
+function renderStatusHint(el, msg) {
+  const hint = hintFor(el);
+  hint.textContent = msg;
+  hint.className = msg ? "mt-1.5 text-xs text-slate-400" : "hidden";
+}
+window.wdTurnstileDone = () => {
+  const form = document.querySelector("form[data-turnstile-pending]");
+  if (!form) return;
+  delete form.dataset.turnstilePending;
+  const widget = form.querySelector(".cf-turnstile");
+  if (widget) renderStatusHint(widget, "");
+  form.requestSubmit();
+};
 // one-time confirmation after a track=1 deep link auto-added to the watchlist
 document.addEventListener("DOMContentLoaded", () => {
   if (new URLSearchParams(location.search).get("tracked") === "1") {

@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every styles.css OR app.js change: both ship under ?v= and are edge-cached for up to 1h + SWR 24h
-export const CSS_VERSION = 184;
+export const CSS_VERSION = 185;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -629,7 +629,7 @@ const AuthValuePanel: FC = () => (
   </aside>
 );
 
-export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: string; email?: string }> = ({ mode, error, next, email }) => (
+export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: string; email?: string; turnstileKey?: string }> = ({ mode, error, next, email, turnstileKey }) => (
   <div class={mode === "signup" ? "mx-auto max-w-sm py-10 lg:grid lg:max-w-4xl lg:grid-cols-2 lg:items-center lg:gap-16" : "mx-auto max-w-sm py-10"}>
     {mode === "signup" && <AuthValuePanel />}
     <div>
@@ -662,6 +662,12 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
           class="w-full rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 focus:border-violet-500 focus:outline-none"
         />
       </div>
+      {turnstileKey && (
+        <div>
+          <div class="cf-turnstile" data-sitekey={turnstileKey} data-theme="dark" data-size="flexible" data-callback="wdTurnstileDone" data-action={mode} />
+          <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
+        </div>
+      )}
       <button class="w-full rounded-lg bg-violet-600 py-2.5 font-semibold text-white hover:bg-violet-500" data-pending={mode === "login" ? "Logging in…" : "Creating account…"}>
         {mode === "login" ? "Log in" : "Sign up"}
       </button>

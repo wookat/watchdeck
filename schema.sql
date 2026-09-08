@@ -74,7 +74,12 @@ CREATE TABLE IF NOT EXISTS analytics_events (
   path TEXT NOT NULL,
   referrer TEXT,
   country TEXT,
-  ua_class TEXT
+  ua_class TEXT,
+  -- 'beacon' = JS-executed same-origin page view (human caliber); NULL = server-side HTML hit (corroboration only)
+  src TEXT,
+  -- daily-rotating anonymous visitor hash (beacon rows only, no IP/UA stored)
+  visitor TEXT,
+  asn INTEGER
 );
 CREATE INDEX IF NOT EXISTS idx_analytics_ts ON analytics_events(ts);
 
