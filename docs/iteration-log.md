@@ -738,6 +738,19 @@
 
 ---
 
+## Round 256 — 2026-09-08（R255 生产验证回归项：Turnstile 挂起自愈 + signup 面板对比度）
+
+**问题（测试代理 R255 生产验证发现）**
+- Turnstile token 缺失（过期/加载失败）时表单进入「Checking you’re human…」挂起态，widget 不会自动重新出题，用户只能刷新页面。
+- R254 signup 价值面板样机卡 `text-xs text-slate-500`（"Next Up" 标签 + 3 行副标题）在 1440px 触发 axe `color-contrast: serious` ×4（375px 面板隐藏故 R254 未测出，与 R250 同一坑）。
+
+**做法（勿增实体）**
+- app.js：挂起 6s 仍无 token、或用户再次点提交 → `turnstile.reset(widget)` 重新出题，回调后照旧 `requestSubmit`；新增 `data-error-callback=wdTurnstileError`，widget 加载失败时解除挂起并就地提示重载。
+- views.tsx：样机卡两处 `text-slate-500` → `text-slate-400`；CSS/JS 版本 v186。
+- 测试技能 SKILL.md 补 R255 节（D1 token 用法、Turnstile closed shadow root 断言法、beacon/crawler 查询、Undo 时序）。
+
+---
+
 ## Round 255 — 2026-09-08（CEO 流量核查整改：双口径统计 + Turnstile + 0 行为账号单列）
 
 **问题**

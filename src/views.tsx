@@ -3,7 +3,7 @@ import type { User } from "./types";
 import { poster, slugify, STREAMING_SERVICES, NETWORKS, type SearchResult, type TvDetails, type MovieDetails, type SeasonDetails, type WatchProviders, type CastMember, type PersonDetails, type PersonCredit } from "./tmdb";
 
 // bump on every styles.css OR app.js change: both ship under ?v= and are edge-cached for up to 1h + SWR 24h
-export const CSS_VERSION = 185;
+export const CSS_VERSION = 186;
 
 const Hint: FC<{ tip: string }> = ({ tip }) => (
   <span class="hint" tabindex={0} role="note" aria-label={tip} data-tip={tip}>
@@ -608,7 +608,7 @@ const AuthValuePanel: FC = () => (
       <li>🔓 Free during beta · export or delete your data any time</li>
     </ul>
     <div class="mt-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-2xl shadow-violet-950/40">
-      <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Next Up</p>
+      <p class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-400">Next Up</p>
       <ul class="space-y-2">
         {[
           ["from-violet-800 to-slate-800", "Severance", "S02E04 · 6 episodes left"],
@@ -619,7 +619,7 @@ const AuthValuePanel: FC = () => (
             <span class={`h-14 w-10 shrink-0 rounded-md bg-gradient-to-br ${g}`} />
             <span class="min-w-0 flex-1">
               <span class="block truncate text-sm font-medium text-slate-200">{title}</span>
-              <span class="block text-xs text-slate-500">{sub}</span>
+              <span class="block text-xs text-slate-400">{sub}</span>
             </span>
             <span class="rounded-lg bg-violet-600/90 px-2.5 py-1 text-xs font-semibold text-white">✓ Watched</span>
           </li>
@@ -664,7 +664,7 @@ export const AuthForm: FC<{ mode: "login" | "signup"; error?: string; next?: str
       </div>
       {turnstileKey && (
         <div>
-          <div class="cf-turnstile" data-sitekey={turnstileKey} data-theme="dark" data-size="flexible" data-callback="wdTurnstileDone" data-action={mode} />
+          <div class="cf-turnstile" data-sitekey={turnstileKey} data-theme="dark" data-size="flexible" data-callback="wdTurnstileDone" data-error-callback="wdTurnstileError" data-action={mode} />
           <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer />
         </div>
       )}
