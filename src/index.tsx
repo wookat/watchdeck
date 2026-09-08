@@ -147,9 +147,11 @@ app.use("*", async (c, next) => {
       "link",
       `</styles.css?v=${CSS_VERSION}>; rel=preload; as=style, </fonts/sora-latin.woff2>; rel=preload; as=font; type="font/woff2"; crossorigin`
     );
+    // Turnstile (auth pages only) needs its script + challenge iframe from challenges.cloudflare.com
+    const turnstile = c.env.TURNSTILE_SITE_KEY && /^\/(login|signup)$/.test(path) ? " https://challenges.cloudflare.com" : "";
     h.set(
       "content-security-policy",
-      "default-src 'self'; img-src 'self' https://image.tmdb.org data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+      `default-src 'self'; img-src 'self' https://image.tmdb.org data:; style-src 'self' 'unsafe-inline'; script-src 'self'${turnstile}; connect-src 'self';${turnstile ? ` frame-src${turnstile};` : ""} frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'`
     );
   }
 });
@@ -187,6 +189,40 @@ async function rateLimit(c: { env: { CACHE: KVNamespace }; req: { header: (n: st
   return n <= limit;
 }
 
+// Two-caliber first-party analytics (R255):
+//  - server-side HTML hits (src NULL) are corroboration only — browser-UA crawlers inflate them;
+//  - JS beacon page views (src 'beacon', POST /api/pv, Sec-Fetch-Site same-origin) are the human caliber.
+// ua_class buckets: qa | bot (declared UA) | crawler (browser UA but: no Sec-Fetch-Mode, or a bare-origin Referer
+// without trailing slash — browsers always emit "https://host/" — or a crawler-operator ASN) | mobile | desktop.
+// Nothing is deleted; buckets are filtered at query time.
+const CRAWLER_ASNS = new Set([32934 /* Meta */, 16509, 14618 /* Amazon */, 15169, 396982 /* Google */, 8075 /* Microsoft */]);
+type CfRequest = { cf?: { country?: string; asn?: number } };
+
+function classifyRequest(c: { req: { header: (n: string) => string | undefined; raw: Request } }) {
+  const ua = c.req.header("user-agent") ?? "";
+  const cf = (c.req.raw as CfRequest).cf;
+  const asn = typeof cf?.asn === "number" ? cf.asn : null;
+  const uaClass =
+    c.req.header("x-qa") === "1" || ua.includes("ZalizeQA")
+      ? "qa"
+      : !ua || /bot|crawl|spider|curl|wget|python|httpie|go-http/i.test(ua)
+        ? "bot"
+        : !c.req.header("sec-fetch-mode") || /^https?:\/\/[^/]+$/.test(c.req.header("referer") ?? "") || (asn !== null && CRAWLER_ASNS.has(asn))
+          ? "crawler"
+          : /mobile/i.test(ua)
+            ? "mobile"
+            : "desktop";
+  return { uaClass, country: cf?.country ?? null, asn };
+}
+
+// daily-rotating anonymous visitor id: sha256(day|ip|ua) truncated — nothing reversible is stored
+async function visitorHash(c: { req: { header: (n: string) => string | undefined } }): Promise<string> {
+  const day = new Date().toISOString().slice(0, 10);
+  const raw = `${day}|${c.req.header("cf-connecting-ip") ?? ""}|${c.req.header("user-agent") ?? ""}`;
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(raw));
+  return [...new Uint8Array(digest).slice(0, 8)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 app.use("*", async (c, next) => {
   c.set("user", await loadUser(c));
   await next();
@@ -196,19 +232,59 @@ app.use("*", async (c, next) => {
     c.res.headers.get("content-type")?.includes("text/html") &&
     !c.req.path.startsWith("/api")
   ) {
-    const ua = c.req.header("user-agent") ?? "";
-    const uaClass =
-      c.req.header("x-qa") === "1" || ua.includes("ZalizeQA") ? "qa" : !ua || /bot|crawl|spider|curl|wget|python|httpie|go-http/i.test(ua) ? "bot" : /mobile/i.test(ua) ? "mobile" : "desktop";
-    const country = (c.req.raw as { cf?: { country?: string } }).cf?.country ?? null;
+    const { uaClass, country, asn } = classifyRequest(c);
     const referrer = c.req.header("referer") ?? null;
     c.executionCtx.waitUntil(
-      c.env.DB.prepare("INSERT INTO analytics_events (path, referrer, country, ua_class) VALUES (?, ?, ?, ?)")
-        .bind(c.req.path, referrer, country, uaClass)
+      c.env.DB.prepare("INSERT INTO analytics_events (path, referrer, country, ua_class, asn) VALUES (?, ?, ?, ?, ?)")
+        .bind(c.req.path, referrer, country, uaClass, asn)
         .run()
         .catch(() => {})
     );
   }
 });
+
+// browser beacon (navigator.sendBeacon from app.js): requires JS execution and a same-origin fetch context
+app.post("/api/pv", async (c) => {
+  if (c.req.header("sec-fetch-site") !== "same-origin" || c.req.header("sec-fetch-dest") !== "empty") return c.body(null, 204);
+  let body: { p?: unknown; r?: unknown };
+  try {
+    body = JSON.parse((await c.req.text()).slice(0, 2048)) as { p?: unknown; r?: unknown };
+  } catch {
+    return c.body(null, 204);
+  }
+  const path = typeof body.p === "string" && /^\/(?!\/)/.test(body.p) ? body.p.slice(0, 300) : null;
+  if (!path || path.startsWith("/api")) return c.body(null, 204);
+  const referrer = typeof body.r === "string" && body.r ? body.r.slice(0, 500) : null;
+  const { uaClass, country, asn } = classifyRequest(c);
+  const visitor = await visitorHash(c);
+  c.executionCtx.waitUntil(
+    c.env.DB.prepare("INSERT INTO analytics_events (path, referrer, country, ua_class, src, visitor, asn) VALUES (?, ?, ?, ?, 'beacon', ?, ?)")
+      .bind(path, referrer, country, uaClass, visitor, asn)
+      .run()
+      .catch(() => {})
+  );
+  return c.body(null, 204);
+});
+
+// Cloudflare Turnstile (signup/login). Unconfigured → skipped so local dev keeps working; configured → fail-closed.
+async function verifyTurnstile(c: { env: { TURNSTILE_SECRET?: string }; req: { header: (n: string) => string | undefined } }, token: unknown): Promise<boolean> {
+  if (!c.env.TURNSTILE_SECRET) return true;
+  if (typeof token !== "string" || !token) return false;
+  const form = new FormData();
+  form.set("secret", c.env.TURNSTILE_SECRET);
+  form.set("response", token);
+  const ip = c.req.header("cf-connecting-ip");
+  if (ip) form.set("remoteip", ip);
+  try {
+    const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body: form });
+    const json = (await res.json()) as { success?: boolean };
+    return json.success === true;
+  } catch {
+    return false;
+  }
+}
+
+const TURNSTILE_ERROR = "We couldn't verify you're human — please try again.";
 
 // Edge-cache anonymous public HTML GETs (NameChart pattern): serve repeat traffic from
 // caches.default without re-running D1/TMDB. Key = asset version + country + path + query;
@@ -295,18 +371,22 @@ function safeNext(raw: unknown): string | undefined {
   return s.startsWith("/") && !s.startsWith("//") && !s.includes("\\") ? s : undefined;
 }
 
-app.get("/signup", (c) => c.html(<Layout user={c.get("user")} title="Sign up"><AuthForm mode="signup" next={safeNext(c.req.query("next"))} /></Layout>));
-app.get("/login", (c) => c.html(<Layout user={c.get("user")} title="Log in"><AuthForm mode="login" next={safeNext(c.req.query("next"))} /></Layout>));
+app.get("/signup", (c) => c.html(<Layout user={c.get("user")} title="Sign up"><AuthForm mode="signup" next={safeNext(c.req.query("next"))} turnstileKey={c.env.TURNSTILE_SITE_KEY} /></Layout>));
+app.get("/login", (c) => c.html(<Layout user={c.get("user")} title="Log in"><AuthForm mode="login" next={safeNext(c.req.query("next"))} turnstileKey={c.env.TURNSTILE_SITE_KEY} /></Layout>));
 
 app.post("/signup", async (c) => {
   const form = await c.req.parseBody();
+  const turnstileKey = c.env.TURNSTILE_SITE_KEY;
   if (!(await rateLimit(c, "signup", 10))) {
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} email={String(form.email ?? "")} /></Layout>, 429);
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} email={String(form.email ?? "")} turnstileKey={turnstileKey} /></Layout>, 429);
   }
   const email = String(form.email ?? "").trim().toLowerCase();
   const password = String(form.password ?? "");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) || password.length < 8) {
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Enter a valid email and a password of 8+ characters." next={safeNext(form.next)} email={email} /></Layout>, 400);
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Enter a valid email and a password of 8+ characters." next={safeNext(form.next)} email={email} turnstileKey={turnstileKey} /></Layout>, 400);
+  }
+  if (!(await verifyTurnstile(c, form["cf-turnstile-response"]))) {
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error={TURNSTILE_ERROR} next={safeNext(form.next)} email={email} turnstileKey={turnstileKey} /></Layout>, 400);
   }
   const { hash, salt } = await hashPassword(password);
   const insert = () =>
@@ -323,10 +403,10 @@ app.post("/signup", async (c) => {
     }
   } catch (err) {
     if (String(err).includes("UNIQUE")) {
-      return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." next={safeNext(form.next)} email={email} /></Layout>, 400);
+      return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="That email is already registered." next={safeNext(form.next)} email={email} turnstileKey={turnstileKey} /></Layout>, 400);
     }
     console.error(err);
-    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Something went wrong on our side — please try again." next={safeNext(form.next)} email={email} /></Layout>, 500);
+    return c.html(<Layout user={null} title="Sign up"><AuthForm mode="signup" error="Something went wrong on our side — please try again." next={safeNext(form.next)} email={email} turnstileKey={turnstileKey} /></Layout>, 500);
   }
   await createSession(c, res!.id);
   c.executionCtx.waitUntil(sendEmail(c.env, email, ...welcomeEmail(c.env.SITE_URL)));
@@ -336,15 +416,19 @@ app.post("/signup", async (c) => {
 app.post("/login", async (c) => {
   const form = await c.req.parseBody();
   const email = String(form.email ?? "").trim().toLowerCase();
+  const turnstileKey = c.env.TURNSTILE_SITE_KEY;
   if (!(await rateLimit(c, "login", 15)) || (email && !(await rateLimit(c, "login-acct", 10, email)))) {
-    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} email={email} /></Layout>, 429);
+    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Too many attempts. Please try again in a few minutes." next={safeNext(form.next)} email={email} turnstileKey={turnstileKey} /></Layout>, 429);
+  }
+  if (!(await verifyTurnstile(c, form["cf-turnstile-response"]))) {
+    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error={TURNSTILE_ERROR} next={safeNext(form.next)} email={email} turnstileKey={turnstileKey} /></Layout>, 400);
   }
   const password = String(form.password ?? "");
   const row = await c.env.DB.prepare("SELECT id, password_hash, salt FROM users WHERE email = ?")
     .bind(email)
     .first<{ id: number; password_hash: string; salt: string }>();
   if (!row || !(await verifyPassword(password, row.salt, row.password_hash))) {
-    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Wrong email or password." next={safeNext(form.next)} email={email} /></Layout>, 401);
+    return c.html(<Layout user={null} title="Log in"><AuthForm mode="login" error="Wrong email or password." next={safeNext(form.next)} email={email} turnstileKey={turnstileKey} /></Layout>, 401);
   }
   await createSession(c, row.id);
   if (needsRehash(row.password_hash)) {
@@ -2853,31 +2937,49 @@ app.post("/api/admin/cron", async (c) => {
 app.get("/api/stats", async (c) => {
   const user = c.get("user");
   if (!user || !c.env.ADMIN_EMAIL || user.email !== c.env.ADMIN_EMAIL.toLowerCase()) return c.json({ error: "forbidden" }, 403);
-  const [daily, countries, topPaths, searches, signups, waitlist, funnel] = await Promise.all([
+  // human caliber = JS beacon page views; server hits are reported separately as corroboration
+  const HUMAN = "src = 'beacon' AND ua_class NOT IN ('bot','crawler','qa')";
+  const [daily, countries, topPaths, referrers, hits, searches, signups, idleUsers, waitlist, funnel] = await Promise.all([
     c.env.DB.prepare(
-      "SELECT date(ts) AS day, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel','qa') GROUP BY day ORDER BY day DESC LIMIT 30"
+      `SELECT date(ts) AS day, COUNT(*) AS views, COUNT(DISTINCT visitor) AS visitors FROM analytics_events WHERE ${HUMAN} AND ts >= datetime('now', '-30 days') GROUP BY day ORDER BY day DESC LIMIT 30`
     ).all(),
     c.env.DB.prepare(
-      "SELECT country, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel','qa') AND ts >= datetime('now', '-30 days') GROUP BY country ORDER BY views DESC LIMIT 15"
+      `SELECT country, COUNT(*) AS views FROM analytics_events WHERE ${HUMAN} AND ts >= datetime('now', '-30 days') GROUP BY country ORDER BY views DESC LIMIT 15`
     ).all(),
     c.env.DB.prepare(
-      "SELECT path, COUNT(*) AS views FROM analytics_events WHERE ua_class NOT IN ('bot','funnel','qa') AND ts >= datetime('now', '-30 days') GROUP BY path ORDER BY views DESC LIMIT 20"
+      `SELECT path, COUNT(*) AS views FROM analytics_events WHERE ${HUMAN} AND ts >= datetime('now', '-30 days') GROUP BY path ORDER BY views DESC LIMIT 20`
+    ).all(),
+    c.env.DB.prepare(
+      `SELECT COALESCE(NULLIF(substr(referrer, instr(referrer, '//') + 2, instr(substr(referrer, instr(referrer, '//') + 2) || '/', '/') - 1), ''), '(direct)') AS host, COUNT(*) AS views FROM analytics_events WHERE ${HUMAN} AND ts >= datetime('now', '-30 days') AND (referrer IS NULL OR referrer NOT LIKE ? ) GROUP BY host ORDER BY views DESC LIMIT 20`
+    )
+      .bind(`${c.env.SITE_URL}%`)
+      .all(),
+    c.env.DB.prepare(
+      "SELECT ua_class, COUNT(*) AS hits FROM analytics_events WHERE src IS NULL AND ua_class != 'funnel' AND ts >= datetime('now', '-7 days') GROUP BY ua_class ORDER BY hits DESC"
     ).all(),
     c.env.DB.prepare(
       "SELECT q, COUNT(*) AS n, MAX(results) AS results FROM search_queries WHERE ts >= datetime('now', '-30 days') GROUP BY q ORDER BY n DESC LIMIT 20"
     ).all(),
     c.env.DB.prepare("SELECT COUNT(*) AS n FROM users").first<{ n: number }>(),
+    // accounts with no tracked title, no episode watch and no movie watch — listed separately, not counted as users
+    c.env.DB.prepare(
+      "SELECT COUNT(*) AS n FROM users u WHERE NOT EXISTS (SELECT 1 FROM tracked t WHERE t.user_id = u.id) AND NOT EXISTS (SELECT 1 FROM episode_watches w WHERE w.user_id = u.id) AND NOT EXISTS (SELECT 1 FROM movie_watches m WHERE m.user_id = u.id)"
+    ).first<{ n: number }>(),
     c.env.DB.prepare("SELECT COUNT(*) AS n FROM email_signups").first<{ n: number }>(),
     c.env.DB.prepare(
       "SELECT path, COUNT(*) AS n FROM analytics_events WHERE ua_class = 'funnel' AND ts >= datetime('now', '-30 days') GROUP BY path ORDER BY n DESC"
     ).all(),
   ]);
+  const idle = idleUsers?.n ?? 0;
   return c.json({
     daily: daily.results,
     countries: countries.results,
     topPaths: topPaths.results,
+    referrers: referrers.results,
+    serverHits7d: hits.results,
     topSearches: searches.results,
-    users: signups?.n ?? 0,
+    users: (signups?.n ?? 0) - idle,
+    zeroActivityUsers: idle,
     waitlist: waitlist?.n ?? 0,
     funnel: funnel.results,
   });

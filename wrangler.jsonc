@@ -30,6 +30,9 @@
   "vars": {
     "SITE_URL": "https://watchdeck.zalize.com",
     "PAYWALL_ENABLED": "false",
-    "ADMIN_EMAIL": "wookat520@gmail.com"
+    "ADMIN_EMAIL": "wookat520@gmail.com",
+    // Cloudflare Turnstile widget site key (public). Currently the official always-pass TEST key —
+    // swap for the real widget key once created in dash → Turnstile; secret lives in `wrangler secret put TURNSTILE_SECRET`.
+    "TURNSTILE_SITE_KEY": "1x00000000000000000000AA"
   }
 }

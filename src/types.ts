@@ -8,6 +8,8 @@ export interface Env {
   TMDB_READ_TOKEN: string;
   INDEXNOW_KEY?: string;
   RESEND_API_KEY?: string;
+  TURNSTILE_SITE_KEY?: string;
+  TURNSTILE_SECRET?: string;
   waitUntil?: (p: Promise<unknown>) => void;
 }
 
