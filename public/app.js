@@ -86,12 +86,20 @@ document.addEventListener("DOMContentLoaded", () => {
         setTimeout(() => el.focus(), 0);
         return;
       }
-      // Turnstile still solving: hold the submit, wdTurnstileDone() resubmits once the token lands
+      // Turnstile token missing (still solving, expired, or errored): hold the submit and let
+      // wdTurnstileDone() resubmit. A repeat click or a stalled widget re-issues the challenge.
       const ts = form.querySelector('input[name="cf-turnstile-response"]');
       if (ts && !ts.value) {
         e.preventDefault();
-        form.dataset.turnstilePending = "1";
         const widget = form.querySelector(".cf-turnstile");
+        if (form.dataset.turnstilePending) {
+          resetTurnstile(widget);
+        } else {
+          form.dataset.turnstilePending = "1";
+          setTimeout(() => {
+            if (form.dataset.turnstilePending && !ts.value) resetTurnstile(widget);
+          }, 6000);
+        }
         if (widget) renderStatusHint(widget, "Checking you\u2019re human\u2026");
         return;
       }
@@ -112,6 +120,13 @@ function renderStatusHint(el, msg) {
   hint.textContent = msg;
   hint.className = msg ? "mt-1.5 text-xs text-slate-400" : "hidden";
 }
+function resetTurnstile(widget) {
+  if (widget && window.turnstile) {
+    try {
+      window.turnstile.reset(widget);
+    } catch {}
+  }
+}
 window.wdTurnstileDone = () => {
   const form = document.querySelector("form[data-turnstile-pending]");
   if (!form) return;
@@ -119,6 +134,13 @@ window.wdTurnstileDone = () => {
   const widget = form.querySelector(".cf-turnstile");
   if (widget) renderStatusHint(widget, "");
   form.requestSubmit();
+};
+window.wdTurnstileError = () => {
+  const form = document.querySelector("form[data-turnstile-pending]");
+  if (!form) return;
+  delete form.dataset.turnstilePending;
+  const widget = form.querySelector(".cf-turnstile");
+  if (widget) renderStatusHint(widget, "Human check failed to load \u2014 please reload the page and try again.");
 };
 // one-time confirmation after a track=1 deep link auto-added to the watchlist
 document.addEventListener("DOMContentLoaded", () => {
